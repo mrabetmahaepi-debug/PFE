@@ -1,0 +1,300 @@
+.access-page {
+  padding: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+  min-height: calc(100vh - 100px);
+}
+
+.access-container {
+  display: grid;
+  grid-template-columns: 350px 1fr;
+  gap: 2rem;
+  margin-top: 2rem;
+  align-items: start;
+}
+
+/* Sidebar */
+.admins-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  height: calc(100vh - 250px);
+  overflow: hidden;
+}
+
+.admins-list {
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-right: 0.5rem;
+}
+
+.admins-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.admins-list::-webkit-scrollbar-thumb {
+  background: #e2e8f0;
+  border-radius: 10px;
+}
+
+.admin-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid transparent;
+}
+
+.admin-item:hover {
+  background: #f8fafc;
+}
+
+.admin-item.active {
+  background: #f0f9ff;
+  border-color: #bae6fd;
+}
+
+.admin-avatar {
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.admin-info {
+  flex: 1;
+}
+
+.admin-name {
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0;
+}
+
+.admin-entreprise {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin: 0;
+}
+
+.chevron {
+  color: #cbd5e1;
+  transition: transform 0.2s;
+}
+
+.admin-item.active .chevron {
+  transform: translateX(3px);
+  color: #0284c7;
+}
+
+/* Main Content */
+.select-placeholder {
+  height: 400px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  color: #94a3b8;
+  text-align: center;
+}
+
+.select-placeholder h3 {
+  color: #475569;
+  margin: 0;
+}
+
+.selected-admin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  border-left: 4px solid #3b82f6;
+}
+
+.admin-detail-badge {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.avatar-large {
+  width: 64px;
+  height: 64px;
+  background: #f1f5f9;
+  color: #3b82f6;
+  border: 2px solid #3b82f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.detail-info h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #1e293b;
+}
+
+.detail-info p {
+  margin: 0;
+  color: #64748b;
+}
+
+.stat-value {
+  display: block;
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #0284c7;
+  text-align: center;
+}
+
+.stat-label {
+  font-size: 0.8rem;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.grid-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.grid-header h3 {
+  margin: 0;
+  color: #334155;
+  font-size: 1.1rem;
+}
+
+.projects-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.5rem;
+}
+
+.project-access-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.25rem;
+  transition: all 0.3s;
+  position: relative;
+  overflow: hidden;
+}
+
+.project-access-card.assigned {
+  border-color: #bae6fd;
+  background: #f0f9ff;
+}
+
+.project-icon {
+  width: 44px;
+  height: 44px;
+  background: #f8fafc;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+}
+
+.assigned .project-icon {
+  background: #e0f2fe;
+  color: #0284c7;
+}
+
+.project-info {
+  flex: 1;
+}
+
+.project-info h4 {
+  margin: 0;
+  color: #1e293b;
+  font-size: 1rem;
+}
+
+.proj-entreprise {
+  margin: 0;
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.action-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+}
+
+.action-btn.assign {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.action-btn.assign:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.action-btn.unassign {
+  background: #fee2e2;
+  color: #ef4444;
+}
+
+.action-btn.unassign:hover {
+  background: #fecaca;
+  color: #dc2626;
+}
+
+.assigned-ribbon {
+  position: absolute;
+  top: 6px;
+  right: -25px;
+  background: #0284c7;
+  color: white;
+  font-size: 0.6rem;
+  font-weight: 700;
+  padding: 2px 30px;
+  transform: rotate(45deg);
+  text-transform: uppercase;
+}
+
+.grid-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 4rem;
+  color: #64748b;
+}
+
+@media (max-width: 1024px) {
+  .access-container {
+    grid-template-columns: 1fr;
+  }
+  .admins-sidebar {
+    height: 300px;
+  }
+}

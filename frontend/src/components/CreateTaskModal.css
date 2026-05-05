@@ -1,0 +1,23 @@
+/* Reuse project modal styles with task-specific tweaks if needed */
+@import "./CreateProjectModal.css";
+
+.task-priority-selector {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+.priority-option {
+  padding: 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.2s;
+}
+
+.priority-option.active {
+  border-color: #4f46e5;
+  background-color: #f5f3ff;
+  color: #4f46e5;
+}

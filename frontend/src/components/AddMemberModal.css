@@ -1,0 +1,8 @@
+/* Reusing modal styles but adding specific ones if needed */
+@import './CreateProjectModal.css';
+
+.modal-form .form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}

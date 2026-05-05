@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE `role` MODIFY `id_role` INTEGER NOT NULL AUTO_INCREMENT;

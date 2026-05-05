@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE `role` MODIFY `dateCreation` DATE NULL DEFAULT CURRENT_TIMESTAMP(3);
