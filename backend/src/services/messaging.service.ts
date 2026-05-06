@@ -19,7 +19,8 @@ export class MessagingService {
           data: {
             nom: this.ADMIN_GROUP_NAME,
             is_group: true,
-            is_system: true
+            is_system: true,
+            updatedAt: new Date()
           }
         });
         console.log(`[Messaging] Groupe "${this.ADMIN_GROUP_NAME}" créé.`);

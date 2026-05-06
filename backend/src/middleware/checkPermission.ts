@@ -25,8 +25,8 @@ export const checkPermission = (permissionName: string) => {
           id_role: user.id_role
         },
         include: {
-          permissions: true
-        }
+          permission: true
+        } as any
       });
 
       if (!roleWithPermissions) {
@@ -34,8 +34,8 @@ export const checkPermission = (permissionName: string) => {
       }
 
       // 3. Check if the required permission is assigned to the role
-      const hasPermission = roleWithPermissions.permissions.some(
-        (p) => p.nom === permissionName
+      const hasPermission = (roleWithPermissions as any).permission.some(
+        (p: any) => p.nom === permissionName
       );
 
       if (!hasPermission) {

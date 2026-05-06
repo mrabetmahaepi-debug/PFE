@@ -79,7 +79,13 @@ export const getEntrepriseById = async (req: Request, res: Response, next: NextF
   try {
     const { id } = req.params;
     const entreprise = await prisma.entreprise.findUnique({
-      where: { id_entreprise: parseInt(id as string) }
+      where: { id_entreprise: parseInt(id as string) },
+      include: {
+        projet: true,
+        utilisateur: {
+          include: { role: true }
+        }
+      }
     });
 
     if (!entreprise) {
@@ -202,22 +208,23 @@ export const inviteAdmin = async (req: Request, res: Response, next: NextFunctio
     try {
       await (prisma as any).activity.create({
         data: {
-          user: `${prenom} ${nom}`,
-          action: "Admin invité et créé",
+          user: prenom + " " + nom,
+          action: "Admin invité",
           entreprise: entreprise?.nom || "Non spécifiée",
-          status: "ACTIVE",
-          type: "user",
-          entityId: user.id_utilisateur
+          status: "PENDING",
+          date: new Date()
         }
       });
-      console.log("Activity logged");
-    } catch (e) { console.error("Logging error", e); }
+      console.log("Activity created for admin invitation");
+    } catch (e) {
+      console.error("Logging error", e);
+    }
 
     return successResponse(res, user, `Administrateur invité et créé avec succès${groupWarning}`, 201);
   } catch (error: any) {
-    console.error("[InviteAdmin] Erreur fatale:", error);
+    console.error("INVITE ADMIN ERROR:", error);
     res.status(500).json({ 
-      message: "Échec de l'invitation", 
+      message: error.message || "Échec de l'invitation", 
       error: error.message,
       details: "Une erreur interne est survenue lors de la création de l'administrateur."
     });

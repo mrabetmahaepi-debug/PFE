@@ -5,7 +5,7 @@ import { authService } from '../services/auth.service';
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (credentials: LoginCredentials) => Promise<void>;
+  login: (credentials: LoginCredentials) => Promise<User>;
   register: (data: RegisterData) => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
@@ -15,19 +15,36 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(() => {
+    const savedUser = localStorage.getItem('user');
+    if (savedUser) {
+      try {
+        return JSON.parse(savedUser);
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const initAuth = async () => {
+      console.log("initAuth started. isAuthenticated:", authService.isAuthenticated());
       if (authService.isAuthenticated()) {
         try {
           const userData = await authService.getMe();
+          console.log("getMe success:", userData);
           setUser(userData);
-        } catch (error) {
-          console.error("Failed to fetch user:", error);
+          localStorage.setItem('user', JSON.stringify(userData));
+        } catch (error: any) {
+          console.error("Failed to fetch user (getMe):", error?.response?.data || error);
           authService.logout();
+          setUser(null);
         }
+      } else {
+        console.log("Not authenticated, clearing user.");
+        setUser(null);
       }
       setLoading(false);
     };
@@ -39,6 +56,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await authService.login(credentials);
     const userData = await authService.getMe();
     setUser(userData);
+    return userData;
   };
 
   const register = async (data: RegisterData) => {
@@ -52,8 +70,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const hasPermission = (permission: string): boolean => {
     if (!user) return false;
-    const roleName = typeof user.role === 'object' ? user.role.nom : user.role;
-    if (roleName === 'SuperAdmin') return true;
+    const roleName = typeof user.role === 'object' ? user.role?.nom : user.role;
+    const r = roleName?.toString().trim().toUpperCase();
+    if (r === 'SUPERADMIN') return true;
     const has = user.permissions?.includes(permission) || false;
     return has;
   };

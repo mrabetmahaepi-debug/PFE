@@ -10,12 +10,18 @@ export interface User {
   entreprise?: {
     nom: string;
   };
+  telephone?: string;
+  poste?: string;
   permissions?: string[];
+  lastLogin?: string;
+  id_role?: number;
 }
 
 export interface AuthResponse {
   token: string;
   user: User;
+  role?: string;
+  id_role?: number;
 }
 
 export interface LoginCredentials {

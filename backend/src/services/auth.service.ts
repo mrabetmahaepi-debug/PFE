@@ -68,17 +68,20 @@ export const loginUser = async (email: string, password: string) => {
     throw new Error("Mot de passe incorrect");
   }
 
+  // Use raw update for lastLogin to avoid typescript errors since prisma client is not generated
+  await prisma.$executeRawUnsafe(`UPDATE utilisateur SET lastLogin = NOW() WHERE id_utilisateur = ${user.id_utilisateur}`);
+
   return user;
 };
 
 export const getMe = async (userId: number) => {
-  const user = await prisma.utilisateur.findUnique({
+  const user: any = await prisma.utilisateur.findUnique({
     where: { id_utilisateur: userId },
     include: { 
       role: {
-        include: { permissions: true }
+        include: { permission: true } as any
       } 
-    },
+    } as any,
   });
 
   if (!user) {
@@ -94,6 +97,6 @@ export const getMe = async (userId: number) => {
     id_role: user.id_role,
     id_entreprise: user.id_entreprise,
     role: user.role?.nom || undefined,
-    permissions: user.role?.permissions.map(p => p.nom) || [],
+    permissions: user.role?.permission.map((p: any) => p.nom) || [],
   };
 };

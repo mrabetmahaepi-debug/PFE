@@ -26,7 +26,7 @@ export const getRoles = async (req: Request, res: Response) => {
 const id_entreprise = parseInt(req.params.idEntreprise as string);
     const roles = await prisma.role.findMany({
       where: { id_entreprise },
-      include: { permissions: true }, 
+      include: { permission: true } as any, 
     });
 
     res.json(roles);
@@ -100,11 +100,11 @@ const idRole = parseInt(req.params.idRole as string);    const { permissionsIds 
     const role = await prisma.role.update({
       where: { id_role:idRole },
       data: {
-        permissions: {
+        permission: {
           set: permissionsIds.map(id => ({ id_permission: id })) 
         }
-      },
-      include: { permissions: true }
+      } as any,
+      include: { permission: true } as any
     });
 
     res.json({ message: "Permissions assignées", role });
@@ -117,7 +117,7 @@ export const getRoleById = async (req: Request, res: Response) => {
 const id_role = parseInt(req.params.idRole as string);   
     const role = await prisma.role.findUnique({
       where: { id_role },
-      include: { permissions: true },
+      include: { permission: true } as any,
     });
     if (!role) return res.status(404).json({ message: "Role inexistant" });
     res.json(role);
@@ -139,11 +139,11 @@ const id_role = parseInt(req.params.idRole as string);
     const role = await prisma.role.update({
       where: { id_role },
       data: {
-        permissions: {
+        permission: {
           disconnect: permissionsIds.map(id => ({ id_permission: id }))
         }
-      },
-      include: { permissions: true }
+      } as any,
+      include: { permission: true } as any
     });
 
     res.json({ message: "Permissions retirées", role });

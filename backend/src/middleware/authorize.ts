@@ -15,7 +15,7 @@ export const authorize = (permission: string) => {
       }
 
       // 1. SuperAdmin bypass
-      if (user.role === "SuperAdmin") {
+      if (user.role?.toString().toUpperCase() === "SUPERADMIN") {
         return next();
       }
 
@@ -26,7 +26,7 @@ export const authorize = (permission: string) => {
       if (user.id_role) {
         roleWithPermissions = await prisma.role.findUnique({
           where: { id_role: user.id_role },
-          include: { permissions: true }
+          include: { permission: true } as any
         });
       } else {
         roleWithPermissions = await prisma.role.findFirst({
@@ -34,7 +34,7 @@ export const authorize = (permission: string) => {
             nom: user.role,
             id_entreprise: user.id_entreprise
           },
-          include: { permissions: true }
+          include: { permission: true } as any
         });
       }
 
@@ -43,8 +43,8 @@ export const authorize = (permission: string) => {
       }
 
       // 3. Check if the required permission is assigned to the role
-      const hasPermission = roleWithPermissions.permissions.some(
-        (p) => p.nom === permission
+      const hasPermission = (roleWithPermissions as any).permission.some(
+        (p: any) => p.nom === permission
       );
 
       if (!hasPermission) {

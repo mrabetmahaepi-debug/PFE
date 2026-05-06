@@ -132,11 +132,15 @@ const Enterprises: React.FC = () => {
       console.error("Failed to invite admin:", error);
       // Show the exact backend error message
       const backendMsg = error.response?.data?.message;
+      const backendError = error.response?.data?.error;
       const validationErrors = error.response?.data?.errors;
-      let errorMsg = backendMsg || "Échec de l'invitation";
+      
+      let errorMsg = backendMsg || backendError || error.message || "Échec de l'invitation";
+      
       if (validationErrors && Array.isArray(validationErrors)) {
         errorMsg = validationErrors.map((e: any) => e.message).join(', ');
       }
+      
       showMessage('error', errorMsg);
     } finally {
       setIsInviting(false);

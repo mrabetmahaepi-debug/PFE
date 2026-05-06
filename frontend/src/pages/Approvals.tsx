@@ -169,7 +169,7 @@ const Approvals: React.FC = () => {
                         </div>
                         <div className="detail-row">
                           <Briefcase size={14} />
-                          <span>{typeof u.role === 'object' ? u.role.nom : (u.role || 'Admin')}</span>
+                          <span>{typeof u.role === 'object' ? u.role?.nom : (u.role || 'Admin')}</span>
                         </div>
                         <div className="enterprise-selection" style={{ marginTop: '1rem' }}>
                           <label style={{ display: 'block', fontSize: '0.75rem', color: '#666', marginBottom: '5px' }}>Assigner à une entreprise :</label>

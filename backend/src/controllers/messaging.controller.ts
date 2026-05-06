@@ -15,33 +15,38 @@ export const getConversations = async (req: Request, res: Response) => {
 
     const conversations = await prisma.conversation.findMany({
       where: {
-        participants: {
+        participant: {
           some: { id_utilisateur: user.id }
         },
-        // Sécurité: Les groupes système ne sont visibles que par les Admins/SuperAdmin
-        // (Bien que théoriquement seuls eux y sont ajoutés, on double check ici)
         OR: [
           { is_system: false },
-          { is_system: true, participants: { some: { id_utilisateur: user.id } } }
+          { is_system: true, participant: { some: { id_utilisateur: user.id } } }
         ]
-      },
+      } as any,
       include: {
-        participants: {
+        participant: {
           include: {
             utilisateur: {
               select: { nom: true, prenom: true, email: true }
             }
           }
         },
-        messages: {
+        message: {
           take: 1,
           orderBy: { createdAt: 'desc' }
         }
-      },
+      } as any,
       orderBy: { updatedAt: 'desc' }
     });
 
-    res.json(conversations);
+    // Formatter pour le frontend (renommer participant -> participants, message -> messages)
+    const formatted = conversations.map((c: any) => ({
+      ...c,
+      participants: c.participant,
+      messages: c.message
+    }));
+
+    res.json(formatted);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Erreur lors de la récupération des conversations" });
@@ -70,14 +75,20 @@ export const getMessages = async (req: Request, res: Response) => {
     const messages = await prisma.message.findMany({
       where: { id_conversation: parseInt(id) },
       include: {
-        expediteur: {
+        utilisateur: {
           select: { id_utilisateur: true, nom: true, prenom: true }
         }
-      },
+      } as any,
       orderBy: { createdAt: 'asc' }
     });
 
-    res.json(messages);
+    // Formatter pour le frontend (utilisateur -> expediteur)
+    const formatted = messages.map((m: any) => ({
+      ...m,
+      expediteur: m.utilisateur
+    }));
+
+    res.json(formatted);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Erreur lors de la récupération des messages" });
@@ -112,10 +123,10 @@ export const sendMessage = async (req: Request, res: Response) => {
         metadata: metadata ? (typeof metadata === 'string' ? metadata : JSON.stringify(metadata)) : null
       },
       include: {
-        expediteur: {
+        utilisateur: {
           select: { id_utilisateur: true, nom: true, prenom: true }
         }
-      }
+      } as any
     });
 
     // Mettre à jour le updatedAt de la conversation
@@ -124,7 +135,13 @@ export const sendMessage = async (req: Request, res: Response) => {
       data: { updatedAt: new Date() }
     });
 
-    res.json(message);
+    // Formatter pour le frontend
+    const formatted = {
+      ...message,
+      expediteur: (message as any).utilisateur
+    };
+
+    res.json(formatted);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Erreur lors de l'envoi du message" });

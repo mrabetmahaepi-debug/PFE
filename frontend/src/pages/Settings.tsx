@@ -1,16 +1,15 @@
-import React, { useState } from 'react';
-import { User, Bell, Lock, Save, Camera, Key, Smartphone, LogOut, ArrowRight } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useRef } from 'react';
+import { User, Bell, Lock, Camera, Key, Smartphone, LogOut, Loader } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import BackButton from '../components/BackButton';
+import api from '../services/api';
 import './Settings.css';
 
 const Settings: React.FC = () => {
   const { user } = useAuth();
-  const isSuperAdmin = (typeof user?.role === 'string' ? user.role : user?.role?.nom) === 'SuperAdmin';
+  const roleStr = typeof user?.role === 'string' ? user.role : user?.role?.nom;
   
-  const [activeTab, setActiveTab] = useState<'profile' | 'security' | 'notifications' | 'permissions'>('profile');
-  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<'profile' | 'security' | 'notifications'>('profile');
   
   const [formData, setFormData] = useState({
     nom: user?.nom || '',
@@ -25,6 +24,12 @@ const Settings: React.FC = () => {
     new: '',
     confirm: ''
   });
+
+  // Profile picture state
+  const [photoPreview, setPhotoPreview] = useState<string | null>((user as any)?.photoUrl ? `http://localhost:5000${(user as any).photoUrl}` : null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
@@ -42,12 +47,57 @@ const Settings: React.FC = () => {
     });
   };
 
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate type
+    if (!['image/jpeg', 'image/png', 'image/gif'].includes(file.type)) {
+      setUploadError('Format non supporté. Utilisez JPG, PNG ou GIF.');
+      return;
+    }
+    // Validate size (2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      setUploadError('La photo ne doit pas dépasser 2MB.');
+      return;
+    }
+
+    // Immediate preview
+    const reader = new FileReader();
+    reader.onload = (ev) => setPhotoPreview(ev.target?.result as string);
+    reader.readAsDataURL(file);
+
+    // Upload to backend
+    setUploading(true);
+    setUploadError(null);
+    try {
+      const formData = new FormData();
+      formData.append('photo', file);
+      const res = await api.post('/upload/profile-picture', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      setPhotoPreview(`http://localhost:5000${res.data.photoUrl}`);
+    } catch (err: any) {
+      setUploadError(err.response?.data?.error || 'Erreur lors de l\'upload');
+    } finally {
+      setUploading(false);
+      // Reset input so same file can be re-selected
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const initials = `${user?.prenom?.[0] || ''}${user?.nom?.[0] || ''}`;
+
   return (
     <div className="settings-page">
       <BackButton />
       <header className="page-header">
         <div>
-          <h1>Paramètres {isSuperAdmin ? 'Super Admin' : ''}</h1>
+          <h1>Paramètres {roleStr === 'SuperAdmin' ? 'Super Admin' : ''}</h1>
           <p className="subtitle">Gérez vos informations de compte et la sécurité de la plateforme.</p>
         </div>
       </header>
@@ -75,14 +125,6 @@ const Settings: React.FC = () => {
             <Bell size={18} />
             <span>Notifications</span>
           </button>
-          {isSuperAdmin && (
-            <button 
-              className={`nav-item ${activeTab === 'permissions' ? 'active' : ''}`}
-              onClick={() => setActiveTab('permissions')}
-            >
-              <span>Rôles & Permissions</span>
-            </button>
-          )}
         </aside>
 
         <main className="settings-content">
@@ -93,14 +135,32 @@ const Settings: React.FC = () => {
                 <p>Mettez à jour vos informations de profil.</p>
               </div>
 
+              {/* Hidden file input */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/gif"
+                style={{ display: 'none' }}
+                onChange={handleFileChange}
+              />
+
               <div className="profile-upload">
-                <div className="avatar-large">
-                  {user?.prenom?.[0]}{user?.nom?.[0]}
-                  <button className="camera-overlay"><Camera size={16} /></button>
+                <div 
+                  className="avatar-large avatar-clickable"
+                  onClick={handleAvatarClick}
+                  title="Cliquer pour changer la photo"
+                >
+                  {uploading ? (
+                    <span className="avatar-loader"><Loader size={24} className="spin" /></span>
+                  ) : photoPreview ? (
+                    <img src={photoPreview} alt="Photo de profil" className="avatar-photo" />
+                  ) : (
+                    <span>{initials}</span>
+                  )}
+                  <span className="camera-overlay"><Camera size={16} /></span>
                 </div>
                 <div className="upload-info">
                   <h3>Photo de profil</h3>
-                  <p>JPG, GIF ou PNG. Max 2MB.</p>
                 </div>
               </div>
 
@@ -123,17 +183,10 @@ const Settings: React.FC = () => {
                   <label>Rôle</label>
                   <input 
                     type="text" 
-                    value={typeof user?.role === 'string' ? user.role : (user?.role?.nom || '')} 
+                    value={roleStr || ''} 
                     disabled 
                     className="disabled-input" 
                   />
-                </div>
-                
-                <div className="form-actions">
-                  <button className="primary-btn">
-                    <Save size={18} />
-                    <span>Enregistrer les modifications</span>
-                  </button>
                 </div>
               </div>
             </section>
@@ -244,79 +297,6 @@ const Settings: React.FC = () => {
                     <input type="checkbox" checked={formData.securityEmails} name="securityEmails" onChange={handleChange} />
                     <span className="slider round"></span>
                   </label>
-                </div>
-              </div>
-            </section>
-          )}
-
-          {activeTab === 'permissions' && (
-            <section className="settings-section premium-card">
-              <div className="section-header">
-                <h2>Rôles & Permissions</h2>
-                <p>Configurez les droits d'accès globaux et les niveaux de sécurité de la plateforme.</p>
-              </div>
-
-              <div className="permissions-detailed-view">
-                <div className="info-card-highlight no-icon">
-                  <div className="info-text">
-                    <h4>Structure des Rôles</h4>
-                    <p>Définissez précisément les actions autorisées pour chaque type d'utilisateur. Les modifications s'appliquent en temps réel à tous les membres concernés.</p>
-                  </div>
-                </div>
-
-                <div className="roles-visual-grid">
-                  <div className="role-card">
-                    <div className="role-card-header">
-                      <div>
-                        <h5>Administrateur</h5>
-                        <span className="user-count">Plein accès</span>
-                      </div>
-                    </div>
-                    <ul className="role-features">
-                      <li>Gestion des entreprises</li>
-                      <li>Gestion des équipes</li>
-                      <li>Configuration système</li>
-                    </ul>
-                  </div>
-
-                  <div className="role-card">
-                    <div className="role-card-header">
-                      <div>
-                        <h5>Chef de Projet</h5>
-                        <span className="user-count">Accès managérial</span>
-                      </div>
-                    </div>
-                    <ul className="role-features">
-                      <li>Création de projets</li>
-                      <li>Assignation des tâches</li>
-                      <li>Rapports d'activité</li>
-                    </ul>
-                  </div>
-
-                  <div className="role-card">
-                    <div className="role-card-header">
-                      <div>
-                        <h5>Membre</h5>
-                        <span className="user-count">Accès limité</span>
-                      </div>
-                    </div>
-                    <ul className="role-features">
-                      <li>Exécution des tâches</li>
-                      <li>Commentaires & Fichiers</li>
-                      <li>Suivi du temps</li>
-                    </ul>
-                  </div>
-                </div>
-
-                <div className="permissions-cta-box">
-                  <div className="cta-content">
-                    <h4>Configuration avancée</h4>
-                    <p>Pour modifier les permissions granulaires (lecture, écriture, suppression) par module, utilisez l'éditeur complet.</p>
-                  </div>
-                  <button className="primary-btn pulse-effect" onClick={() => navigate('/permissions')}>
-                    <span>Accéder à l'éditeur de permissions</span>
-                    <ArrowRight size={18} />
-                  </button>
                 </div>
               </div>
             </section>

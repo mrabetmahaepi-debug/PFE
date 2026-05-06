@@ -76,7 +76,7 @@ async function main() {
       await prisma.role.update({
         where: { id_role: role.id_role },
         data: {
-          permissions: {
+          permission: {
             set: permsToAssign.map(p => ({ id_permission: p.id_permission }))
           }
         }

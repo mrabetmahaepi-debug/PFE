@@ -11,8 +11,35 @@ const Login: React.FC = () => {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const { login } = useAuth();
+  const { login, isAuthenticated, user, loading } = useAuth();
   const navigate = useNavigate();
+
+  React.useEffect(() => {
+    if (!loading && isAuthenticated && user) {
+      const roleName = typeof user.role === 'object' ? user.role?.nom : user.role;
+      const r = roleName?.toString().trim().toUpperCase();
+      if (r === 'SUPERADMIN') {
+        navigate('/dashboard');
+      } else if (r === 'ADMIN') {
+        navigate('/team');
+      } else if (r === 'CHEF DE PROJET') {
+        navigate('/projects');
+      } else if (r === 'MEMBRE') {
+        navigate('/tasks');
+      } else {
+        navigate('/');
+      }
+    }
+  }, [isAuthenticated, user, navigate, loading]);
+
+  if (loading) {
+    return (
+      <div className="loading-screen">
+        <div className="loader"></div>
+        <p>Vérification de la session...</p>
+      </div>
+    );
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,9 +47,23 @@ const Login: React.FC = () => {
     setIsSubmitting(true);
 
     try {
-      await login({ email, password });
-      navigate('/');
+      const userData = await login({ email, password });
+      
+      const roleName = typeof userData.role === 'object' ? userData.role?.nom : userData.role;
+      const r = roleName?.toString().trim().toUpperCase();
+      if (r === 'SUPERADMIN') {
+        navigate('/dashboard');
+      } else if (r === 'ADMIN') {
+        navigate('/team');
+      } else if (r === 'CHEF DE PROJET') {
+        navigate('/projects');
+      } else if (r === 'MEMBRE') {
+        navigate('/tasks');
+      } else {
+        navigate('/');
+      }
     } catch (err: any) {
+      console.error("Login failed:", err.response?.data || err);
       setError(err.response?.data?.message || 'Identifiants invalides');
     } finally {
       setIsSubmitting(false);

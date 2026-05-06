@@ -8,12 +8,13 @@ export const checkAdminEntreprise = (req: Request, res: Response, next: NextFunc
     return res.status(403).json({ error: "Accès refusé, vous devez être connecté" });
   }
 
+  const role = user.role?.toString().toUpperCase();
   
-  if (user.role === "SuperAdmin") {
+  if (role === "SUPERADMIN") {
     return next();
   }
 
-  if (user.role === "Admin" && user.id_entreprise) {
+  if (role === "ADMIN" && user.id_entreprise) {
     return next();
   }
 

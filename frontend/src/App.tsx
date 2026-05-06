@@ -17,7 +17,21 @@ import Register from './pages/Register';
 
 
 import ProjectDetail from './pages/ProjectDetail';
+import EnterpriseDetail from './pages/EnterpriseDetail';
+import UserDetail from './pages/UserDetail';
 import ActivityLogs from './pages/ActivityLogs';
+import { useAuth } from './hooks/useAuth';
+
+const NoSuperAdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user } = useAuth();
+  const roleName = typeof user?.role === 'object' ? user.role?.nom : user?.role;
+  
+  const r = roleName?.toString().trim().toUpperCase();
+  if (r === 'SUPERADMIN') {
+    return <Navigate to="/" replace />;
+  }
+  return <>{children}</>;
+};
 
 function App() {
   return (
@@ -35,16 +49,20 @@ function App() {
             </ProtectedRoute>
           }>
             <Route index element={<Dashboard />} />
-            <Route path="projects" element={<Projects />} />
+            <Route path="dashboard" element={<Dashboard />} />
+             <Route path="projects" element={<NoSuperAdminRoute><Projects /></NoSuperAdminRoute>} />
             <Route path="projects/:id" element={<ProjectDetail />} />
             <Route path="activities" element={<ActivityLogs />} />
-            <Route path="tasks" element={<Tasks />} />
+            <Route path="tasks" element={<NoSuperAdminRoute><Tasks /></NoSuperAdminRoute>} />
             <Route path="team" element={<Team />} />
+            <Route path="team/:id" element={<UserDetail />} />
+            <Route path="users/:id" element={<UserDetail />} />
             <Route path="approvals" element={<Approvals />} />
             <Route path="messages" element={<Messages />} />
             <Route path="enterprises" element={<Enterprises />} />
+            <Route path="enterprises/:id" element={<EnterpriseDetail />} />
             <Route path="permissions" element={<Permissions />} />
-            <Route path="access-management" element={<ProjectAccess />} />
+            <Route path="access-management" element={<NoSuperAdminRoute><ProjectAccess /></NoSuperAdminRoute>} />
             <Route path="settings" element={<Settings />} />
           </Route>
 

@@ -11,6 +11,8 @@ export interface Entreprise {
     prenom: string;
     email: string;
   };
+  projet?: any[];
+  utilisateur?: any[];
 }
 
 export const entrepriseService = {
@@ -21,6 +23,11 @@ export const entrepriseService = {
       return result.items;
     }
     return Array.isArray(result) ? result : [];
+  },
+
+  async getById(id: number): Promise<Entreprise> {
+    const response = await api.get<any>(`/entreprises/${id}`);
+    return response.data?.data || response.data;
   },
 
   async create(data: Partial<Entreprise>): Promise<Entreprise> {

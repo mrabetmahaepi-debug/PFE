@@ -12,7 +12,6 @@ import {
   Building2,
   Lock,
   Mail,
-  Shield,
   MessageSquare
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
@@ -25,10 +24,10 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggleCollapsed }) => {
   const { user, logout, hasPermission } = useAuth();
-  const roleName = typeof user?.role === 'object' ? user.role.nom : user?.role;
-  const isSuperAdmin = roleName === 'SuperAdmin';
+  const roleName = typeof user?.role === 'object' ? user.role?.nom : user?.role;
+  const isSuperAdmin = roleName?.toString().trim().toUpperCase() === 'SUPERADMIN';
   
-  const navItems = [
+  let navItems = [
     { name: 'Dashboard', icon: <LayoutDashboard size={20} />, path: '/' },
     { name: 'Projets', icon: <Briefcase size={20} />, path: '/projects' },
     { name: 'Tâches', icon: <CheckSquare size={20} />, path: '/tasks' },
@@ -36,19 +35,29 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggleCollapsed }) => {
     { name: 'Paramètres', icon: <Settings size={20} />, path: '/settings' },
   ];
 
-  if (roleName === 'SuperAdmin' || roleName === 'Admin') {
+  if (isSuperAdmin) {
+    navItems = navItems.filter(item => item.name !== 'Projets' && item.name !== 'Tâches');
+  }
+
+  if (roleName?.toString().trim().toUpperCase() === 'SUPERADMIN' || roleName?.toString().trim().toUpperCase() === 'ADMIN') {
     const extraItems = [];
-    if (roleName === 'SuperAdmin') {
+    if (roleName?.toString().trim().toUpperCase() === 'SUPERADMIN') {
       extraItems.push({ name: 'Entreprises', icon: <Building2 size={20} />, path: '/enterprises' });
       extraItems.push({ name: 'Approbations', icon: <Mail size={20} />, path: '/approvals' });
-      extraItems.push({ name: 'Accès Projets', icon: <Shield size={20} />, path: '/access-management' });
     }
     // Messagerie visible pour SuperAdmin ET Admin
     extraItems.push({ name: 'Messagerie', icon: <MessageSquare size={20} />, path: '/messages' });
-    if (roleName === 'Admin' || roleName === 'SuperAdmin' || hasPermission('TEAM_MANAGE_ROLES')) {
+    const r = roleName?.toString().trim().toUpperCase();
+    if (r === 'ADMIN' || r === 'SUPERADMIN' || hasPermission('TEAM_MANAGE_ROLES')) {
       extraItems.push({ name: 'Permissions', icon: <Lock size={20} />, path: '/permissions' });
     }
-    navItems.splice(4, 0, ...extraItems);
+    
+    const settingsIndex = navItems.findIndex(item => item.name === 'Paramètres');
+    if (settingsIndex !== -1) {
+      navItems.splice(settingsIndex, 0, ...extraItems);
+    } else {
+      navItems.push(...extraItems);
+    }
   }
 
   const getInitials = (user: any) => {
@@ -94,7 +103,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggleCollapsed }) => {
             <div className="avatar">{getInitials(user)}</div>
             <div className="details">
               <p className="name">{user.prenom} {user.nom}</p>
-              <p className="role">{typeof user.role === 'object' ? user.role.nom : (user.role || 'Membre')}</p>
+              <p className="role">{typeof user.role === 'object' ? user.role?.nom : (user.role || 'Membre')}</p>
             </div>
             <button onClick={logout} className="logout-btn" title="Déconnexion">
               <LogOut size={18} />

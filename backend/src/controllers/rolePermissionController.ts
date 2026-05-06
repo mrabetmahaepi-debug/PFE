@@ -8,11 +8,11 @@ export const assignPermissionToRole = async (req: Request, res: Response) => {
     const updatedRole = await prisma.role.update({
       where: { id_role: parseInt(roleId as any) },
       data: {
-        permissions: {
+        permission: {
           connect: { id_permission: parseInt(permissionId as any) }
         }
-      },
-      include: { permissions: true }
+      } as any,
+      include: { permission: true } as any
     });
 
     res.json({ message: "Permission assignée au rôle", role: updatedRole });
@@ -28,11 +28,11 @@ export const removePermissionFromRole = async (req: Request, res: Response) => {
     const updatedRole = await prisma.role.update({
       where: { id_role: parseInt(roleId as any) },
       data: {
-        permissions: {
+        permission: {
           disconnect: { id_permission: parseInt(permissionId as any) }
         }
-      },
-      include: { permissions: true }
+      } as any,
+      include: { permission: true } as any
     });
 
     res.json({ message: "Permission retirée du rôle", role: updatedRole });
@@ -46,9 +46,9 @@ export const getRolePermissions = async (req: Request, res: Response) => {
     const { roleId } = req.params;
     const role = await prisma.role.findUnique({
       where: { id_role: parseInt(roleId as any) },
-      include: { permissions: true }
+      include: { permission: true } as any
     });
-    res.json(role?.permissions || []);
+    res.json((role as any)?.permission || []);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }

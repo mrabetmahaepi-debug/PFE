@@ -234,37 +234,204 @@ export const rejectInvitation = async (req: Request, res: Response) => {
 
 export const getDashboardStats = async (req: Request, res: Response) => {
   try {
-    const [totalEnterprises, totalAdmins, totalProjects, pendingApprovals] = await Promise.all([
+    const last7Days = new Date();
+    last7Days.setDate(last7Days.getDate() - 7);
+
+    const startOfToday = new Date();
+    startOfToday.setHours(0,0,0,0);
+
+    const [
+      totalEnterprises,
+      allUsers,
+      totalProjects,
+      pendingApprovalsCount,
+      roleDistribution,
+      recentActivities,
+      topEnterprises,
+      activeEnterprises,
+      enterprisesWithoutAdmin,
+      lastWeekEnterprises,
+      enterprisesToday,
+    ] = await Promise.all([
       prisma.entreprise.count(),
-      prisma.utilisateur.count({
-        where: {
-          role: {
-            nom: { in: ["Admin", "ADMIN", "admin"] }
-          }
-        }
+      prisma.utilisateur.findMany({
+        where: { NOT: { role: { nom: 'SuperAdmin' } } },
+        select: { id_utilisateur: true, email: true, lastLogin: true, createdAt: true, role: { select: { nom: true } }, statut: true }
       }),
       prisma.projet.count(),
       prisma.utilisateur.count({
         where: { statut: "PENDING" }
-      })
+      }),
+      prisma.role.findMany({
+        select: {
+          nom: true,
+          _count: { select: { utilisateur: true } }
+        }
+      }),
+      prisma.activity.findMany({
+        take: 15,
+        orderBy: { date: 'desc' }
+      }),
+      prisma.entreprise.findMany({
+        take: 5,
+        select: {
+          id_entreprise: true,
+          nom: true,
+          _count: { select: { projet: true, utilisateur: true } }
+        },
+        orderBy: { projet: { _count: 'desc' } }
+      }),
+      prisma.entreprise.count({ where: { statut: 'active' } }),
+      prisma.entreprise.findMany({
+        where: { admin_id: null },
+        select: { id_entreprise: true, nom: true }
+      }),
+      prisma.entreprise.count({ where: { createdAt: { lt: last7Days } } }),
+      prisma.entreprise.count({ where: { createdAt: { gte: startOfToday } } }),
     ]);
 
-    const recentUsers = await prisma.utilisateur.findMany({
-      take: 5,
-      orderBy: { id_utilisateur: 'desc' },
-      include: { entreprise: true, role: true }
+    // DYNAMIC CALCULATION BASED ON lastLogin (AS REQUESTED)
+    const now = new Date();
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    console.log("USERS TOTAL:", allUsers.length);
+    
+    const activeUsersList = allUsers.filter(u => {
+      const roleName = (u.role as any)?.nom;
+      const isRecent = u.lastLogin && new Date(u.lastLogin) >= sevenDaysAgo;
+      const isAdminRole = roleName && ['Admin', 'ADMIN', 'admin'].includes(roleName);
+      const isActive = !!(isRecent && isAdminRole);
+      
+      console.log(`DASHBOARD_DEBUG: ${u.email} | recent=${isRecent} | isAdmin=${isAdminRole} | role=${roleName} | FINAL=${isActive}`);
+      return isActive;
     });
+    
+    console.log("TOTAL ACTIVE ADMINS:", activeUsersList.length);
+
+    const activeUsersCount = activeUsersList.length;
+    const totalUsers = allUsers.length;
+    
+    const activeAdminIds = activeUsersList.map((u: any) => u.id_utilisateur);
+
+    // Additional metrics for health and growth
+    const activeAdmins = activeUsersList.length;
+    
+    const lastWeekUsers = allUsers.filter(u => u.createdAt && new Date(u.createdAt) < last7Days).length;
+    const usersToday = allUsers.filter(u => u.createdAt && new Date(u.createdAt) >= startOfToday).length;
+    const adminsToday = allUsers.filter(u => 
+      u.createdAt && new Date(u.createdAt) >= startOfToday && 
+      ['Admin', 'ADMIN', 'admin'].includes((u.role as any)?.nom)
+    ).length;
+    const inactiveAdmins = await prisma.utilisateur.findMany({
+      where: {
+        role: { nom: { in: ['Admin', 'ADMIN', 'admin'] } },
+        statut: 'ACTIVE',
+        id_utilisateur: { notIn: activeAdminIds }
+      },
+      select: { id_utilisateur: true, nom: true, prenom: true }
+    });
+
+    const evolutionData: { date: string; users: number; enterprises: number; admins: number; }[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      const dateStr = date.toISOString().split('T')[0];
+      evolutionData.push({ date: dateStr, users: 0, enterprises: 0, admins: 0 });
+    }
+
+    // Use already fetched allUsers for users and admins evolution
+    allUsers.forEach(u => {
+      if (!u.createdAt) return;
+      const d = new Date(u.createdAt).toISOString().split('T')[0];
+      const entry = evolutionData.find(e => e.date === d);
+      if (entry) {
+        entry.users++;
+        const roleName = (u.role as any)?.nom;
+        if (roleName && ['Admin', 'ADMIN', 'admin'].includes(roleName)) {
+          entry.admins++;
+        }
+      }
+    });
+
+    // DEBUG ENTREPRISES
+    const allEnterprisesList = await prisma.entreprise.findMany({
+      select: { id_entreprise: true, nom: true, createdAt: true, statut: true }
+    });
+    console.log("TOTAL ENTREPRISES DB:", allEnterprisesList.length);
+    console.log(JSON.stringify(allEnterprisesList.map(e => ({
+      id: e.id_entreprise,
+      nom: e.nom,
+      createdAt: e.createdAt,
+      statut: e.statut
+    })), null, 2));
+
+    const enterprisesInPeriod = await prisma.entreprise.findMany({
+      where: { createdAt: { gte: last7Days } },
+      select: { createdAt: true }
+    });
+
+    enterprisesInPeriod.forEach(e => {
+      if (!e.createdAt) return;
+      const d = new Date(e.createdAt).toISOString().split('T')[0];
+      const entry = evolutionData.find(ev => ev.date === d);
+      if (entry) entry.enterprises++;
+    });
+
+    console.log("CHART DATA TO SEND:", JSON.stringify(evolutionData, null, 2));
+
+    const totalAdmins = allUsers.filter(u => 
+      ['Admin', 'ADMIN', 'admin'].includes((u.role as any)?.nom)
+    ).length;
+
+
+    const health = {
+      users: { active: activeUsersCount, total: totalUsers, perc: totalUsers > 0 ? Math.round((activeUsersCount / totalUsers) * 100) : 0 },
+      admins: { active: activeAdmins, total: totalAdmins, perc: totalAdmins > 0 ? Math.round((activeAdmins / totalAdmins) * 100) : 0 },
+      enterprises: { active: activeEnterprises, total: totalEnterprises, perc: totalEnterprises > 0 ? Math.round((activeEnterprises / totalEnterprises) * 100) : 0 },
+    };
+
+    const growth = {
+      users: {
+        percentage: lastWeekUsers > 0 ? Math.round(((totalUsers - lastWeekUsers) / lastWeekUsers) * 100) : 0,
+        today: usersToday
+      },
+      enterprises: {
+        percentage: lastWeekEnterprises > 0 ? Math.round(((totalEnterprises - lastWeekEnterprises) / lastWeekEnterprises) * 100) : 0,
+        today: enterprisesToday
+      },
+      admins: { today: adminsToday }
+    };
 
     res.json({
       totalEnterprises,
+      totalUsers,
       totalAdmins,
       totalProjects,
-      pendingApprovals,
-      recentUsers
+      pendingApprovals: pendingApprovalsCount,
+      roleDistribution: roleDistribution.map(r => ({ name: r.nom, value: r._count.utilisateur })),
+      recentActivities,
+      topEnterprises: topEnterprises.map(e => ({
+        id: e.id_entreprise,
+        name: e.nom,
+        projects: e._count.projet,
+        users: e._count.utilisateur
+      })),
+      dailyEvolution: evolutionData,
+      health,
+      alerts: {
+        noAdmin: enterprisesWithoutAdmin,
+        pending: pendingApprovalsCount,
+        inactiveAdmins: inactiveAdmins.map(a => ({ id: a.id_utilisateur, name: `${a.prenom} ${a.nom}` }))
+      },
+      growth
     });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Erreur lors de la récupération des statistiques" });
+  } catch (error: any) {
+    console.error("DASHBOARD STATS ERROR:", error);
+    res.status(500).json({ 
+      message: "Erreur lors de la récupération des statistiques",
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 };
 export const searchGlobal = async (req: Request, res: Response) => {

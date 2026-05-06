@@ -41,14 +41,35 @@ export const getAllUtilisateurs = async (req: Request, res: Response) => {
     const user = (req as any).user;
     let whereClause: any = {};
 
-    if (user.role !== "SuperAdmin") {
+    const { status } = req.query;
+
+    if (user.role === "SuperAdmin") {
+      // SuperAdmin: Voir uniquement les administrateurs de la plateforme
+      whereClause.role = {
+        nom: { in: ["Admin", "ADMIN", "admin"] }
+      };
+    } else {
+      // Admin entreprise: Voir tous les membres de son entreprise
       whereClause.id_entreprise = user.id_entreprise;
+    }
+
+    if (status === 'active') {
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      whereClause.lastLogin = {
+        gte: sevenDaysAgo
+      };
     }
 
     const utilisateurs = await prisma.utilisateur.findMany({
       where: whereClause,
       include: { role: true, entreprise: true },
+      orderBy: { id_utilisateur: 'desc' }
     });
+
+    if (user.role === "SuperAdmin") {
+      console.log("Admins trouvés:", utilisateurs.length);
+    }
+
     res.json(utilisateurs);
   } catch (error) {
     console.error(error);

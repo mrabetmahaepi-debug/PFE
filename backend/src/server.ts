@@ -31,6 +31,7 @@ import alertRoutes from "./routes/alertRoutes";
 import accessRoutes from "./routes/access.route";
 import messagingRoutes from "./routes/messaging.route";
 import activityRoutes from "./routes/activityRoutes";
+import uploadRoutes from "./routes/upload.route";
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -38,6 +39,7 @@ const PORT = process.env.PORT || 5000;
 // ── Global middleware ─────────────────────────────────────────────────────
 app.use(cors());
 app.use(express.json());
+app.use('/uploads', express.static('uploads')); // Serve profile pictures
 
 // ── Health check ──────────────────────────────────────────────────────────
 app.get("/", (_req, res) => {
@@ -71,6 +73,7 @@ app.use("/api/alerts", alertRoutes);
 app.use("/api/access", accessRoutes);
 app.use("/api/messaging", messagingRoutes);
 app.use("/api/activities", activityRoutes);
+app.use("/api/upload", uploadRoutes);
 
 // Register Global Error Handler
 import { errorHandler } from "./middleware/errorHandler";
