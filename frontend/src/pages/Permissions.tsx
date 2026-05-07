@@ -100,7 +100,6 @@ const Permissions: React.FC = () => {
       <header className="page-header">
         <div>
           <h1>Gestion des rôles et permissions</h1>
-          <p className="subtitle">Configurez les droits d'accès pour chaque rôle de votre entreprise.</p>
         </div>
       </header>
 

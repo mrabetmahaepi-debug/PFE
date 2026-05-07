@@ -98,7 +98,6 @@ const Settings: React.FC = () => {
       <header className="page-header">
         <div>
           <h1>Paramètres {roleStr === 'SuperAdmin' ? 'Super Admin' : ''}</h1>
-          <p className="subtitle">Gérez vos informations de compte et la sécurité de la plateforme.</p>
         </div>
       </header>
 
@@ -161,6 +160,7 @@ const Settings: React.FC = () => {
                 </div>
                 <div className="upload-info">
                   <h3>Photo de profil</h3>
+                  {uploadError && <p className="upload-error-msg" style={{ color: '#ef4444', fontSize: '0.85rem', marginTop: '0.5rem' }}>{uploadError}</p>}
                 </div>
               </div>
 

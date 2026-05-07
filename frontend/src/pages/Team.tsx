@@ -4,11 +4,10 @@ import {
   UserPlus, 
   Trash2, 
   Search,
-  Filter,
   Building2,
   Eye
 } from 'lucide-react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { teamService } from '../services/team.service';
 import { entrepriseService } from '../services/entreprise.service';
 import { useAuth } from '../hooks/useAuth';
@@ -29,12 +28,7 @@ const Team: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  const location = useLocation();
-  const queryParams = new URLSearchParams(location.search);
-  const initialStatus = queryParams.get('status') === 'active' ? 'ACTIVE' : 'ALL';
-
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState(initialStatus);
   const [entrepriseFilter, setEntrepriseFilter] = useState('ALL');
   
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -81,19 +75,11 @@ const Team: React.FC = () => {
     }
   };
 
-  const getComputedStatus = (member: User) => {
-    if (!member.lastLogin) return 'INACTIVE';
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-    return new Date(member.lastLogin) >= sevenDaysAgo ? 'ACTIVE' : 'INACTIVE';
-  };
-
   const filteredMembers = members.filter(m => {
-    const computedStatus = getComputedStatus(m);
     const matchesSearch = `${m.prenom} ${m.nom} ${m.email} ${m.entreprise?.nom || ''}`.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === 'ALL' || computedStatus === statusFilter;
     const matchesEntreprise = entrepriseFilter === 'ALL' || m.id_entreprise?.toString() === entrepriseFilter;
     
-    return matchesSearch && matchesStatus && matchesEntreprise;
+    return matchesSearch && matchesEntreprise;
   });
 
   return (
@@ -102,11 +88,6 @@ const Team: React.FC = () => {
         <div>
           <BackButton fallback="/dashboard" />
           <h1>{isSuperAdmin ? 'Gestion des Administrateurs' : 'Équipe'}</h1>
-          <p className="subtitle">
-            {isSuperAdmin 
-              ? 'Supervisez et gérez tous les administrateurs d\'entreprise de la plateforme.' 
-              : 'Gérez les membres de votre organisation.'}
-          </p>
         </div>
         {!isSuperAdmin && hasPermission('TEAM_INVITE') && (
           <button className="primary-btn" onClick={() => setIsModalOpen(true)}>
@@ -123,7 +104,7 @@ const Team: React.FC = () => {
             <Search size={18} className="search-icon" />
             <input 
               type="text" 
-              placeholder="Nom, email, entreprise..." 
+              placeholder="Search" 
               className="search-input"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -142,15 +123,6 @@ const Team: React.FC = () => {
                 </select>
               </div>
             )}
-
-            <div className="filter-group-v3">
-              <Filter size={16} />
-              <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-                <option value="ALL">Tous les statuts</option>
-                <option value="ACTIVE">Actif (7 jours)</option>
-                <option value="INACTIVE">Inactif</option>
-              </select>
-            </div>
           </div>
         </div>
       </div>
@@ -179,8 +151,6 @@ const Team: React.FC = () => {
                   <th>RÔLE</th>
                   {isSuperAdmin && <th>ENTREPRISE</th>}
                   <th>EMAIL</th>
-                  <th>LAST LOGIN</th>
-                  <th>STATUT</th>
                   <th style={{ textAlign: 'right' }}>ACTIONS</th>
                 </tr>
               </thead>
@@ -224,14 +194,6 @@ const Team: React.FC = () => {
                       )}
                       <td style={{ color: 'var(--saas-text-muted)', fontSize: '0.875rem' }}>
                         {member.email}
-                      </td>
-                      <td style={{ color: 'var(--saas-text-muted)', fontSize: '0.875rem' }}>
-                        {member.lastLogin ? new Date(member.lastLogin).toLocaleDateString() : 'Jamais connecté'}
-                      </td>
-                      <td>
-                        <span className={`badge-growth ${getComputedStatus(member) === 'ACTIVE' ? 'up' : 'down'}`}>
-                          {getComputedStatus(member) === 'ACTIVE' ? 'Actif' : 'Inactif'}
-                        </span>
                       </td>
                       <td>
                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>

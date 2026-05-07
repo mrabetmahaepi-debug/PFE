@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Search, Filter, MoreVertical, Users, CheckCircle2, Briefcase, ShieldAlert, Building2, ArrowRight } from 'lucide-react';
+import { Plus, Search, Filter, MoreVertical, Users, CheckCircle2, Briefcase, ShieldAlert, Building2, ArrowRight, Edit2, Trash2, Calendar } from 'lucide-react';
 import { projectService } from '../services/project.service';
 import { useAuth } from '../hooks/useAuth';
 import { ProjectStatus } from '../types/project';
 import CreateProjectModal from '../components/CreateProjectModal';
+import EditProjectModal from '../components/EditProjectModal';
 import BackButton from '../components/BackButton';
 import { useNavigate } from 'react-router-dom';
 import './Projects.css';
@@ -20,9 +21,15 @@ const Projects: React.FC = () => {
   const [enterpriseFilter, setEnterpriseFilter] = useState<string>('ALL');
   const [sortOption, setSortOption] = useState<string>('newest');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedProject, setSelectedProject] = useState<any>(null);
+  const [activeMenu, setActiveMenu] = useState<number | null>(null);
 
   useEffect(() => {
     fetchProjects();
+    const handleClickOutside = () => setActiveMenu(null);
+    window.addEventListener('click', handleClickOutside);
+    return () => window.removeEventListener('click', handleClickOutside);
   }, []);
 
   const fetchProjects = async () => {
@@ -34,6 +41,27 @@ const Projects: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleEdit = (e: React.MouseEvent, project: any) => {
+    e.stopPropagation();
+    setSelectedProject(project);
+    setIsEditModalOpen(true);
+    setActiveMenu(null);
+  };
+
+  const handleDelete = async (e: React.MouseEvent, project: any) => {
+    e.stopPropagation();
+    if (window.confirm(`Êtes-vous sûr de vouloir supprimer le projet "${project.nom_p}" ? Cette action est irréversible.`)) {
+      try {
+        await projectService.delete(project.id_projet);
+        fetchProjects();
+      } catch (error) {
+        console.error("Deletion failed:", error);
+        alert("Erreur lors de la suppression du projet.");
+      }
+    }
+    setActiveMenu(null);
   };
 
   const filteredProjects = projects.filter(p => {
@@ -175,75 +203,69 @@ const Projects: React.FC = () => {
                     </span>
                   </div>
                   {!isSuperAdmin && (
-                    <button className="card-action-btn" onClick={(e) => { e.stopPropagation(); }}>
-                      <MoreVertical size={16} />
-                    </button>
+                    <div className="menu-container-v3" style={{ position: 'relative' }}>
+                      <button className="card-action-btn" onClick={(e) => { 
+                        e.stopPropagation(); 
+                        setActiveMenu(activeMenu === project.id_projet ? null : project.id_projet);
+                      }}>
+                        <MoreVertical size={16} />
+                      </button>
+                      
+                      {activeMenu === project.id_projet && (
+                        <div className="card-dropdown-v3" style={{ 
+                          position: 'absolute', 
+                          right: 0, 
+                          top: '100%', 
+                          background: 'white', 
+                          borderRadius: '12px', 
+                          boxShadow: '0 10px 25px rgba(0,0,0,0.1)', 
+                          zIndex: 100, 
+                          minWidth: '140px',
+                          padding: '0.5rem',
+                          border: '1px solid var(--saas-border)'
+                        }}>
+                          <button className="dropdown-item-v3" onClick={(e) => handleEdit(e, project)} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.6rem 0.8rem', border: 'none', background: 'none', cursor: 'pointer', borderRadius: '8px', fontSize: '0.875rem', fontWeight: 600, color: 'var(--saas-text-main)' }}>
+                            <Edit2 size={14} /> Modifier
+                          </button>
+                          <button className="dropdown-item-v3 delete" onClick={(e) => handleDelete(e, project)} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.6rem 0.8rem', border: 'none', background: 'none', cursor: 'pointer', borderRadius: '8px', fontSize: '0.875rem', fontWeight: 600, color: 'var(--saas-danger)' }}>
+                            <Trash2 size={14} /> Supprimer
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
                 
                 {/* Zone 2: Body */}
                 <div className="card-body-zone">
                   <p className="project-desc">{project.description_p || 'Aucune description fournie.'}</p>
-                  <div className="entity-info">
-                    <Building2 size={14} className="entity-icon" />
-                    <span 
-                      className="entity-link"
-                      onClick={(e) => { 
-                        e.stopPropagation(); 
-                        if (project.entreprise) navigate(`/enterprises/${project.entreprise.id_entreprise}`); 
-                      }}
-                    >
-                      {project.entreprise?.nom || 'Plateforme'}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Zone 3: Stats */}
-                <div className="card-stats-zone">
-                  <div className="stats-row">
-                    <div className="stat-pill">
-                      <Users size={14} />
-                      <span>{project.membresCount || 0}</span>
+                  
+                  <div className="project-dates-v3" style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--saas-text-muted)' }}>
+                      <Calendar size={14} />
+                      <span>Start: <strong>{project.date_debut ? new Date(project.date_debut).toLocaleDateString('en-GB') : 'N/A'}</strong></span>
                     </div>
-                    <div className="stat-pill">
-                      <CheckCircle2 size={14} />
-                      <span>{project.tachesCount || 0} tâches</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--saas-text-muted)' }}>
+                      <Calendar size={14} />
+                      <span>End: <strong>{project.date_fin ? new Date(project.date_fin).toLocaleDateString('en-GB') : 'N/A'}</strong></span>
                     </div>
                   </div>
 
-                  <div className="progress-section">
-                    <div className="progress-labels">
-                      <span>Progression</span>
-                      <span className="percent-label">{project.avancement || 0}%</span>
-                    </div>
-                    <div className="super-progress-bar">
-                      <motion.div 
-                        initial={{ width: 0 }}
-                        animate={{ width: `${project.avancement || 0}%` }}
-                        className="progress-track"
-                        style={{ backgroundColor: getStatusColor(project.statut_p as any) }}
-                      />
-                    </div>
-                    {project.tachesCount === 0 && (
-                      <span className="empty-tasks-hint">Aucune tâche assignée</span>
-                    )}
                   </div>
-                </div>
-
+                
                 {/* Zone 4: Footer */}
-                <div className="card-footer-zone">
+                <div className="card-footer-zone" style={{ borderTop: '1px solid var(--saas-bg)', paddingTop: '1.25rem' }}>
                   <div className="responsable-area">
                     <div className="responsable-avatar">
                       {String(project.responsable || '?')[0].toUpperCase()}
                     </div>
                     <div className="responsable-info">
-                      <span className="responsable-label">Responsable</span>
+                      <span className="responsable-label">Project Manager</span>
                       <span className="responsable-name">{project.responsable || 'Non assigné'}</span>
                     </div>
                   </div>
                   <div className="card-action-hint">
-                    <span>Détails</span>
-                    <ArrowRight size={14} />
+                    <ArrowRight size={16} />
                   </div>
                 </div>
               </motion.div>
@@ -263,11 +285,19 @@ const Projects: React.FC = () => {
       )}
 
       {!isSuperAdmin && (
-        <CreateProjectModal 
-          isOpen={isModalOpen} 
-          onClose={() => setIsModalOpen(false)} 
-          onSuccess={fetchProjects} 
-        />
+        <>
+          <CreateProjectModal 
+            isOpen={isModalOpen} 
+            onClose={() => setIsModalOpen(false)} 
+            onSuccess={fetchProjects} 
+          />
+          <EditProjectModal 
+            isOpen={isEditModalOpen}
+            onClose={() => setIsEditModalOpen(false)}
+            onSuccess={fetchProjects}
+            project={selectedProject}
+          />
+        </>
       )}
     </div>
   );

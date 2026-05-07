@@ -26,7 +26,7 @@ const NoSuperAdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }
   const { user } = useAuth();
   const roleName = typeof user?.role === 'object' ? user.role?.nom : user?.role;
   
-  const r = roleName?.toString().trim().toUpperCase();
+  const r = (roleName?.toString() || '').trim().toUpperCase();
   if (r === 'SUPERADMIN') {
     return <Navigate to="/" replace />;
   }

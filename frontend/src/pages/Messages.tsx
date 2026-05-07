@@ -312,7 +312,6 @@ const Messages: React.FC = () => {
       <header className="page-header">
         <div>
           <h1>Messagerie</h1>
-          <p className="subtitle">Espace de discussion dédié aux Admins et au SuperAdmin.</p>
         </div>
       </header>
 

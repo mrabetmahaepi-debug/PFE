@@ -32,6 +32,7 @@ import accessRoutes from "./routes/access.route";
 import messagingRoutes from "./routes/messaging.route";
 import activityRoutes from "./routes/activityRoutes";
 import uploadRoutes from "./routes/upload.route";
+import statsRoutes from "./routes/statsRoutes";
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -74,6 +75,7 @@ app.use("/api/access", accessRoutes);
 app.use("/api/messaging", messagingRoutes);
 app.use("/api/activities", activityRoutes);
 app.use("/api/upload", uploadRoutes);
+app.use("/api/stats", statsRoutes);
 
 // Register Global Error Handler
 import { errorHandler } from "./middleware/errorHandler";

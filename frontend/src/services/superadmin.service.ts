@@ -24,7 +24,7 @@ export const superAdminService = {
     return response.data;
   },
 
-  async approveUser(id: number, id_entreprise: number): Promise<void> {
+  async approveUser(id: number, id_entreprise?: number): Promise<void> {
     await api.put(`/superadmin/approve/${id}`, { id_entreprise });
   },
 

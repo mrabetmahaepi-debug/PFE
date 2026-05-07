@@ -52,11 +52,16 @@ export const getAllProjets = async (req: Request, res: Response) => {
     // Admin et Membre ne voient que les projets de leur entreprise où ils sont impliqués
     if (user.role !== "SuperAdmin") {
       whereClause.id_entreprise = user.id_entreprise;
-      whereClause.OR = [
-        { affectation: { some: { id_utilisateur: user.id } } },
-        { membre_projet: { some: { id_utilisateur: user.id } } },
-        { tache: { some: { assigne_a: user.id } } }
-      ];
+      
+      // If NOT an Admin, then restrict to involved projects only
+      const isAdmin = ["Admin", "ADMIN", "admin"].includes(user.role);
+      if (!isAdmin) {
+        whereClause.OR = [
+          { affectation: { some: { id_utilisateur: user.id } } },
+          { membre_projet: { some: { id_utilisateur: user.id } } },
+          { tache: { some: { assigne_a: user.id } } }
+        ];
+      }
     }
 
     const projets = await prisma.projet.findMany({

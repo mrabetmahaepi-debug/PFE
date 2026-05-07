@@ -33,6 +33,8 @@ export const getApprovals = async (req: Request, res: Response) => {
       id_role: u.id_role,
       id_entreprise: u.id_entreprise,
       role: u.role?.nom || undefined,
+      poste: u.poste,
+      createdAt: u.createdAt,
     }));
 
     res.json({ users: formattedUsers, invitations });
@@ -47,15 +49,35 @@ export const approveUser = async (req: Request, res: Response) => {
   const { id } = req.params;
   const { id_entreprise } = req.body;
   try {
-    if (!id_entreprise) {
-      return res.status(400).json({ message: "L'entreprise est obligatoire pour approuver un administrateur." });
+    const existingUser = await prisma.utilisateur.findUnique({ 
+      where: { id_utilisateur: parseInt(id as string) } 
+    });
+    
+    if (!existingUser) {
+      return res.status(404).json({ message: "Utilisateur non trouvé" });
     }
 
-    // Get Admin role ID if user has no role
-    const existingUser = await prisma.utilisateur.findUnique({ where: { id_utilisateur: parseInt(id as string) } });
+    let finalEnterpriseId = id_entreprise ? parseInt(id_entreprise as string) : null;
+
+    // If no enterprise ID provided, create one from user's "poste" (Company Name)
+    if (!finalEnterpriseId && existingUser.poste) {
+      const newEnt = await prisma.entreprise.create({
+        data: {
+          nom: existingUser.poste,
+          statut: "active",
+          admin_id: existingUser.id_utilisateur // Link the admin immediately
+        }
+      });
+      finalEnterpriseId = newEnt.id_entreprise;
+    }
+
+    if (!finalEnterpriseId) {
+      return res.status(400).json({ message: "Le nom de l'entreprise est requis (champ 'poste' manquant)." });
+    }
+
     let updateData: any = { 
       statut: "ACTIVE",
-      id_entreprise: parseInt(id_entreprise as string)
+      id_entreprise: finalEnterpriseId
     };
 
     if (existingUser && !existingUser.id_role) {
@@ -72,29 +94,36 @@ export const approveUser = async (req: Request, res: Response) => {
       data: updateData
     });
 
+    // Also update the enterprise to ensure it has this user as admin (redundant but safe)
+    await prisma.entreprise.update({
+      where: { id_entreprise: finalEnterpriseId },
+      data: { admin_id: user.id_utilisateur }
+    });
+
     await prisma.notification.create({
       data: {
         sujet: "Compte activé",
-        message: `Félicitations ${user.prenom}, votre compte a été approuvé par le Super Admin. Vous pouvez maintenant accéder à toutes les fonctionnalités.`,
+        message: `Félicitations ${user.prenom}, votre compte a été approuvé par le Super Admin.`,
         type: "success",
         id_utilisateur: user.id_utilisateur,
         date_envoi: new Date()
       }
     });
 
-    // Mark original "pending" notification as read
-    await prisma.notification.updateMany({
-      where: {
-        id_utilisateur: (req as any).user.id, // Notification sent to SuperAdmin
-        metadata: { contains: `"userId":${user.id_utilisateur}` },
-        is_read: false
-      },
-      data: { is_read: true }
-    });
+    // Mark original notification as read
+    try {
+      await prisma.notification.updateMany({
+        where: {
+          metadata: { contains: `"userId":${user.id_utilisateur}` },
+          is_read: false
+        },
+        data: { is_read: true }
+      });
+    } catch (e) { console.error("Notif update error", e); }
 
     try {
       const ent = await prisma.entreprise.findUnique({ where: { id_entreprise: user.id_entreprise || 0 } });
-      await (prisma as any).activity.create({
+      await prisma.activity.create({
         data: {
           user: `${user.prenom} ${user.nom}`,
           action: "Compte administrateur approuvé",
@@ -104,16 +133,21 @@ export const approveUser = async (req: Request, res: Response) => {
           entityId: user.id_utilisateur
         }
       });
-      console.log("Activity logged");
     } catch (e) { console.error("Activity logging error", e); }
 
-    // Auto-add to Admin Meeting group if they are an Admin
-    await MessagingService.addUserToAdminMeetingGroup(user.id_utilisateur);
+    // Auto-add to Admin Meeting group - Wrap in try catch to avoid blocking the main flow
+    try {
+      if (MessagingService && typeof MessagingService.addUserToAdminMeetingGroup === 'function') {
+        await MessagingService.addUserToAdminMeetingGroup(user.id_utilisateur);
+      }
+    } catch (msgErr) {
+      console.error("Failed to add user to messaging group:", msgErr);
+    }
 
     res.json({ message: "Utilisateur approuvé avec succès" });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Erreur lors de l'approbation de l'utilisateur" });
+  } catch (error: any) {
+    console.error("APPROVE_USER_ERROR:", error);
+    res.status(500).json({ message: "Erreur lors de l'approbation", error: error.message });
   }
 };
 
@@ -256,7 +290,7 @@ export const getDashboardStats = async (req: Request, res: Response) => {
       prisma.entreprise.count(),
       prisma.utilisateur.findMany({
         where: { NOT: { role: { nom: 'SuperAdmin' } } },
-        select: { id_utilisateur: true, email: true, lastLogin: true, createdAt: true, role: { select: { nom: true } }, statut: true }
+        select: { id_utilisateur: true, email: true, createdAt: true, role: { select: { nom: true } }, statut: true }
       }),
       prisma.projet.count(),
       prisma.utilisateur.count({
@@ -290,19 +324,13 @@ export const getDashboardStats = async (req: Request, res: Response) => {
       prisma.entreprise.count({ where: { createdAt: { gte: startOfToday } } }),
     ]);
 
-    // DYNAMIC CALCULATION BASED ON lastLogin (AS REQUESTED)
-    const now = new Date();
-    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-
-    console.log("USERS TOTAL:", allUsers.length);
-    
     const activeUsersList = allUsers.filter(u => {
-      const roleName = (u.role as any)?.nom;
-      const isRecent = u.lastLogin && new Date(u.lastLogin) >= sevenDaysAgo;
+      const roleName = (u as any).role?.nom;
+      // Since lastLogin is removed, we use createdAt or just consider them active if they are Admins
       const isAdminRole = roleName && ['Admin', 'ADMIN', 'admin'].includes(roleName);
-      const isActive = !!(isRecent && isAdminRole);
+      const isActive = !!isAdminRole; // Simplified logic without lastLogin
       
-      console.log(`DASHBOARD_DEBUG: ${u.email} | recent=${isRecent} | isAdmin=${isAdminRole} | role=${roleName} | FINAL=${isActive}`);
+      console.log(`DASHBOARD_DEBUG: ${u.email} | isAdmin=${isAdminRole} | role=${roleName} | FINAL=${isActive}`);
       return isActive;
     });
     
@@ -320,7 +348,7 @@ export const getDashboardStats = async (req: Request, res: Response) => {
     const usersToday = allUsers.filter(u => u.createdAt && new Date(u.createdAt) >= startOfToday).length;
     const adminsToday = allUsers.filter(u => 
       u.createdAt && new Date(u.createdAt) >= startOfToday && 
-      ['Admin', 'ADMIN', 'admin'].includes((u.role as any)?.nom)
+      ['Admin', 'ADMIN', 'admin'].includes(((u as any).role)?.nom)
     ).length;
     const inactiveAdmins = await prisma.utilisateur.findMany({
       where: {
@@ -346,7 +374,7 @@ export const getDashboardStats = async (req: Request, res: Response) => {
       const entry = evolutionData.find(e => e.date === d);
       if (entry) {
         entry.users++;
-        const roleName = (u.role as any)?.nom;
+        const roleName = (u as any).role?.nom;
         if (roleName && ['Admin', 'ADMIN', 'admin'].includes(roleName)) {
           entry.admins++;
         }
@@ -380,7 +408,7 @@ export const getDashboardStats = async (req: Request, res: Response) => {
     console.log("CHART DATA TO SEND:", JSON.stringify(evolutionData, null, 2));
 
     const totalAdmins = allUsers.filter(u => 
-      ['Admin', 'ADMIN', 'admin'].includes((u.role as any)?.nom)
+      ['Admin', 'ADMIN', 'admin'].includes(((u as any).role)?.nom)
     ).length;
 
 

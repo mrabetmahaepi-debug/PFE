@@ -9,6 +9,7 @@ export interface CreateMemberData {
   id_role: number;
   poste: string;
   id_entreprise: number;
+  telephone?: string;
 }
 
 export const teamService = {

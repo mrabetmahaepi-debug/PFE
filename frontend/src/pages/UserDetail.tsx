@@ -4,7 +4,6 @@ import { motion } from 'framer-motion';
 import { 
   Mail, 
   Phone, 
-  Briefcase, 
   Building2, 
   Shield, 
   Calendar
@@ -88,13 +87,6 @@ const UserDetail: React.FC = () => {
                 </div>
               </div>
             )}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-              <div className="icon-wrapper-circle"><Briefcase size={18} /></div>
-              <div>
-                <label style={{ fontSize: '0.75rem', color: 'var(--saas-text-muted)', display: 'block' }}>Poste / Position</label>
-                <span style={{ fontWeight: 600 }}>{member.poste || 'Not specified'}</span>
-              </div>
-            </div>
           </div>
         </div>
 
@@ -133,12 +125,7 @@ const UserDetail: React.FC = () => {
             </div>
           </div>
 
-          <div style={{ marginTop: '2rem' }}>
-            <h3>Recent Activity</h3>
-            <p style={{ color: 'var(--saas-text-muted)', fontSize: '0.875rem', marginTop: '0.5rem' }}>
-              Detailed activity logs for this user are coming soon.
-            </p>
-          </div>
+
         </div>
       </div>
     </motion.div>

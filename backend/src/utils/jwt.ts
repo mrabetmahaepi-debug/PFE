@@ -5,10 +5,7 @@ dotenv.config();
 
 const SECRET = process.env.JWT_SECRET || "mysecretkey";
 
-/**
- * Generate a JWT token.
- * Encodes: { id, email, role (string name), id_entreprise }
- */
+
 export const generateToken = (user: any): string => {
   return jwt.sign(
     {

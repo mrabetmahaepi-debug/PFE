@@ -3,7 +3,7 @@ import bcrypt from "bcrypt";
 
 export const registerUser = async (data: any) => {
   const { email, password } = data;
-  
+
   const nom = (data.nom || "").trim() || "Administrateur";
   const prenom = (data.prenom || "").trim() || email.split('@')[0];
 
@@ -21,12 +21,13 @@ export const registerUser = async (data: any) => {
       prenom,
       email,
       password: hashedPassword,
+      poste: data.poste || "",
       statut: "PENDING",
     },
     include: { role: true },
   });
 
-  // Notifier le Super Admin (on assume que le rôle SuperAdmin a l'id 1 ou le nom "SuperAdmin")
+
   const superAdmins = await prisma.utilisateur.findMany({
     where: { role: { nom: "SuperAdmin" } }
   });
@@ -49,38 +50,63 @@ export const registerUser = async (data: any) => {
 
 export const loginUser = async (email: string, password: string) => {
   const trimmedEmail = (email || "").trim();
+  console.log(`[LOGIN] Attempt for: ${trimmedEmail}`);
+  
   const user = await prisma.utilisateur.findUnique({
     where: { email: trimmedEmail },
     include: { role: true },
   });
 
   if (!user) {
+    console.log(`[LOGIN] User not found: ${trimmedEmail}`);
     throw new Error("Utilisateur non trouvé");
   }
 
   if (user.statut !== "ACTIVE") {
+    console.log(`[LOGIN] Account not active: ${trimmedEmail} (status: ${user.statut})`);
     throw new Error("Votre compte est en attente de validation par l'administrateur.");
   }
 
   const valid = await bcrypt.compare(password, user.password || "");
 
   if (!valid) {
+    console.log(`[LOGIN] Incorrect password for: ${trimmedEmail}`);
     throw new Error("Mot de passe incorrect");
   }
 
-  // Use raw update for lastLogin to avoid typescript errors since prisma client is not generated
-  await prisma.$executeRawUnsafe(`UPDATE utilisateur SET lastLogin = NOW() WHERE id_utilisateur = ${user.id_utilisateur}`);
+  console.log(`[LOGIN] Success: ${trimmedEmail} (role: ${user.role?.nom})`);
+
+  // Update online status and lastSeen
+  try {
+    await prisma.$executeRawUnsafe(
+      `UPDATE utilisateur SET is_online = true, lastSeen = NOW() WHERE id_utilisateur = ?`,
+      user.id_utilisateur
+    );
+  } catch (e) {
+    console.error("Failed to update online status", e);
+  }
 
   return user;
+};
+
+export const logoutUser = async (userId: number) => {
+  try {
+    await prisma.$executeRawUnsafe(
+      `UPDATE utilisateur SET is_online = false WHERE id_utilisateur = ?`,
+      userId
+    );
+  } catch (e) {
+    console.error("Logout update error", e);
+  }
 };
 
 export const getMe = async (userId: number) => {
   const user: any = await prisma.utilisateur.findUnique({
     where: { id_utilisateur: userId },
-    include: { 
+    include: {
       role: {
         include: { permission: true } as any
-      } 
+      }
     } as any,
   });
 

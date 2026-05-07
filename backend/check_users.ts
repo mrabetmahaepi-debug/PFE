@@ -7,7 +7,7 @@ async function main() {
       id_utilisateur: true,
       email: true,
       statut: true,
-      lastLogin: true,
+
       role: { select: { nom: true } }
     }
   });

@@ -16,7 +16,7 @@ router.use(authMiddleware);
 
 router.post("/", authorize("PROJECT_CREATE"), createProjet);
 router.get("/", authorize("PROJECT_VIEW_ALL"), getAllProjets);
-router.get("/:id", getProjetById); // Basic view might be allowed for assigned members
+router.get("/:id", getProjetById);
 router.put("/:id", authorize("PROJECT_EDIT"), updateProjet);
 router.delete("/:id", authorize("PROJECT_DELETE"), deleteProjet);
 

@@ -54,10 +54,7 @@ export const getAllUtilisateurs = async (req: Request, res: Response) => {
     }
 
     if (status === 'active') {
-      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-      whereClause.lastLogin = {
-        gte: sevenDaysAgo
-      };
+
     }
 
     const utilisateurs = await prisma.utilisateur.findMany({

@@ -1,58 +1,59 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  Briefcase, 
-  CheckSquare, 
-  Users, 
-  Settings, 
-  ChevronLeft, 
+import {
+  LayoutDashboard,
+  Briefcase,
+  CheckSquare,
+  Users,
+  Settings,
+  ChevronLeft,
   ChevronRight,
   LogOut,
   Building2,
   Lock,
   Mail,
-  MessageSquare
+  MessageSquare,
+  X,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
-import './Sidebar.css';
+import SidebarItem from './SidebarItem';
 
 interface SidebarProps {
   collapsed: boolean;
   toggleCollapsed: () => void;
+  isMobileOpen?: boolean;
+  closeMobile?: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggleCollapsed }) => {
+const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggleCollapsed, isMobileOpen, closeMobile }) => {
   const { user, logout, hasPermission } = useAuth();
   const roleName = typeof user?.role === 'object' ? user.role?.nom : user?.role;
-  const isSuperAdmin = roleName?.toString().trim().toUpperCase() === 'SUPERADMIN';
+  const isSuperAdmin = (roleName?.toString() || '').trim().toUpperCase() === 'SUPERADMIN';
   
   let navItems = [
-    { name: 'Dashboard', icon: <LayoutDashboard size={20} />, path: '/' },
-    { name: 'Projets', icon: <Briefcase size={20} />, path: '/projects' },
-    { name: 'Tâches', icon: <CheckSquare size={20} />, path: '/tasks' },
-    { name: 'Équipe', icon: <Users size={20} />, path: '/team' },
-    { name: 'Paramètres', icon: <Settings size={20} />, path: '/settings' },
+    { name: 'Dashboard', icon: LayoutDashboard, path: '/' },
+    { name: 'Projects', icon: Briefcase, path: '/projects' },
+    { name: 'Tasks', icon: CheckSquare, path: '/tasks' },
+    { name: 'Team', icon: Users, path: '/team' },
+    { name: 'Settings', icon: Settings, path: '/settings' },
   ];
 
   if (isSuperAdmin) {
-    navItems = navItems.filter(item => item.name !== 'Projets' && item.name !== 'Tâches');
+    navItems = navItems.filter(item => item.name !== 'Projects' && item.name !== 'Tasks');
   }
 
   if (roleName?.toString().trim().toUpperCase() === 'SUPERADMIN' || roleName?.toString().trim().toUpperCase() === 'ADMIN') {
     const extraItems = [];
     if (roleName?.toString().trim().toUpperCase() === 'SUPERADMIN') {
-      extraItems.push({ name: 'Entreprises', icon: <Building2 size={20} />, path: '/enterprises' });
-      extraItems.push({ name: 'Approbations', icon: <Mail size={20} />, path: '/approvals' });
+      extraItems.push({ name: 'Enterprises', icon: Building2, path: '/enterprises' });
+      extraItems.push({ name: 'Approvals', icon: Mail, path: '/approvals' });
     }
-    // Messagerie visible pour SuperAdmin ET Admin
-    extraItems.push({ name: 'Messagerie', icon: <MessageSquare size={20} />, path: '/messages' });
+    extraItems.push({ name: 'Messages', icon: MessageSquare, path: '/messages' });
     const r = roleName?.toString().trim().toUpperCase();
     if (r === 'ADMIN' || r === 'SUPERADMIN' || hasPermission('TEAM_MANAGE_ROLES')) {
-      extraItems.push({ name: 'Permissions', icon: <Lock size={20} />, path: '/permissions' });
+      extraItems.push({ name: 'Permissions', icon: Lock, path: '/permissions' });
     }
     
-    const settingsIndex = navItems.findIndex(item => item.name === 'Paramètres');
+    const settingsIndex = navItems.findIndex(item => item.name === 'Settings');
     if (settingsIndex !== -1) {
       navItems.splice(settingsIndex, 0, ...extraItems);
     } else {
@@ -66,57 +67,80 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggleCollapsed }) => {
   };
 
   return (
-    <aside className={`sidebar ${collapsed ? 'collapsed' : ''}`}>
-      <div className="sidebar-header">
-        {!collapsed && isSuperAdmin && <span className="logo-text">SuperAdmin</span>}
-        {!collapsed && !isSuperAdmin && <span className="logo-text">GestionPro</span>}
-        <button onClick={toggleCollapsed} className="toggle-btn">
-          {collapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
-        </button>
-      </div>
+    <>
+      {isMobileOpen && <button className="fixed inset-0 z-30 bg-slate-900/40 lg:hidden" onClick={closeMobile} aria-label="Close menu overlay" />}
+      <aside
+        className={`fixed left-0 top-0 z-40 flex h-screen border-r border-slate-200 bg-[#F9FAFB] transition-all duration-200 ${
+          collapsed ? 'w-[88px]' : 'w-[268px]'
+        } ${isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
+      >
+      <div className="flex h-full w-full flex-col p-4">
+        <div className="mb-4 flex items-center justify-between">
+          {!collapsed && (
+            <div>
+              <p className="text-base font-semibold text-slate-900">{isSuperAdmin ? 'SuperAdmin' : 'ProManager'}</p>
+              <p className="text-xs text-slate-500">Project Workspace</p>
+            </div>
+          )}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={toggleCollapsed}
+              className="hidden rounded-lg border border-slate-200 bg-white p-1.5 text-slate-600 transition hover:bg-slate-100 lg:inline-flex"
+            >
+              {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+            </button>
+            <button onClick={closeMobile} className="rounded-lg border border-slate-200 bg-white p-1.5 text-slate-600 lg:hidden">
+              <X size={16} />
+            </button>
+          </div>
+        </div>
 
-      <div className="sidebar-content">
+      <div className="flex flex-1 flex-col">
         {!isSuperAdmin && hasPermission('PROJECT_CREATE') && (
-          <button className="create-btn">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
-            {!collapsed && <span>Nouveau Projet</span>}
+          <button className="mb-4 flex items-center justify-center gap-2 rounded-xl border border-[#5B5FEF]/20 bg-[#5B5FEF] px-3 py-2.5 text-sm font-medium text-white transition hover:bg-[#4E53DD]">
+            <span className="text-base leading-none">+</span>
+            {!collapsed ? <span>New Project</span> : null}
           </button>
         )}
 
-        <nav className="nav-menu">
+        <nav className="space-y-1.5">
           {navItems.map((item) => (
-            <NavLink 
-              key={item.name} 
-              to={item.path} 
-              className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
-            >
-              <span className="icon">{item.icon}</span>
-              {!collapsed && <span className="label">{item.name}</span>}
-            </NavLink>
+            <SidebarItem
+              key={item.name}
+              to={item.path}
+              label={item.name}
+              icon={item.icon}
+              collapsed={collapsed}
+              onClick={closeMobile}
+            />
           ))}
         </nav>
       </div>
 
-      <div className="sidebar-footer">
+      <div className="mt-4 border-t border-slate-200 pt-4">
         {!collapsed && user && (
-          <div className="user-info">
-            <div className="avatar">{getInitials(user)}</div>
-            <div className="details">
-              <p className="name">{user.prenom} {user.nom}</p>
-              <p className="role">{typeof user.role === 'object' ? user.role?.nom : (user.role || 'Membre')}</p>
+          <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-2">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-200 text-xs font-semibold text-slate-700">
+              {getInitials(user)}
             </div>
-            <button onClick={logout} className="logout-btn" title="Déconnexion">
-              <LogOut size={18} />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold text-slate-900">{user.prenom} {user.nom}</p>
+              <p className="truncate text-xs text-slate-500">{typeof user.role === 'object' ? user.role?.nom : (user.role || 'Member')}</p>
+            </div>
+            <button onClick={logout} className="rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900" title="Logout">
+              <LogOut size={16} />
             </button>
           </div>
         )}
         {collapsed && (
-          <button onClick={logout} className="logout-btn-collapsed" title="Déconnexion">
-            <LogOut size={20} />
+          <button onClick={logout} className="mx-auto flex rounded-lg border border-slate-200 bg-white p-2 text-slate-600 transition hover:bg-slate-100" title="Logout">
+            <LogOut size={16} />
           </button>
         )}
       </div>
+      </div>
     </aside>
+    </>
   );
 };
 

@@ -3,10 +3,7 @@ import prisma from "../prisma/prismaClient";
 export class MessagingService {
   private static ADMIN_GROUP_NAME = "Réunion Admins";
 
-  /**
-   * Initialise le groupe de réunion des admins s'il n'existe pas.
-   * Ajoute le SuperAdmin et tous les Admins existants.
-   */
+
   static async initAdminMeetingGroup() {
     try {
       // 1. Trouver ou créer la conversation système

@@ -1,13 +1,8 @@
-/**
- * Script d'initialisation du groupe "Réunion Admins".
- * Crée le groupe et y ajoute tous les Admins et SuperAdmin actifs.
- * 
- * Usage: npx ts-node src/scripts/init_admin_meeting_group.ts
- */
+
 import { MessagingService } from '../services/messaging.service';
 import { PrismaClient } from '@prisma/client';
 
-// Use a local instance to get fresh types
+
 const localPrisma = new PrismaClient();
 
 async function main() {

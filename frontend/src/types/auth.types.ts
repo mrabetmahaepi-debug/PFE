@@ -14,6 +14,8 @@ export interface User {
   poste?: string;
   permissions?: string[];
   lastLogin?: string;
+  is_online?: boolean;
+  lastSeen?: string;
   id_role?: number;
 }
 
@@ -35,4 +37,5 @@ export interface RegisterData {
   nom: string;
   prenom: string;
   entrepriseNom?: string;
+  poste?: string;
 }

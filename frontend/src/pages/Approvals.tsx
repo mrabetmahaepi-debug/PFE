@@ -1,38 +1,29 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, X, Mail, Briefcase, Loader2 } from 'lucide-react';
+import { Check, X, Mail, Briefcase, Loader2, Building2, Calendar } from 'lucide-react';
 import { superAdminService, type Invitation } from '../services/superadmin.service';
-import { entrepriseService, type Entreprise } from '../services/entreprise.service';
 import type { User as UserType } from '../types/auth.types';
 import BackButton from '../components/BackButton';
 import './Approvals.css';
 
 type PendingUser = UserType & {
   id_utilisateur?: number;
+  poste?: string;
+  createdAt?: string;
 };
 
 const Approvals: React.FC = () => {
   const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([]);
   const [pendingInvitations, setPendingInvitations] = useState<Invitation[]>([]);
-  const [entreprises, setEntreprises] = useState<Entreprise[]>([]);
-  const [selectedEntreprises, setSelectedEntreprises] = useState<Record<number, number>>({});
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchApprovals();
-    fetchEntreprises();
   }, []);
 
-  const fetchEntreprises = async () => {
-    try {
-      const data = await entrepriseService.getAll();
-      setEntreprises(data);
-    } catch (err) {
-      console.error('Failed to fetch enterprises:', err);
-    }
-  };
+
 
   const fetchApprovals = async () => {
     try {
@@ -52,19 +43,16 @@ const Approvals: React.FC = () => {
   };
 
   const handleApprove = async (id: number) => {
-    const entrepriseId = selectedEntreprises[id];
-    if (!entrepriseId) {
-      setError("Veuillez sélectionner une entreprise avant d'approuver.");
-      return;
-    }
-
     setActionLoading(id);
     try {
-      await superAdminService.approveUser(id, entrepriseId);
+      await superAdminService.approveUser(id);
       setPendingUsers((prev) => prev.filter((u) => getUserId(u) !== id));
-    } catch (err) {
-      console.error('Failed to approve user:', err);
-      setError("Échec lors de l'acceptation du compte.");
+      alert("Utilisateur approuvé avec succès !");
+    } catch (err: any) {
+      console.error("Approval Error:", err);
+      const backendError = err.response?.data?.message || err.response?.data?.error || "Échec lors de l'approbation.";
+      setError(backendError);
+      alert(`Erreur : ${backendError}`);
     } finally {
       setActionLoading(null);
     }
@@ -124,7 +112,6 @@ const Approvals: React.FC = () => {
       <header className="page-header">
         <div>
           <h1>Boîte de réception</h1>
-          <p className="subtitle">Gérez les demandes d'inscription et les invitations.</p>
         </div>
       </header>
 
@@ -160,37 +147,26 @@ const Approvals: React.FC = () => {
                       </div>
                       <div className="user-details">
                         <p style={{ fontSize: '0.8rem', color: '#888', marginBottom: '2px', textTransform: 'uppercase', fontWeight: 600 }}>
-                          Demande d'inscription
+                          Demande d'inscription Admin
                         </p>
-                        <h3>Demande de : {u.email}</h3>
+                        <h3>{u.prenom} {u.nom}</h3>
                         <div className="detail-row">
                           <Mail size={14} />
                           <span>{u.email}</span>
                         </div>
                         <div className="detail-row">
-                          <Briefcase size={14} />
-                          <span>{typeof u.role === 'object' ? u.role?.nom : (u.role || 'Admin')}</span>
+                          <Building2 size={14} color="var(--saas-primary)" />
+                          <span style={{ fontWeight: 600, color: 'var(--saas-primary)' }}>
+                            Entreprise : {u.poste || 'Non spécifiée'}
+                          </span>
                         </div>
-                        <div className="enterprise-selection" style={{ marginTop: '1rem' }}>
-                          <label style={{ display: 'block', fontSize: '0.75rem', color: '#666', marginBottom: '5px' }}>Assigner à une entreprise :</label>
-                          <select 
-                            value={selectedEntreprises[userId] || ''} 
-                            onChange={(e) => setSelectedEntreprises(prev => ({ ...prev, [userId]: parseInt(e.target.value) }))}
-                            style={{ 
-                              width: '100%', 
-                              padding: '8px', 
-                              borderRadius: '6px', 
-                              border: '1px solid #ddd',
-                              fontSize: '0.9rem'
-                            }}
-                          >
-                            <option value="">Sélectionner une entreprise...</option>
-                            {entreprises.map(ent => (
-                              <option key={ent.id_entreprise} value={ent.id_entreprise}>
-                                {ent.nom}
-                              </option>
-                            ))}
-                          </select>
+                        <div className="detail-row">
+                          <Calendar size={14} />
+                          <span>Inscrit le : {u.createdAt ? new Date(u.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'N/A'}</span>
+                        </div>
+                        <div className="detail-row">
+                          <Briefcase size={14} />
+                          <span>Rôle : {typeof u.role === 'object' ? u.role?.nom : (u.role || 'Admin')}</span>
                         </div>
                       </div>
                     </div>

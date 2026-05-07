@@ -1,303 +1,214 @@
-import React, { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
-import { 
-  Users, 
-  Building2,
-  Clock,
-  MoreHorizontal,
-  Activity
-} from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Briefcase, Building2, CheckSquare, Clock, Layout, Plus, TrendingUp, UserPlus, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { projectService } from '../services/project.service';
-import { taskService } from '../services/task.service';
-import { teamService } from '../services/team.service';
-import { superAdminService } from '../services/superadmin.service';
+import CreateProjectModal from '../components/CreateProjectModal';
+import ActivityItem from '../components/dashboard/ActivityItem';
+import ProjectCard from '../components/dashboard/ProjectCard';
+import QuickActionCard from '../components/dashboard/QuickActionCard';
+import StatCard from '../components/dashboard/StatCard';
+import TaskRow from '../components/dashboard/TaskRow';
 import { useAuth } from '../hooks/useAuth';
-import { TaskStatus } from '../types/task';
-import { 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip as RechartsTooltip, 
-  ResponsiveContainer, 
-  PieChart, 
-  Pie, 
-  Cell, 
-  BarChart,
-  Bar
-} from 'recharts';
-import './Dashboard.css';
+import { statsService } from '../services/stats.service';
+import { superAdminService } from '../services/superadmin.service';
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const roleName = typeof user?.role === 'object' ? user.role?.nom : user?.role;
   const isSuperAdmin = roleName?.toString().trim().toUpperCase() === 'SUPERADMIN';
-  
-  const [stats, setStats] = useState<any>({
-    projectsCount: 0,
-    tasksCount: 0,
-    teamCount: 0,
-    completionRate: 0,
-    enterprisesCount: 0,
-    totalEnterprises: 0,
-    totalUsers: 0,
-    totalAdmins: 0,
-    roleDistribution: [],
-    dailyEvolution: [],
-    recentActivities: [],
-    pendingApprovals: 0,
-    growth: { 
-      users: { percentage: 0 }, 
-      enterprises: { percentage: 0 }
-    },
-    alerts: { pending: 0 }
-  });
-  
+  const isAdmin = roleName?.toString().trim().toUpperCase() === 'ADMIN';
+  const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
+
+  const loadData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      if (isSuperAdmin) setStats(await superAdminService.getDashboardStats());
+      else if (isAdmin) setStats(await statsService.getAdminStats());
+      else setStats({});
+    } catch (err: any) {
+      console.error('Dashboard data load error:', err);
+      setError('Unable to load dashboard statistics.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    let isMounted = true;
-    const loadData = async () => {
-      setLoading(true);
-      try {
-        if (isSuperAdmin) {
-          const data = await superAdminService.getDashboardStats();
-          console.log("DASHBOARD DATA RECEIVED:", data);
-          console.log("ENTREPRISES TOTAL:", data.totalEnterprises);
-          console.log("CHART DATA:", data.dailyEvolution);
-          if (isMounted) setStats(data);
-        } else {
-          const [projects, members, tasks] = await Promise.all([
-            projectService.getAll().catch(() => []),
-            roleName?.toString().trim().toUpperCase() === 'ADMIN' ? teamService.getAllMembers().catch(() => []) : Promise.resolve([]),
-            taskService.getMyTasks().catch(() => [])
-          ]);
-          if (!isMounted) return;
-          const completedTasks = tasks.filter((t: any) => t.statut_t === TaskStatus.DONE).length;
-          setStats({
-            projectsCount: projects.length,
-            tasksCount: tasks.length,
-            teamCount: members.length,
-            completionRate: tasks.length > 0 ? Math.round((completedTasks / tasks.length) * 100) : 0,
-            recentActivities: [],
-            roleDistribution: [],
-            dailyEvolution: []
-          });
-        }
-      } catch (err: any) {
-        console.error("Dashboard data load error:", err);
-        setError(err.response?.data?.message || err.response?.data?.error || "Une erreur est survenue lors du chargement des données.");
-      } finally {
-        if (isMounted) setLoading(false);
-      }
-    };
     if (user) loadData();
-    return () => { isMounted = false; };
-  }, [isSuperAdmin, user?.id]);
+  }, [user?.id, isAdmin, isSuperAdmin]);
 
-  const COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#f97316'];
-
-  if (loading) return (
-    <div className="loading-state">
-      <div className="loader"></div>
-      <p>Chargement de vos statistiques...</p>
-    </div>
+  const recentProjects = useMemo(
+    () =>
+      stats?.myProjects?.slice(0, 4) || [
+        { id: 0, name: 'Website Redesign', tasksCount: 14, status: 'In Progress', members: [{}, {}, {}], progress: 68 },
+        { id: 1, name: 'Mobile App Sprint', tasksCount: 9, status: 'Planning', members: [{}, {}], progress: 32 },
+      ],
+    [stats],
   );
 
-  if (error) return (
-    <div className="error-state">
-      <div className="error-card">
-        <h3>Erreur de chargement</h3>
-        <p>{error}</p>
-        <button onClick={() => window.location.reload()} className="primary-btn">Réessayer</button>
+  const upcomingTasks = useMemo(
+    () =>
+      stats?.upcomingTasks || [
+        { id: 0, title: 'Finalize backlog prioritization', project: 'Website Redesign', dueDate: 'Today', priority: 'high' },
+        { id: 1, title: 'Review API contract updates', project: 'Mobile App Sprint', dueDate: 'Tomorrow', priority: 'medium' },
+        { id: 2, title: 'QA smoke test', project: 'Client Portal', dueDate: 'Fri', priority: 'low' },
+      ],
+    [stats],
+  );
+
+  const teamActivity = useMemo(
+    () =>
+      stats?.recentActivities?.slice(0, 5) || [
+        { id: 0, user: 'Amine K.', action: 'moved 3 tasks to Done', date: new Date().toISOString() },
+        { id: 1, user: 'Sara M.', action: 'commented on Mobile App Sprint', date: new Date().toISOString() },
+      ],
+    [stats],
+  );
+
+  if (loading) {
+    return <div className="rounded-2xl border border-slate-200 bg-white px-6 py-10 text-center text-sm text-slate-500">Loading dashboard...</div>;
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-2xl border border-rose-200 bg-rose-50 p-6">
+        <p className="text-sm font-medium text-rose-700">{error}</p>
+        <button onClick={loadData} className="mt-3 rounded-lg bg-rose-600 px-3 py-2 text-sm font-medium text-white">
+          Retry
+        </button>
       </div>
-    </div>
-  );
+    );
+  }
+
+  if (!isAdmin && !isSuperAdmin) {
+    return (
+      <div className="rounded-2xl border border-slate-200 bg-white p-6">
+        <h1 className="text-xl font-semibold text-slate-900">Welcome, {user?.prenom}</h1>
+        <p className="mt-1 text-sm text-slate-500">Your workspace is being prepared.</p>
+      </div>
+    );
+  }
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="dashboard-page">
-      <header className="page-header">
-        <div className="header-left">
-          <h1 style={{ fontSize: '1.875rem', fontWeight: 700, color: 'var(--saas-text-primary, #0f172a)', letterSpacing: '-0.025em', margin: 0 }}>
-            {isSuperAdmin ? 'Super Admin Control Center' : 'Tableau de bord'}
-          </h1>
-          <p className="subtitle" style={{ fontSize: '0.875rem', color: 'var(--saas-text-muted, #64748b)', fontWeight: 400, marginTop: '0.375rem', letterSpacing: '0.01em' }}>
-            {isSuperAdmin 
-              ? `Global platform overview • ${new Date().toLocaleDateString('en-US', { month: 'long', day: '2-digit', year: 'numeric' })}`
-              : `Vue globale de la plateforme • ${new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })}`}
+    <div className="space-y-6">
+      <header className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">{isSuperAdmin ? 'Platform Overview' : 'Workspace Overview'}</h1>
+          <p className="mt-1 text-sm text-slate-500">
+            {isSuperAdmin ? 'Monitor platform health and global activity.' : "A focused snapshot of your team's progress today."}
           </p>
-        </div>
-        <div className="header-right">
-          {/* Unified profile is now in global Navbar */}
         </div>
       </header>
 
-      <div className="dashboard-layout-v3">
-        <div className="col-left" style={{ gridColumn: 'span 2', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-          <div className="kpi-grid">
-            <motion.div 
-              className="stat-card-premium featured"
-              whileTap={{ scale: 0.98 }}
-              onClick={() => navigate('/team')}
-              style={{ cursor: 'pointer' }}
-            >
-              <div className="stat-card-top">
-                <div className="icon-wrapper-circle"><Users size={20} /></div>
-                <div className="badge-growth up">+{stats.growth?.users?.percentage || 0}%</div>
-              </div>
-              <div className="stat-main">
-                <label>TOTAL USERS</label>
-                <h2>{(stats.totalUsers || 0).toLocaleString()}</h2>
-                <p style={{ fontSize: '0.75rem', marginTop: '0.5rem', opacity: 0.8 }}>Compared to previous month</p>
-              </div>
-            </motion.div>
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {isSuperAdmin ? (
+          <>
+            <StatCard label="Total Users" value={(stats?.totalUsers || 0).toLocaleString()} icon={Users} onClick={() => navigate('/team')} />
+            <StatCard label="Enterprises" value={(stats?.totalEnterprises || 0).toLocaleString()} icon={Building2} onClick={() => navigate('/enterprises')} />
+            <StatCard label="Pending Approvals" value={(stats?.alerts?.pending || 0).toLocaleString()} icon={Clock} tone="warning" onClick={() => navigate('/approvals')} />
+            <StatCard label="Active Users" value={(stats?.health?.users?.active || 0).toLocaleString()} icon={TrendingUp} tone="success" onClick={() => navigate('/team')} />
+          </>
+        ) : (
+          <>
+            <StatCard label="Active Projects" value={(stats?.activeProjects || 0).toLocaleString()} icon={Briefcase} onClick={() => navigate('/projects')} />
+            <StatCard label="Open Tasks" value={(stats?.totalTasks || 0).toLocaleString()} icon={CheckSquare} onClick={() => navigate('/tasks')} />
+            <StatCard label="Team Members" value={(stats?.totalMembers || 0).toLocaleString()} icon={Users} onClick={() => navigate('/team')} />
+            <StatCard label="My Projects" value={(stats?.myProjects?.length || 0).toLocaleString()} icon={Layout} onClick={() => navigate('/projects')} />
+          </>
+        )}
+      </section>
 
-            <motion.div 
-              className="stat-card-premium"
-              whileTap={{ scale: 0.98 }}
-              onClick={() => navigate('/enterprises')}
-              style={{ cursor: 'pointer' }}
-            >
-              <div className="stat-card-top">
-                <div className="icon-wrapper-circle"><Building2 size={20} /></div>
-                <div className="badge-growth up">+{stats.growth?.enterprises?.percentage || 0}%</div>
-              </div>
-              <div className="stat-main">
-                <label>ACTIVE COMPANIES</label>
-                <h2>{stats.totalEnterprises || 0}</h2>
-                <p style={{ fontSize: '0.75rem', marginTop: '0.5rem', color: 'var(--saas-text-muted)' }}>Active companies on platform</p>
-              </div>
-            </motion.div>
-
-            <motion.div 
-              className="stat-card-premium"
-              whileTap={{ scale: 0.98 }}
-              onClick={() => navigate('/approvals')}
-              style={{ cursor: 'pointer' }}
-            >
-              <div className="stat-card-top">
-                <div className="icon-wrapper-circle"><Clock size={20} /></div>
-                <div className="badge-growth down">-1.08%</div>
-              </div>
-              <div className="stat-main">
-                <label>PENDING REQUESTS</label>
-                <h2>{stats.alerts?.pending || 0}</h2>
-                <p style={{ fontSize: '0.75rem', marginTop: '0.5rem', color: 'var(--saas-text-muted)' }}>Pending approvals this month</p>
-              </div>
-            </motion.div>
-
-            <motion.div 
-              className="stat-card-premium"
-              whileTap={{ scale: 0.98 }}
-              onClick={() => navigate('/team?status=active')}
-              style={{ cursor: 'pointer' }}
-            >
-              <div className="stat-card-top">
-                <div className="icon-wrapper-circle"><Activity size={20} /></div>
-                <div className="badge-growth up">{stats.health?.users?.perc || 0}% actifs</div>
-              </div>
-              <div className="stat-main">
-                <label>ACTIVE USERS</label>
-                <h2>{stats.health?.users?.active || 0}</h2>
-                <p style={{ fontSize: '0.75rem', marginTop: '0.5rem', color: 'var(--saas-text-muted)' }}>Active within last 7 days</p>
-              </div>
-            </motion.div>
-          </div>
-
-          <div className="card-v3" style={{ flex: 1 }}>
-            <div className="card-header-v3">
-              <h3>Platform Growth</h3>
-              <div style={{ display: 'flex', gap: '1rem', fontSize: '0.75rem', color: 'var(--saas-text-muted)' }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: '#6366f1' }} /> Users</span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: '#e0e7ff' }} /> Companies</span>
-              </div>
+      <section className="grid gap-4 xl:grid-cols-3">
+        <div className="space-y-4 xl:col-span-2">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-slate-900">Recent Projects</h2>
+              <button onClick={() => navigate('/projects')} className="text-xs font-medium text-[#5B5FEF]">View all</button>
             </div>
-            <div className="bar-chart-container">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={stats.dailyEvolution || []} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#94a3b8' }} tickFormatter={(str) => str ? new Date(str).toLocaleDateString('en-US', { weekday: 'short' }) : ''} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#94a3b8' }} />
-                  <RechartsTooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} />
-                  <Bar dataKey="users" fill="#6366f1" radius={[4, 4, 0, 0]} barSize={12} />
-                  <Bar dataKey="enterprises" fill="#e0e7ff" radius={[4, 4, 0, 0]} barSize={12} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        </div>
-
-        <div className="col-right" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-          <div className="card-v3">
-            <div className="card-header-v3">
-              <h3>Role Distribution</h3>
-              <MoreHorizontal size={18} color="var(--saas-text-muted)" />
-            </div>
-            <div className="radial-activity-container">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={stats.roleDistribution || []}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={85}
-                    paddingAngle={8}
-                    dataKey="value"
-                    stroke="none"
-                  >
-                    {(stats.roleDistribution || []).map((_: any, index: number) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="radial-center-info">
-                <span className="val">{stats.totalUsers}</span>
-                <span className="lbl">Users</span>
-              </div>
-            </div>
-            <div className="activity-legend">
-              {(stats.roleDistribution || []).slice(0, 3).map((role: any, idx: number) => (
-                <div key={role.name} className="legend-row">
-                  <div className="legend-left">
-                    <div className="legend-dot-square" style={{ background: COLORS[idx % COLORS.length] }} />
-                    <span>{role.name}</span>
-                  </div>
-                  <div style={{ display: 'flex', gap: '1rem' }}>
-                    <span>{role.value}</span>
-                    <span className="legend-growth-val">+{Math.round(Math.random() * 5)}%</span>
-                  </div>
-                </div>
+            <div className="space-y-2">
+              {recentProjects.map((project: any) => (
+                <ProjectCard
+                  key={project.id}
+                  name={project.name || project.nom_p || 'Untitled Project'}
+                  status={project.status || project.statut_p || 'In Progress'}
+                  tasks={project.tasksCount || 0}
+                  members={project.members?.length || 0}
+                  progress={project.progress || 55}
+                  onClick={() => project.id && navigate(`/projects/${project.id}`)}
+                />
               ))}
             </div>
           </div>
 
-          <div className="card-v3" style={{ flex: 1 }}>
-            <div className="card-header-v3">
-              <h3>Recent Activity</h3>
-              <button className="text-btn mini" onClick={() => navigate('/activities')}>View All</button>
-            </div>
-            <div className="feed-v3">
-              {(stats.recentActivities || []).slice(0, 5).map((act: any) => (
-                <div key={act.id} className="feed-item-v3">
-                  <div className="avatar-v3">{act.user ? act.user[0] : '?'}</div>
-                  <div className="feed-body-v3">
-                    <p><strong>{act.user}</strong> {act.action?.replace('Nouvelle entreprise créée', 'New company created').replace('Admin invité', 'Admin invited')}</p>
-                    <span>{new Date(act.date).toLocaleDateString('en-GB')} at {new Date(act.date).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</span>
-                  </div>
-                </div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-4">
+            <h2 className="mb-3 text-sm font-semibold text-slate-900">Upcoming Tasks</h2>
+            <div className="space-y-2">
+              {upcomingTasks.map((task: any) => (
+                <TaskRow
+                  key={task.id}
+                  title={task.title}
+                  project={task.project}
+                  dueDate={task.dueDate}
+                  priority={task.priority === 'high' || task.priority === 'medium' || task.priority === 'low' ? task.priority : 'medium'}
+                />
               ))}
-              {(!stats.recentActivities || stats.recentActivities.length === 0) && (
-                <div className="empty-feed">No recent activity</div>
-              )}
             </div>
           </div>
         </div>
-      </div>
-    </motion.div>
+
+        <div className="space-y-4">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4">
+            <h2 className="mb-3 text-sm font-semibold text-slate-900">Quick Actions</h2>
+            <div className="space-y-2">
+              <QuickActionCard title="New Project" description="Create a project workspace." icon={Plus} onClick={() => setIsProjectModalOpen(true)} />
+              <QuickActionCard title="Invite Member" description="Add someone to your team." icon={UserPlus} onClick={() => navigate('/team')} />
+              <QuickActionCard title="Manage Tasks" description="Review and update priorities." icon={CheckSquare} onClick={() => navigate('/tasks')} />
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-4">
+            <h2 className="mb-3 text-sm font-semibold text-slate-900">Team Activity</h2>
+            <div className="space-y-2">
+              {teamActivity.map((activity: any) => (
+                <ActivityItem
+                  key={activity.id}
+                  user={activity.user}
+                  action={activity.action}
+                  time={new Date(activity.date).toLocaleString()}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-4">
+            <h2 className="mb-3 text-sm font-semibold text-slate-900">Project Status</h2>
+            <div className="space-y-2">
+              {[
+                { label: 'On Track', value: stats?.statusSummary?.onTrack ?? 7, color: 'bg-emerald-500' },
+                { label: 'At Risk', value: stats?.statusSummary?.atRisk ?? 2, color: 'bg-amber-500' },
+                { label: 'Blocked', value: stats?.statusSummary?.blocked ?? 1, color: 'bg-rose-500' },
+              ].map((status) => (
+                <div key={status.label} className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                  <div className="flex items-center gap-2">
+                    <span className={`h-2.5 w-2.5 rounded-full ${status.color}`} />
+                    <span className="text-sm text-slate-700">{status.label}</span>
+                  </div>
+                  <span className="text-sm font-semibold text-slate-900">{status.value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {isAdmin && (
+        <CreateProjectModal isOpen={isProjectModalOpen} onClose={() => setIsProjectModalOpen(false)} onSuccess={loadData} />
+      )}
+    </div>
   );
 };
 

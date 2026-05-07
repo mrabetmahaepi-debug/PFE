@@ -18,6 +18,7 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, onClose
     date_fin: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
   const [error, setError] = useState('');
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -35,10 +36,20 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, onClose
         date_fin: new Date(formData.date_fin).toISOString(),
         statut_p: 'PLANNING'
       });
-      onSuccess();
-      onClose();
+      setIsSuccess(true);
+      setTimeout(() => {
+        onSuccess();
+        onClose();
+        setIsSuccess(false);
+        setFormData({
+          nom_p: '',
+          description_p: '',
+          date_debut: new Date().toISOString().split('T')[0],
+          date_fin: ''
+        });
+      }, 1500);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Erreur lors de la création du projet');
+      setError(err.response?.data?.message || err.response?.data?.error || 'Erreur lors de la création du projet');
     } finally {
       setIsSubmitting(false);
     }
@@ -119,11 +130,12 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, onClose
               </div>
 
               {error && <p className="form-error">{error}</p>}
+              {isSuccess && <p className="form-success" style={{ color: 'var(--saas-success)', fontWeight: 'bold', textAlign: 'center', padding: '1rem', background: '#dcfce7', borderRadius: '12px', marginBottom: '1rem' }}>Projet créé avec succès !</p>}
 
               <div className="modal-footer">
-                <button type="button" onClick={onClose} className="secondary-btn">Annuler</button>
-                <button type="submit" className="primary-btn" disabled={isSubmitting}>
-                  {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : 'Créer le projet'}
+                <button type="button" onClick={onClose} className="secondary-btn" disabled={isSubmitting || isSuccess}>Annuler</button>
+                <button type="submit" className="primary-btn" disabled={isSubmitting || isSuccess}>
+                  {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : isSuccess ? 'Succès !' : 'Créer le projet'}
                 </button>
               </div>
             </form>

@@ -37,7 +37,7 @@ export const inviteAdminSchema = z.object({
 
 export const approveUserSchema = z.object({
   body: z.object({
-    id_entreprise: z.coerce.number(),
+    id_entreprise: z.coerce.number().optional(),
   }),
   params: z.object({
     id: z.string().regex(/^\d+$/, "L'ID doit être un nombre valide"),

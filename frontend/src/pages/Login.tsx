@@ -17,17 +17,17 @@ const Login: React.FC = () => {
   React.useEffect(() => {
     if (!loading && isAuthenticated && user) {
       const roleName = typeof user.role === 'object' ? user.role?.nom : user.role;
-      const r = roleName?.toString().trim().toUpperCase();
-      if (r === 'SUPERADMIN') {
+      const r = (roleName?.toString() || '').trim().toUpperCase();
+      
+      // Both Admins and SuperAdmins should go to Dashboard in this version
+      if (r === 'SUPERADMIN' || r === 'ADMIN') {
         navigate('/dashboard');
-      } else if (r === 'ADMIN') {
-        navigate('/team');
-      } else if (r === 'CHEF DE PROJET') {
+      } else if (r === 'CHEF DE PROJET' || r === 'PROJECT MANAGER' || r === 'PM') {
         navigate('/projects');
-      } else if (r === 'MEMBRE') {
+      } else if (r === 'MEMBRE' || r === 'MEMBER') {
         navigate('/tasks');
       } else {
-        navigate('/');
+        navigate('/dashboard');
       }
     }
   }, [isAuthenticated, user, navigate, loading]);
@@ -36,7 +36,7 @@ const Login: React.FC = () => {
     return (
       <div className="loading-screen">
         <div className="loader"></div>
-        <p>Vérification de la session...</p>
+        <p>Verifying session...</p>
       </div>
     );
   }
@@ -50,21 +50,20 @@ const Login: React.FC = () => {
       const userData = await login({ email, password });
       
       const roleName = typeof userData.role === 'object' ? userData.role?.nom : userData.role;
-      const r = roleName?.toString().trim().toUpperCase();
-      if (r === 'SUPERADMIN') {
+      const r = (roleName?.toString() || '').trim().toUpperCase();
+      
+      if (r === 'SUPERADMIN' || r === 'ADMIN') {
         navigate('/dashboard');
-      } else if (r === 'ADMIN') {
-        navigate('/team');
-      } else if (r === 'CHEF DE PROJET') {
+      } else if (r === 'CHEF DE PROJET' || r === 'PROJECT MANAGER' || r === 'PM') {
         navigate('/projects');
-      } else if (r === 'MEMBRE') {
+      } else if (r === 'MEMBRE' || r === 'MEMBER') {
         navigate('/tasks');
       } else {
-        navigate('/');
+        navigate('/dashboard');
       }
     } catch (err: any) {
       console.error("Login failed:", err.response?.data || err);
-      setError(err.response?.data?.message || 'Identifiants invalides');
+      setError(err.response?.data?.message || 'Invalid credentials');
     } finally {
       setIsSubmitting(false);
     }
@@ -78,9 +77,9 @@ const Login: React.FC = () => {
         className="auth-card"
       >
         <div className="auth-header">
-          <div className="auth-logo">GP</div>
-          <h1>Bienvenue</h1>
-          <p>Connectez-vous pour gérer vos projets</p>
+          <div className="auth-logo">PM</div>
+          <h1>Welcome Back</h1>
+          <p>Login to manage your projects</p>
         </div>
 
         {error && (
@@ -122,9 +121,9 @@ const Login: React.FC = () => {
           <div className="auth-options">
             <label className="remember-me">
               <input type="checkbox" />
-              <span>Se souvenir de moi</span>
+              <span>Remember me</span>
             </label>
-            <a href="#" className="forgot-password">Mot de passe oublié ?</a>
+            <a href="#" className="forgot-password">Forgot password?</a>
           </div>
 
           <button type="submit" className="auth-submit" disabled={isSubmitting}>
@@ -133,14 +132,14 @@ const Login: React.FC = () => {
             ) : (
               <>
                 <LogIn size={20} />
-                <span>Se connecter</span>
+                <span>Login</span>
               </>
             )}
           </button>
         </form>
 
         <div className="auth-footer">
-          <p>Pas encore de compte ? <Link to="/register">S'inscrire</Link></p>
+          <p>Don't have an account? <Link to="/register">Sign up</Link></p>
         </div>
       </motion.div>
     </div>

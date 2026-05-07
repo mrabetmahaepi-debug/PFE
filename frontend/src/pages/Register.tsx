@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Mail, Lock, UserPlus, AlertCircle } from 'lucide-react';
+import { Mail, Lock, UserPlus, AlertCircle, Building2 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import './Auth.css';
 
@@ -10,7 +10,8 @@ const Register: React.FC = () => {
     prenom: '',
     nom: '',
     email: '',
-    password: ''
+    password: '',
+    company: ''
   });
   const [isSuccess, setIsSuccess] = useState(false);
   const [error, setError] = useState('');
@@ -33,7 +34,8 @@ const Register: React.FC = () => {
         prenom: formData.prenom,
         nom: formData.nom,
         email: formData.email,
-        password: formData.password
+        password: formData.password,
+        poste: formData.company // We use 'poste' to store company name for approval
       });
       setIsSuccess(true);
     } catch (err: any) {
@@ -129,6 +131,21 @@ const Register: React.FC = () => {
                 name="email"
                 placeholder="jean.dupont@exemple.com"
                 value={formData.email}
+                onChange={handleChange}
+                required
+              />
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label>Nom de l'entreprise</label>
+            <div className="input-wrapper">
+              <Building2 className="input-icon" size={18} />
+              <input 
+                type="text" 
+                name="company"
+                placeholder="Ex: Ma Société SAS"
+                value={formData.company}
                 onChange={handleChange}
                 required
               />

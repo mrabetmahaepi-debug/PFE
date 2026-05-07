@@ -194,7 +194,6 @@ const Enterprises: React.FC = () => {
       <header className="page-header">
         <div>
           <h1>Gestion des Entreprises</h1>
-          <p className="subtitle">Gérez les sociétés clientes de la plateforme.</p>
         </div>
         <div className="header-actions" style={{ display: 'flex', gap: '1rem' }}>
           <button className="secondary-btn" onClick={() => setIsInviteModalOpen(true)} style={{ backgroundColor: '#fff', color: '#6366f1', border: '1px solid #6366f1' }}>

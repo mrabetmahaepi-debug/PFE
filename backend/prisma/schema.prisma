@@ -15,23 +15,23 @@ model affectation {
   date_affectation  DateTime?           @default(dbgenerated("(curdate())")) @db.Date
   statut            String?             @default("active") @db.VarChar(50)
   role_affectation  String?             @default("membre")
-  utilisateur       utilisateur?        @relation(fields: [id_utilisateur], references: [id_utilisateur], onDelete: Cascade, onUpdate: Restrict)
-  projet            projet?             @relation(fields: [id_projet], references: [id_projet], onDelete: Cascade, onUpdate: Restrict)
-  tache             tache?              @relation(fields: [id_tache], references: [id_tache], onUpdate: Restrict)
+  utilisateur       utilisateur?        @relation(fields: [id_utilisateur], references: [id_utilisateur], onDelete: Cascade, onUpdate: Restrict, map: "affectation_ibfk_1")
+  projet            projet?             @relation(fields: [id_projet], references: [id_projet], onDelete: Cascade, onUpdate: Restrict, map: "affectation_ibfk_2")
+  tache             tache?              @relation(fields: [id_tache], references: [id_tache], onUpdate: Restrict, map: "affectation_ibfk_3")
   attribution_badge attribution_badge[]
 
-  @@index([id_projet])
-  @@index([id_tache])
-  @@index([id_utilisateur])
+  @@index([id_projet], map: "projet_id")
+  @@index([id_tache], map: "tache_id")
+  @@index([id_utilisateur], map: "utilisateur_id")
 }
 
 model attribution_badge {
   id_badge         Int          @id
   id_affectation   Int?
   date_attribution DateTime?    @default(dbgenerated("(curdate())")) @db.Date
-  affectation      affectation? @relation(fields: [id_affectation], references: [id_affectation], onDelete: Cascade, onUpdate: Restrict)
+  affectation      affectation? @relation(fields: [id_affectation], references: [id_affectation], onDelete: Cascade, onUpdate: Restrict, map: "attribution_badge_ibfk_1")
 
-  @@index([id_affectation])
+  @@index([id_affectation], map: "affectation_id")
 }
 
 model chatbot {
@@ -40,9 +40,9 @@ model chatbot {
   message        String?      @db.Text
   reponse        String?      @db.Text
   date_msg       DateTime     @default(now()) @db.Timestamp(0)
-  utilisateur    utilisateur? @relation(fields: [id_utilisateur], references: [id_utilisateur], onDelete: Cascade, onUpdate: Restrict)
+  utilisateur    utilisateur? @relation(fields: [id_utilisateur], references: [id_utilisateur], onDelete: Cascade, onUpdate: Restrict, map: "chatbot_ibfk_1")
 
-  @@index([id_utilisateur])
+  @@index([id_utilisateur], map: "utilisateur_id")
 }
 
 model entreprise {
@@ -54,77 +54,57 @@ model entreprise {
   statut        String?       @default("active") @db.VarChar(50)
   admin         utilisateur?  @relation("EntrepriseAdmin", fields: [admin_id], references: [id_utilisateur])
   invitation    invitation[]
+  projet        projet[]
   role          role[]
   utilisateur   utilisateur[] @relation("EntrepriseUsers")
-  projet        projet[]
 }
 
 model ia_engine {
   id_ia     Int     @id @default(autoincrement())
   id_projet Int?
-  projet    projet? @relation(fields: [id_projet], references: [id_projet], onDelete: Cascade, onUpdate: Restrict)
+  projet    projet? @relation(fields: [id_projet], references: [id_projet], onDelete: Cascade, onUpdate: Restrict, map: "ia_engine_ibfk_1")
 
-  @@index([id_projet])
+  @@index([id_projet], map: "projet_id")
 }
 
 model invitation {
   id_invitation Int         @id @default(autoincrement())
   email         String?     @db.VarChar(150)
-  id_entreprise Int?
-  id_role       Int?
-  mot_de_passe  String?     @db.VarChar(255)
   nom           String?     @db.VarChar(100)
   prenom        String?     @db.VarChar(100)
-  entreprise    entreprise? @relation(fields: [id_entreprise], references: [id_entreprise], onDelete: Cascade, onUpdate: Restrict)
-  role          role?       @relation(fields: [id_role], references: [id_role], onDelete: Restrict, onUpdate: Restrict)
+  mot_de_passe  String?     @db.VarChar(255)
+  id_entreprise Int?
+  id_role       Int?
+  entreprise    entreprise? @relation(fields: [id_entreprise], references: [id_entreprise], onDelete: Cascade, onUpdate: Restrict, map: "invitation_ibfk_1")
+  role          role?       @relation(fields: [id_role], references: [id_role], onDelete: Restrict, onUpdate: Restrict, map: "invitation_ibfk_2")
 
-  @@index([id_entreprise])
-  @@index([id_role])
+  @@index([id_entreprise], map: "entreprise_id")
+  @@index([id_role], map: "role_id")
 }
 
 model membre_projet {
   id_membre_projet Int          @id @default(autoincrement())
   id_utilisateur   Int?
   id_projet        Int?
-  utilisateur      utilisateur? @relation(fields: [id_utilisateur], references: [id_utilisateur], onDelete: Cascade, onUpdate: Restrict)
-  projet           projet?      @relation(fields: [id_projet], references: [id_projet], onDelete: Cascade, onUpdate: Restrict)
+  utilisateur      utilisateur? @relation(fields: [id_utilisateur], references: [id_utilisateur], onDelete: Cascade, onUpdate: Restrict, map: "membre_projet_ibfk_1")
+  projet           projet?      @relation(fields: [id_projet], references: [id_projet], onDelete: Cascade, onUpdate: Restrict, map: "membre_projet_ibfk_2")
 
-  @@index([id_projet])
-  @@index([id_utilisateur])
+  @@index([id_projet], map: "projet_id")
+  @@index([id_utilisateur], map: "utilisateur_id")
 }
 
 model notification {
   num_notification Int          @id @default(autoincrement())
   sujet            String?      @db.VarChar(255)
-  date_envoi       DateTime?
-  id_utilisateur   Int?
-  is_read          Boolean      @default(false)
   message          String?      @db.Text
   type             String?      @default("info") @db.VarChar(50)
+  is_read          Boolean      @default(false)
+  date_envoi       DateTime?
+  id_utilisateur   Int?
   metadata         String?      @db.Text
-  utilisateur      utilisateur? @relation(fields: [id_utilisateur], references: [id_utilisateur], onDelete: Cascade, onUpdate: Restrict)
+  utilisateur      utilisateur? @relation(fields: [id_utilisateur], references: [id_utilisateur], onDelete: Cascade, onUpdate: Restrict, map: "notification_ibfk_1")
 
-  @@index([id_utilisateur])
-}
-
-/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
-model projet {
-  id_projet     Int             @id @default(autoincrement())
-  nom_p         String?         @db.VarChar(100)
-  date_debut    DateTime?       @default(now())
-  date_fin      DateTime?       @default(now())
-  description_p String?         @db.Text
-  statut_p      String?         @db.VarChar(50)
-  createdAt     DateTime        @default(now())
-  id_entreprise Int?
-  affectation   affectation[]
-  ia_engine     ia_engine[]
-  membre_projet membre_projet[]
-  entreprise    entreprise?     @relation(fields: [id_entreprise], references: [id_entreprise], onDelete: Cascade, onUpdate: Restrict)
-  sprint        sprint[]
-  tache         tache[]
-
-  @@map("projets")
+  @@index([id_utilisateur], map: "utilisateur_id")
 }
 
 model role {
@@ -138,7 +118,7 @@ model role {
   utilisateur   utilisateur[]
   permission    permission[]  @relation("permissiontorole")
 
-  @@index([id_entreprise])
+  @@index([id_entreprise], map: "role_id_entreprise_fkey")
 }
 
 model sprint {
@@ -148,10 +128,10 @@ model sprint {
   date_fin_s   DateTime? @db.Date
   statut_s     String?   @db.VarChar(50)
   id_projet    Int?
-  projet       projet?   @relation(fields: [id_projet], references: [id_projet], onDelete: Cascade, onUpdate: Restrict)
+  projet       projet?   @relation(fields: [id_projet], references: [id_projet], onDelete: Cascade, onUpdate: Restrict, map: "sprint_ibfk_1")
   tache        tache[]
 
-  @@index([id_projet])
+  @@index([id_projet], map: "projet_id")
 }
 
 model tache {
@@ -167,13 +147,13 @@ model tache {
   id_sprint     Int?
   assigne_a     Int?
   affectation   affectation[]
-  projet        projet?       @relation(fields: [id_projet], references: [id_projet], onDelete: Cascade, onUpdate: Restrict)
-  sprint        sprint?       @relation(fields: [id_sprint], references: [id_sprint], onUpdate: Restrict)
-  utilisateur   utilisateur?  @relation(fields: [assigne_a], references: [id_utilisateur], onUpdate: Restrict)
+  projet        projet?       @relation(fields: [id_projet], references: [id_projet], onDelete: Cascade, onUpdate: Restrict, map: "tache_ibfk_1")
+  sprint        sprint?       @relation(fields: [id_sprint], references: [id_sprint], onUpdate: Restrict, map: "tache_ibfk_2")
+  utilisateur   utilisateur?  @relation(fields: [assigne_a], references: [id_utilisateur], onUpdate: Restrict, map: "tache_ibfk_3")
 
-  @@index([assigne_a])
-  @@index([id_projet])
-  @@index([id_sprint])
+  @@index([assigne_a], map: "assigne_a")
+  @@index([id_projet], map: "projet_id")
+  @@index([id_sprint], map: "sprint_id")
 }
 
 model utilisateur {
@@ -188,8 +168,8 @@ model utilisateur {
   telephone      String?         @db.VarChar(20)
   statut         String?         @default("PENDING") @db.VarChar(50)
   createdAt      DateTime        @default(now())
-  lastLogin      DateTime?
-  photoUrl       String?         @db.VarChar(500)
+  is_online      Boolean         @default(false)
+  lastSeen       DateTime?       @db.Timestamp(0)
   affectation    affectation[]
   chatbot        chatbot[]
   adminOf        entreprise?     @relation("EntrepriseAdmin")
@@ -198,11 +178,11 @@ model utilisateur {
   notification   notification[]
   participant    participant[]
   tache          tache[]
-  role           role?           @relation(fields: [id_role], references: [id_role], onUpdate: Restrict)
+  role           role?           @relation(fields: [id_role], references: [id_role], onUpdate: Restrict, map: "utilisateur_ibfk_1")
   entreprise     entreprise?     @relation("EntrepriseUsers", fields: [id_entreprise], references: [id_entreprise])
 
-  @@index([id_entreprise])
-  @@index([id_role])
+  @@index([id_entreprise], map: "entreprise_id")
+  @@index([id_role], map: "role_id")
 }
 
 model activity {
@@ -235,11 +215,11 @@ model message {
   type            String       @default("text")
   metadata        String?      @db.Text
   createdAt       DateTime     @default(now())
-  conversation    conversation @relation(fields: [id_conversation], references: [id_conversation], onDelete: Cascade)
-  utilisateur     utilisateur  @relation(fields: [id_expediteur], references: [id_utilisateur], onDelete: Cascade)
+  conversation    conversation @relation(fields: [id_conversation], references: [id_conversation], onDelete: Cascade, map: "Message_id_conversation_fkey")
+  utilisateur     utilisateur  @relation(fields: [id_expediteur], references: [id_utilisateur], onDelete: Cascade, map: "Message_id_expediteur_fkey")
 
-  @@index([id_conversation])
-  @@index([id_expediteur])
+  @@index([id_conversation], map: "Message_id_conversation_fkey")
+  @@index([id_expediteur], map: "Message_id_expediteur_fkey")
 }
 
 model participant {
@@ -248,11 +228,11 @@ model participant {
   id_conversation Int
   isAdmin         Boolean      @default(false)
   joinedAt        DateTime     @default(now())
-  conversation    conversation @relation(fields: [id_conversation], references: [id_conversation], onDelete: Cascade)
-  utilisateur     utilisateur  @relation(fields: [id_utilisateur], references: [id_utilisateur], onDelete: Cascade)
+  conversation    conversation @relation(fields: [id_conversation], references: [id_conversation], onDelete: Cascade, map: "Participant_id_conversation_fkey")
+  utilisateur     utilisateur  @relation(fields: [id_utilisateur], references: [id_utilisateur], onDelete: Cascade, map: "Participant_id_utilisateur_fkey")
 
-  @@unique([id_utilisateur, id_conversation])
-  @@index([id_conversation])
+  @@unique([id_utilisateur, id_conversation], map: "Participant_id_utilisateur_id_conversation_key")
+  @@index([id_conversation], map: "Participant_id_conversation_fkey")
 }
 
 model permission {
@@ -261,4 +241,23 @@ model permission {
   description   String?  @db.VarChar(255)
   dateCreation  DateTime @default(now())
   role          role[]   @relation("permissiontorole")
+}
+
+model projet {
+  id_projet     Int             @id @default(autoincrement())
+  nom_p         String?         @db.VarChar(100)
+  date_debut    DateTime?       @default(now())
+  date_fin      DateTime?       @default(now())
+  description_p String?         @db.Text
+  statut_p      String?         @db.VarChar(50)
+  createdAt     DateTime        @default(now())
+  id_entreprise Int?
+  affectation   affectation[]
+  ia_engine     ia_engine[]
+  membre_projet membre_projet[]
+  entreprise    entreprise?     @relation(fields: [id_entreprise], references: [id_entreprise], onDelete: Cascade, onUpdate: Restrict, map: "projet_ibfk_1")
+  sprint        sprint[]
+  tache         tache[]
+
+  @@index([id_entreprise], map: "projet_ibfk_1")
 }

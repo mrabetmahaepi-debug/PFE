@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { registerUser, loginUser, getMe } from "../services/auth.service";
+import { registerUser, loginUser, getMe, logoutUser } from "../services/auth.service";
 import { generateToken } from "../utils/jwt";
 import prisma from "../prisma/prismaClient";
 
@@ -12,6 +12,18 @@ export const registerController = async (req: Request, res: Response) => {
   }
 };
 
+export const logoutController = async (req: any, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    if (userId) {
+      await logoutUser(userId);
+    }
+    res.json({ message: "Déconnecté avec succès" });
+  } catch (err: any) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 export const loginController = async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
@@ -19,11 +31,12 @@ export const loginController = async (req: Request, res: Response) => {
 
     const token = generateToken(user);
 
-    // Update lastLogin timestamp
+    /* 
     await prisma.utilisateur.update({
       where: { id_utilisateur: user.id_utilisateur },
       data: { lastLogin: new Date() }
     });
+    */
 
     res.json({ 
       token, 

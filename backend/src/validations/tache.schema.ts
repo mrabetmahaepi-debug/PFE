@@ -6,7 +6,7 @@ export const createTaskSchema = z.object({
     description_t: z.string().optional(),
     statut_t: z.enum(["todo", "en_cours", "terminee"]).optional(),
     priorite: z.enum(["basse", "moyenne", "haute", "critique"]).optional(),
-    date_debut_t: z.string().optional(), // Could be z.string().datetime() but keeping flexible
+    date_debut_t: z.string().optional(),
     date_fin_t: z.string().optional(),
     id_projet: z.number({ error: "id_projet est obligatoire" }),
     id_sprint: z.number().optional(),

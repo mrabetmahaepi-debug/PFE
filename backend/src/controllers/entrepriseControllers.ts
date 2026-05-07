@@ -63,7 +63,8 @@ export const getAllEntreprises = async (req: Request, res: Response, next: NextF
       prisma.entreprise.findMany({
         skip,
         take: limit,
-        orderBy: { id_entreprise: 'desc' }
+        orderBy: { id_entreprise: 'desc' },
+        include: { admin: true }
       }),
       prisma.entreprise.count()
     ]);

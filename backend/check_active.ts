@@ -7,10 +7,10 @@ async function main() {
 
   const activeUsers = await prisma.utilisateur.findMany({
     where: { 
-      lastLogin: { gte: last7Days },
+      lastSeen: { gte: last7Days },
       NOT: { role: { nom: 'SuperAdmin' } }
     },
-    select: { id_utilisateur: true, email: true, lastLogin: true, role: { select: { nom: true } } }
+    select: { id_utilisateur: true, email: true, lastSeen: true, role: { select: { nom: true } } }
   });
   
   console.log("Found active users:", activeUsers.length);
