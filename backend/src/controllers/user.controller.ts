@@ -1,5 +1,9 @@
 import { Response } from "express";
-import { getMyProfile, updateMyProfile } from "../services/user.service";
+import {
+  getMyProfile,
+  updateMyProfile,
+  ProfileUpdateError,
+} from "../services/user.service";
 
 export const getMyProfileController = async (req: any, res: Response) => {
   try {
@@ -22,10 +26,13 @@ export const updateMyProfileController = async (req: any, res: Response) => {
   try {
     const updatedUser = await updateMyProfile(req.user.id, req.body);
     return res.status(200).json(updatedUser);
-  } catch (error: any) {
+  } catch (error: unknown) {
+    if (error instanceof ProfileUpdateError) {
+      return res.status(error.status).json({ message: error.message });
+    }
     return res.status(500).json({
       message: "Erreur lors de la mise à jour du profil",
-      error: error.message
+      error: error instanceof Error ? error.message : String(error),
     });
   }
 };

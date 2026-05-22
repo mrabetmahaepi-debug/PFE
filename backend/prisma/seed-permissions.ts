@@ -1,96 +1,88 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from "@prisma/client";
+import {
+  PERMISSIONS,
+  DEFAULT_ROLE_PERMISSIONS,
+} from "../src/modules/permissions/permissions.catalog";
 
 const prisma = new PrismaClient();
 
+/**
+ * Seed strategy
+ * -------------
+ * - UPSERT every catalog permission by name. Description is updated,
+ *   existing rows are preserved.
+ * - For SYSTEM-shipped roles (SuperAdmin / Admin / Chef de Projet /
+ *   Membre) we MERGE the default permission set into the existing
+ *   assignments, never `set`-ing or removing manually-curated permissions.
+ * - Custom enterprise roles (any role.nom not in the system list) are
+ *   left untouched.
+ */
 async function main() {
-  console.log('Starting seed permissions...');
+  console.log("[seed-permissions] Starting...");
 
-  const permissions = [
-    // Projets
-    { nom: 'PROJECT_CREATE', description: 'Créer de nouveaux projets' },
-    { nom: 'PROJECT_EDIT', description: 'Modifier les projets existants' },
-    { nom: 'PROJECT_DELETE', description: 'Supprimer des projets' },
-    { nom: 'PROJECT_VIEW_ALL', description: 'Voir tous les projets de l\'entreprise' },
-    
-    // Tâches
-    { nom: 'TASK_CREATE', description: 'Créer des tâches' },
-    { nom: 'TASK_EDIT', description: 'Modifier des tâches' },
-    { nom: 'TASK_DELETE', description: 'Supprimer des tâches' },
-    { nom: 'TASK_VIEW_ALL', description: 'Voir toutes les tâches du projet' },
-    
-    // Équipe
-    { nom: 'TEAM_INVITE', description: 'Inviter de nouveaux membres' },
-    { nom: 'TEAM_MANAGE_ROLES', description: 'Gérer les rôles et permissions' },
-    { nom: 'TEAM_VIEW', description: 'Voir les membres de l\'équipe' },
-    
-    // Entreprise
-    { nom: 'ENTERPRISE_EDIT', description: 'Modifier les informations de l\'entreprise' },
-    { nom: 'ENTERPRISE_STATS', description: 'Voir les statistiques de l\'entreprise' },
-    
-    // Système
-    { nom: 'SYSTEM_MANAGE_ALL', description: 'Contrôle total du système (SuperAdmin)' },
-  ];
-
-  for (const perm of permissions) {
+  for (const perm of PERMISSIONS) {
     await prisma.permission.upsert({
-      where: { nom: perm.nom },
+      where: { nom: perm.name },
       update: { description: perm.description },
-      create: perm,
+      create: { nom: perm.name, description: perm.description },
     });
   }
+  console.log(`[seed-permissions] ${PERMISSIONS.length} permissions upserted.`);
 
-  console.log('Permissions seeded.');
-
-  // Find all permissions to link them
   const allPerms = await prisma.permission.findMany();
-  
-  // Define default permission sets
-  const adminPerms = allPerms.filter(p => p.nom !== 'SYSTEM_MANAGE_ALL');
-  const chefProjetPerms = allPerms.filter(p => 
-    p.nom.startsWith('PROJECT_VIEW') || 
-    p.nom.startsWith('TASK_') || 
-    p.nom === 'TEAM_VIEW'
-  );
-  const membrePerms = allPerms.filter(p => 
-    p.nom === 'PROJECT_VIEW_ALL' || 
-    p.nom === 'TASK_VIEW_ALL' || 
-    p.nom === 'TEAM_VIEW'
-  );
-  const superAdminPerms = allPerms;
-
-  // Roles to ensure exist (at least for the first enterprise or system-wide)
-  // Note: Roles are normally linked to an enterprise. 
-  // We'll update existing roles if they exist.
-  
-  const roles = await prisma.role.findMany();
-  
-  for (const role of roles) {
-    let permsToAssign: any[] = [];
-    
-    if (role.nom === 'SuperAdmin') permsToAssign = superAdminPerms;
-    else if (role.nom === 'Admin') permsToAssign = adminPerms;
-    else if (role.nom === 'Chef de Projet') permsToAssign = chefProjetPerms;
-    else if (role.nom === 'Membre') permsToAssign = membrePerms;
-
-    if (permsToAssign.length > 0) {
-      await prisma.role.update({
-        where: { id_role: role.id_role },
-        data: {
-          permission: {
-            set: permsToAssign.map(p => ({ id_permission: p.id_permission }))
-          }
-        }
-      });
-      console.log(`Updated permissions for role: ${role.nom}`);
-    }
+  const permByName = new Map<string, number>();
+  for (const p of allPerms) {
+    if (p.nom) permByName.set(p.nom, p.id_permission);
   }
 
-  console.log('Seed completed successfully.');
+  const systemRoleNames = Object.keys(DEFAULT_ROLE_PERMISSIONS);
+  const roles = await prisma.role.findMany({
+    where: { nom: { in: systemRoleNames } },
+    include: { permission: true } as any,
+  });
+
+  for (const role of roles) {
+    const roleName = role.nom ?? "";
+    const desired: string[] = DEFAULT_ROLE_PERMISSIONS[roleName] || [];
+    const desiredIds: number[] = [];
+    for (const n of desired) {
+      const id = permByName.get(n);
+      if (typeof id === "number") desiredIds.push(id);
+    }
+
+    const existingIds = new Set<number>(
+      (((role as any).permission as Array<{ id_permission: number }>) || []).map(
+        (p) => p.id_permission
+      )
+    );
+
+    const missing: number[] = desiredIds.filter((id) => !existingIds.has(id));
+    if (missing.length === 0) {
+      console.log(
+        `[seed-permissions] role "${roleName}" already has every default permission`
+      );
+      continue;
+    }
+
+    await prisma.role.update({
+      where: { id_role: role.id_role },
+      data: {
+        permission: {
+          connect: missing.map((id) => ({ id_permission: id })),
+        },
+      } as any,
+    });
+    console.log(
+      `[seed-permissions] role "${roleName}" gained ${missing.length} new default permission(s)`
+    );
+  }
+
+  console.log("[seed-permissions] Done.");
 }
 
 main()
   .catch((e) => {
-    console.error(e);
+    console.error("[seed-permissions] FAILED:", e);
     process.exit(1);
   })
   .finally(async () => {

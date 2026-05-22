@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, Mail, Lock, Shield, Loader2 } from 'lucide-react';
+import { X, User, Mail, Lock, Shield, Loader2, ChevronDown } from 'lucide-react';
 import { teamService } from '../services/team.service';
 import { useAuth } from '../hooks/useAuth';
 import './AddMemberModal.css';
@@ -18,7 +19,7 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({ isOpen, onClose, onSucc
     prenom: '',
     email: '',
     motDePasse: '',
-    role: 'Membre'
+    role: 'Membre',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -38,122 +39,160 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({ isOpen, onClose, onSucc
         prenom: formData.prenom,
         email: formData.email,
         password: formData.motDePasse,
-        id_role: formData.role === 'Admin' ? 2 : (formData.role === 'PM' ? 3 : 4),
+        id_role: formData.role === 'Admin' ? 2 : formData.role === 'PM' ? 3 : 4,
         poste: formData.role === 'PM' ? 'Chef de Projet' : formData.role,
-        id_entreprise: currentUser?.id_entreprise || 1
+        id_entreprise: currentUser?.id_entreprise || 1,
       });
       onSuccess();
       onClose();
       setFormData({ nom: '', prenom: '', email: '', motDePasse: '', role: 'Membre' });
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Erreur lors de l\'ajout du membre');
+      setError(err.response?.data?.message || "Erreur lors de l'ajout du membre");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  return (
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
-        <div className="modal-overlay">
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        <div
+          className="modal-overlay compact-modal-overlay"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) onClose();
+          }}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.97, y: 12 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="modal-container"
+            exit={{ opacity: 0, scale: 0.97, y: 12 }}
+            transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+            className="modal-container compact-modal"
+            onMouseDown={(e) => e.stopPropagation()}
           >
-            <div className="modal-header">
-              <h2>Ajouter un membre</h2>
-              <button onClick={onClose} className="close-btn"><X size={20} /></button>
+            <div className="modal-header compact-modal-header">
+              <div>
+                <h2>Inviter un membre</h2>
+                <p>Ajoutez un collaborateur à votre entreprise</p>
+              </div>
+              <button
+                onClick={onClose}
+                className="close-btn"
+                aria-label="Fermer"
+                type="button"
+              >
+                <X size={18} />
+              </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="modal-form">
-              <div className="form-row">
+            <form onSubmit={handleSubmit} className="modal-form compact-modal-form">
+              <div className="compact-modal-body">
+                <div className="form-row">
+                  <div className="form-group">
+                    <label htmlFor="invite-prenom">Prénom</label>
+                    <div className="input-wrapper">
+                      <User className="input-icon" size={16} />
+                      <input
+                        id="invite-prenom"
+                        type="text"
+                        name="prenom"
+                        placeholder="Jean"
+                        value={formData.prenom}
+                        onChange={handleChange}
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="invite-nom">Nom</label>
+                    <div className="input-wrapper">
+                      <User className="input-icon" size={16} />
+                      <input
+                        id="invite-nom"
+                        type="text"
+                        name="nom"
+                        placeholder="Dupont"
+                        value={formData.nom}
+                        onChange={handleChange}
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+
                 <div className="form-group">
-                  <label>Prénom</label>
+                  <label htmlFor="invite-email">Email professionnel</label>
                   <div className="input-wrapper">
-                    <User className="input-icon" size={18} />
-                    <input 
-                      type="text" 
-                      name="prenom" 
-                      placeholder="Jean" 
-                      value={formData.prenom}
+                    <Mail className="input-icon" size={16} />
+                    <input
+                      id="invite-email"
+                      type="email"
+                      name="email"
+                      placeholder="jean.dupont@entreprise.com"
+                      value={formData.email}
                       onChange={handleChange}
-                      required 
+                      required
                     />
                   </div>
                 </div>
+
                 <div className="form-group">
-                  <label>Nom</label>
+                  <label htmlFor="invite-password">Mot de passe initial</label>
                   <div className="input-wrapper">
-                    <User className="input-icon" size={18} />
-                    <input 
-                      type="text" 
-                      name="nom" 
-                      placeholder="Dupont" 
-                      value={formData.nom}
+                    <Lock className="input-icon" size={16} />
+                    <input
+                      id="invite-password"
+                      type="password"
+                      name="motDePasse"
+                      placeholder="••••••••"
+                      value={formData.motDePasse}
                       onChange={handleChange}
-                      required 
+                      required
                     />
                   </div>
                 </div>
-              </div>
 
-              <div className="form-group">
-                <label>Email professionnel</label>
-                <div className="input-wrapper">
-                  <Mail className="input-icon" size={18} />
-                  <input 
-                    type="email" 
-                    name="email" 
-                    placeholder="jean.dupont@entreprise.com" 
-                    value={formData.email}
-                    onChange={handleChange}
-                    required 
-                  />
+                <div className="form-group">
+                  <label htmlFor="invite-role">Rôle</label>
+                  <div className="input-wrapper">
+                    <Shield className="input-icon" size={16} />
+                    <select
+                      id="invite-role"
+                      name="role"
+                      value={formData.role}
+                      onChange={handleChange}
+                    >
+                      <option value="Membre">Membre de projet</option>
+                      <option value="PM">Chef de Projet</option>
+                      <option value="Admin">Administrateur</option>
+                    </select>
+                    <ChevronDown size={14} className="select-chevron" />
+                  </div>
                 </div>
+
+                {error && <p className="form-error">{error}</p>}
               </div>
 
-              <div className="form-group">
-                <label>Mot de passe initial</label>
-                <div className="input-wrapper">
-                  <Lock className="input-icon" size={18} />
-                  <input 
-                    type="password" 
-                    name="motDePasse" 
-                    placeholder="••••••••" 
-                    value={formData.motDePasse}
-                    onChange={handleChange}
-                    required 
-                  />
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label>Rôle</label>
-                <div className="input-wrapper">
-                  <Shield className="input-icon" size={18} />
-                  <select name="role" value={formData.role} onChange={handleChange}>
-                    <option value="Membre">Membre de projet</option>
-                    <option value="PM">Chef de Projet</option>
-                    <option value="Admin">Administrateur</option>
-                  </select>
-                </div>
-              </div>
-
-              {error && <p className="form-error">{error}</p>}
-
-              <div className="modal-footer">
-                <button type="button" onClick={onClose} className="secondary-btn">Annuler</button>
+              <div className="modal-footer compact-modal-footer">
+                <button type="button" onClick={onClose} className="secondary-btn">
+                  Annuler
+                </button>
                 <button type="submit" className="primary-btn" disabled={isSubmitting}>
-                  {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : 'Ajouter le membre'}
+                  {isSubmitting ? (
+                    <Loader2 className="animate-spin" size={16} />
+                  ) : (
+                    'Ajouter le membre'
+                  )}
                 </button>
               </div>
             </form>
           </motion.div>
         </div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   );
 };
 

@@ -1,54 +1,216 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Type, AlignLeft, Flag, Layers, Calendar, Loader2 } from 'lucide-react';
+import {
+  X,
+  Type,
+  AlignLeft,
+  Flag,
+  Calendar,
+  User,
+  Loader2,
+  Briefcase,
+  ChevronDown,
+  Search,
+  Check,
+} from 'lucide-react';
 import { taskService } from '../services/task.service';
-import { sprintService } from '../services/sprint.service';
-import { TaskPriority, TaskStatus } from '../types/task';
-import type { Sprint } from '../types/sprint';
+import { projectService } from '../services/project.service';
+import type { User as WorkspaceUser } from '../types/auth.types';
+import { TASK_PRIORITY_LABELS, TaskPriority, TaskStatus } from '../types/task';
+import type { Projet } from '../types/project';
 import './CreateTaskModal.css';
 
 interface CreateTaskModalProps {
   isOpen: boolean;
-  projectId: string;
+  /**
+   * Optional. When provided, pre-selects this project in the modal — typically
+   * the project the user is currently viewing. The user can still change it
+   * via the searchable picker.
+   */
+  projectId?: string;
   onClose: () => void;
   onSuccess: () => void;
 }
 
-const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ isOpen, projectId, onClose, onSuccess }) => {
+const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
+  isOpen,
+  projectId,
+  onClose,
+  onSuccess,
+}) => {
   const [formData, setFormData] = useState({
     nom_t: '',
     description_t: '',
     priorite_t: TaskPriority.MEDIUM,
+    statut_t: TaskStatus.TODO as TaskStatus | 'OVERDUE',
+    assigne_a: '',
     date_limite_t: '',
-    id_sprint: ''
   });
-  const [sprints, setSprints] = useState<Sprint[]>([]);
+  const [projects, setProjects] = useState<Projet[]>([]);
+  const [members, setMembers] = useState<WorkspaceUser[]>([]);
+  const [selectedProjectId, setSelectedProjectId] = useState<string>(projectId || '');
+  const [projectQuery, setProjectQuery] = useState('');
+  const [projectMenuOpen, setProjectMenuOpen] = useState(false);
+  const [assigneeQuery, setAssigneeQuery] = useState('');
+  const [assigneeMenuOpen, setAssigneeMenuOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const projectFieldRef = useRef<HTMLDivElement>(null);
+  const assigneeFieldRef = useRef<HTMLDivElement>(null);
 
+  // Reset form & preselect project from prop whenever the modal opens.
   useEffect(() => {
-    if (isOpen && projectId) {
-      fetchSprints();
-    }
+    if (!isOpen) return;
+    setFormData({
+      nom_t: '',
+      description_t: '',
+      priorite_t: TaskPriority.MEDIUM,
+      statut_t: TaskStatus.TODO,
+      assigne_a: '',
+      date_limite_t: '',
+    });
+    setSelectedProjectId(projectId || '');
+    setProjectQuery('');
+    setProjectMenuOpen(false);
+    setAssigneeQuery('');
+    setAssigneeMenuOpen(false);
+    setError('');
+    void fetchProjects();
   }, [isOpen, projectId]);
 
-  const fetchSprints = async () => {
+  // Outside-click closes the project combobox.
+  useEffect(() => {
+    if (!projectMenuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (
+        projectFieldRef.current &&
+        !projectFieldRef.current.contains(e.target as Node)
+      ) {
+        setProjectMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [projectMenuOpen]);
+
+  useEffect(() => {
+    if (!assigneeMenuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (
+        assigneeFieldRef.current &&
+        !assigneeFieldRef.current.contains(e.target as Node)
+      ) {
+        setAssigneeMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [assigneeMenuOpen]);
+
+  const fetchProjects = async () => {
     try {
-      const data = await sprintService.getByProject(projectId);
-      setSprints(data);
-    } catch (error) {
-      console.error("Failed to fetch sprints:", error);
+      const projectData = await projectService.getAll();
+      setProjects(Array.isArray(projectData) ? projectData : []);
+    } catch (err) {
+      console.error('Failed to fetch task dependencies:', err);
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  useEffect(() => {
+    if (!isOpen || !selectedProjectId) {
+      setMembers([]);
+      return;
+    }
+    let cancelled = false;
+    void projectService
+      .getById(selectedProjectId)
+      .then((p) => {
+        if (cancelled) return;
+        const team = Array.isArray(p.projectTeam) ? p.projectTeam : [];
+        const mapped: WorkspaceUser[] = team
+          .filter((m) => m.userId != null)
+          .map((m) => ({
+            id_utilisateur: m.userId!,
+            email: m.email ?? '',
+            prenom: m.prenom ?? '',
+            nom: m.nom ?? '',
+            role: m.roleProjet ?? 'Membre',
+          }));
+        setMembers(mapped);
+      })
+      .catch(() => {
+        if (!cancelled) setMembers([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, selectedProjectId]);
+
+  const filteredProjects = useMemo(() => {
+    if (!projectQuery.trim()) return projects;
+    const q = projectQuery.toLowerCase();
+    return projects.filter(
+      (p) =>
+        p.nom_p?.toLowerCase().includes(q) ||
+        p.entreprise?.nom?.toLowerCase().includes(q),
+    );
+  }, [projects, projectQuery]);
+
+  const selectedProject = useMemo(
+    () => projects.find((p) => String(p.id_projet) === selectedProjectId),
+    [projects, selectedProjectId],
+  );
+
+  const filteredMembers = useMemo(() => {
+    if (!assigneeQuery.trim()) return members;
+    const q = assigneeQuery.toLowerCase();
+    return members.filter((m) => {
+      const fullName = `${m.prenom || ''} ${m.nom || ''}`.trim().toLowerCase();
+      const roleName =
+        typeof m.role === 'string'
+          ? m.role.toLowerCase()
+          : m.role?.nom?.toLowerCase() || '';
+      return (
+        fullName.includes(q) ||
+        String(m.email || '').toLowerCase().includes(q) ||
+        roleName.includes(q)
+      );
+    });
+  }, [members, assigneeQuery]);
+
+  const selectedAssignee = useMemo(
+    () =>
+      members.find(
+        (m) => String(m.id_utilisateur ?? m.id) === formData.assigne_a,
+      ),
+    [members, formData.assigne_a],
+  );
+
+  const handleChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >,
+  ) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleSelectProject = (id: number) => {
+    setSelectedProjectId(String(id));
+    setProjectMenuOpen(false);
+    setProjectQuery('');
+  };
+
+  const handleSelectAssignee = (id: string) => {
+    setFormData((prev) => ({ ...prev, assigne_a: id }));
+    setAssigneeMenuOpen(false);
+    setAssigneeQuery('');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!projectId) {
-      setError('Veuillez sélectionner un projet d\'abord');
+    if (!selectedProjectId) {
+      setError('Veuillez sélectionner un projet.');
       return;
     }
 
@@ -56,88 +218,353 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ isOpen, projectId, on
     setError('');
 
     try {
+      if (formData.statut_t === 'OVERDUE') {
+        if (!formData.date_limite_t) {
+          setError('Pour "En retard", renseignez une échéance passée.');
+          setIsSubmitting(false);
+          return;
+        }
+        const due = new Date(formData.date_limite_t);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        if (due >= today) {
+          setError('Le statut "En retard" nécessite une échéance antérieure à aujourd’hui.');
+          setIsSubmitting(false);
+          return;
+        }
+      }
+      if (!formData.assigne_a) {
+        setError('Veuillez assigner la tâche à un membre du projet.');
+        setIsSubmitting(false);
+        return;
+      }
       await taskService.create({
-        ...formData,
-        id_projet: parseInt(projectId),
-        id_sprint: formData.id_sprint ? parseInt(formData.id_sprint) : undefined,
-        statut_t: TaskStatus.TODO,
-        date_limite_t: formData.date_limite_t ? new Date(formData.date_limite_t).toISOString() : undefined
-      } as any);
+        nom_t: formData.nom_t,
+        description_t: formData.description_t,
+        priorite_t: formData.priorite_t,
+        id_projet: parseInt(selectedProjectId),
+        statut_t:
+          formData.statut_t === 'OVERDUE'
+            ? TaskStatus.TODO
+            : formData.statut_t,
+        assigne_a: parseInt(formData.assigne_a, 10),
+        date_limite_t: formData.date_limite_t
+          ? new Date(formData.date_limite_t).toISOString()
+          : undefined,
+      });
       onSuccess();
       onClose();
-      setFormData({ nom_t: '', description_t: '', priorite_t: TaskPriority.MEDIUM, date_limite_t: '', id_sprint: '' });
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Erreur lors de la création de la tâche');
+      setError(
+        err.response?.data?.message ||
+          'Erreur lors de la création de la tâche',
+      );
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  return (
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
-        <div className="modal-overlay">
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        <div
+          className="modal-overlay compact-modal-overlay"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) onClose();
+          }}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.97, y: 12 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="modal-container"
+            exit={{ opacity: 0, scale: 0.97, y: 12 }}
+            transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+            className="modal-container compact-modal"
+            onMouseDown={(e) => e.stopPropagation()}
           >
-            <div className="modal-header">
-              <h2>Nouvelle Tâche</h2>
-              <button onClick={onClose} className="close-btn"><X size={20} /></button>
+            <div className="modal-header compact-modal-header">
+              <div>
+                <h2>Nouvelle tâche</h2>
+                <p>Ajoutez une tâche à un de vos projets</p>
+              </div>
+              <button
+                onClick={onClose}
+                className="close-btn"
+                aria-label="Fermer"
+                type="button"
+              >
+                <X size={18} />
+              </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="modal-form">
+            <form onSubmit={handleSubmit} className="modal-form compact-modal-form">
+              <div className="compact-modal-body">
               <div className="form-group">
-                <label>Titre de la tâche</label>
+                <label htmlFor="task-title">
+                  Titre <span className="required">*</span>
+                </label>
                 <div className="input-wrapper">
-                  <Type className="input-icon" size={18} />
-                  <input 
-                    type="text" 
-                    name="nom_t" 
-                    placeholder="Ex: Designer le logo" 
+                  <Type className="input-icon" size={16} />
+                  <input
+                    id="task-title"
+                    type="text"
+                    name="nom_t"
+                    placeholder="Ex : Designer le logo"
                     value={formData.nom_t}
                     onChange={handleChange}
-                    required 
+                    required
+                    autoFocus
                   />
                 </div>
               </div>
 
+              <div className="form-group" ref={projectFieldRef}>
+                <label>
+                  Projet <span className="required">*</span>
+                </label>
+                <div
+                  className={`task-combobox ${projectMenuOpen ? 'open' : ''} ${
+                    selectedProject ? 'has-value' : ''
+                  }`}
+                >
+                  <button
+                    type="button"
+                    className="task-combobox-trigger"
+                    onClick={() => setProjectMenuOpen((v) => !v)}
+                    aria-haspopup="listbox"
+                    aria-expanded={projectMenuOpen}
+                  >
+                    <Briefcase size={16} className="input-icon" />
+                    <span
+                      className={`task-combobox-value ${
+                        selectedProject ? '' : 'placeholder'
+                      }`}
+                    >
+                      {selectedProject
+                        ? selectedProject.nom_p
+                        : 'Sélectionner un projet'}
+                    </span>
+                    <ChevronDown
+                      size={14}
+                      className="task-combobox-chevron"
+                    />
+                  </button>
+
+                  {projectMenuOpen && (
+                    <div className="task-combobox-menu" role="listbox">
+                      <div className="task-combobox-search">
+                        <Search size={14} />
+                        <input
+                          type="text"
+                          placeholder="Rechercher un projet..."
+                          value={projectQuery}
+                          onChange={(e) => setProjectQuery(e.target.value)}
+                          autoFocus
+                        />
+                      </div>
+                      <div className="task-combobox-options">
+                        {filteredProjects.length === 0 && (
+                          <div className="task-combobox-empty">
+                            Aucun projet trouvé
+                          </div>
+                        )}
+                        {filteredProjects.map((p) => {
+                          const isActive =
+                            String(p.id_projet) === selectedProjectId;
+                          return (
+                            <button
+                              type="button"
+                              key={p.id_projet}
+                              className={`task-combobox-option ${
+                                isActive ? 'active' : ''
+                              }`}
+                              onClick={() => handleSelectProject(p.id_projet)}
+                              role="option"
+                              aria-selected={isActive}
+                            >
+                              <span className="option-label">
+                                <span className="option-name">{p.nom_p}</span>
+                                {p.entreprise?.nom && (
+                                  <span className="option-meta">
+                                    {p.entreprise.nom}
+                                  </span>
+                                )}
+                              </span>
+                              {isActive && <Check size={14} />}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
               <div className="form-group">
-                <label>Description</label>
+                <label htmlFor="task-description">Description</label>
                 <div className="input-wrapper">
-                  <AlignLeft className="input-icon-top" size={18} />
-                  <textarea 
-                    name="description_t" 
-                    placeholder="Détails de la tâche..." 
+                  <AlignLeft className="input-icon-top" size={16} />
+                  <textarea
+                    id="task-description"
+                    name="description_t"
+                    placeholder="Détails de la tâche (optionnel)"
                     value={formData.description_t}
                     onChange={handleChange}
-                    required
+                    rows={3}
                   />
                 </div>
               </div>
 
               <div className="form-row">
                 <div className="form-group">
-                  <label>Priorité</label>
+                  <label htmlFor="task-priority">Priorité</label>
                   <div className="input-wrapper">
-                    <Flag className="input-icon" size={18} />
-                    <select name="priorite_t" value={formData.priorite_t} onChange={handleChange}>
-                      <option value={TaskPriority.LOW}>Basse</option>
-                      <option value={TaskPriority.MEDIUM}>Moyenne</option>
-                      <option value={TaskPriority.HIGH}>Haute</option>
-                      <option value={TaskPriority.CRITICAL}>Critique</option>
+                    <Flag className="input-icon" size={16} />
+                    <select
+                      id="task-priority"
+                      name="priorite_t"
+                      value={formData.priorite_t}
+                      onChange={handleChange}
+                    >
+                      {Object.values(TaskPriority).map((value) => (
+                        <option key={value} value={value}>
+                          {TASK_PRIORITY_LABELS[value]}
+                        </option>
+                      ))}
                     </select>
+                    <ChevronDown size={14} className="select-chevron" />
                   </div>
                 </div>
                 <div className="form-group">
-                  <label>Échéance</label>
+                  <label htmlFor="task-status">Statut</label>
                   <div className="input-wrapper">
-                    <Calendar className="input-icon" size={18} />
-                    <input 
-                      type="date" 
-                      name="date_limite_t" 
+                    <Check className="input-icon" size={16} />
+                    <select
+                      id="task-status"
+                      name="statut_t"
+                      value={formData.statut_t}
+                      onChange={handleChange}
+                    >
+                      <option value={TaskStatus.TODO}>À faire</option>
+                      <option value={TaskStatus.IN_PROGRESS}>En cours</option>
+                      <option value={TaskStatus.DONE}>Terminée</option>
+                      <option value="OVERDUE">En retard</option>
+                    </select>
+                    <ChevronDown size={14} className="select-chevron" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="form-row">
+                <div className="form-group" ref={assigneeFieldRef}>
+                  <label>
+                    Assigné à <span className="required">*</span>
+                  </label>
+                  <div
+                    className={`task-combobox ${assigneeMenuOpen ? 'open' : ''} ${
+                      selectedAssignee ? 'has-value' : ''
+                    }`}
+                  >
+                    <button
+                      type="button"
+                      className="task-combobox-trigger"
+                      onClick={() => setAssigneeMenuOpen((v) => !v)}
+                      aria-haspopup="listbox"
+                      aria-expanded={assigneeMenuOpen}
+                    >
+                      {selectedAssignee ? (
+                        <div className="avatar-xs" style={{ width: '20px', height: '20px', fontSize: '0.6rem', border: 'none', flexShrink: 0 }}>
+                          {selectedAssignee.prenom?.[0]}{selectedAssignee.nom?.[0]}
+                        </div>
+                      ) : (
+                        <User size={16} className="input-icon" />
+                      )}
+                      <span
+                        className={`task-combobox-value ${
+                          selectedAssignee ? '' : 'placeholder'
+                        }`}
+                      >
+                        {selectedAssignee
+                          ? `${selectedAssignee.prenom || ''} ${selectedAssignee.nom || ''}`.trim() ||
+                            selectedAssignee.email
+                          : 'Choisir un membre du projet'}
+                      </span>
+                      <ChevronDown
+                        size={14}
+                        className="task-combobox-chevron"
+                      />
+                    </button>
+
+                    {assigneeMenuOpen && (
+                      <div className="task-combobox-menu" role="listbox">
+                        <div className="task-combobox-search">
+                          <Search size={14} />
+                          <input
+                            type="text"
+                            placeholder="Rechercher un membre..."
+                            value={assigneeQuery}
+                            onChange={(e) => setAssigneeQuery(e.target.value)}
+                            autoFocus
+                          />
+                        </div>
+                        <div className="task-combobox-options">
+                          {filteredMembers.length === 0 && (
+                            <div className="task-combobox-empty">
+                              Aucun membre trouvé
+                            </div>
+                          )}
+                          {filteredMembers.map((member) => {
+                            const memberId = String(member.id_utilisateur ?? member.id);
+                            const isActive = memberId === formData.assigne_a;
+                            const roleLabel =
+                              typeof member.role === 'string'
+                                ? member.role
+                                : member.role?.nom || member.poste || 'Membre';
+                            const statusLabel = String(member.statut || '').toUpperCase() === 'PENDING'
+                              ? 'Invité'
+                              : 'Actif';
+                            const displayName =
+                              `${member.prenom || ''} ${member.nom || ''}`.trim() ||
+                              member.email;
+                            return (
+                              <button
+                                type="button"
+                                key={memberId}
+                                className={`task-combobox-option ${
+                                  isActive ? 'active' : ''
+                                }`}
+                                onClick={() => handleSelectAssignee(memberId)}
+                                role="option"
+                                aria-selected={isActive}
+                                style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.5rem 0.75rem' }}
+                              >
+                                <div className="avatar-xs" style={{ width: '28px', height: '28px', fontSize: '0.75rem', border: 'none', backgroundColor: isActive ? 'white' : 'var(--primary)', color: isActive ? 'var(--primary)' : 'white' }}>
+                                  {member.prenom?.[0]}{member.nom?.[0]}
+                                </div>
+                                <span className="option-label" style={{ flex: 1 }}>
+                                  <span className="option-name">{displayName}</span>
+                                  <span className="option-meta">
+                                    {roleLabel}
+                                  </span>
+                                </span>
+                                {isActive && <Check size={14} />}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label htmlFor="task-due">Échéance</label>
+                  <div className="input-wrapper">
+                    <Calendar className="input-icon" size={16} />
+                    <input
+                      id="task-due"
+                      type="date"
+                      name="date_limite_t"
                       value={formData.date_limite_t}
                       onChange={handleChange}
                     />
@@ -145,32 +572,35 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ isOpen, projectId, on
                 </div>
               </div>
 
-              <div className="form-group">
-                <label>Sprint (Optionnel)</label>
-                <div className="input-wrapper">
-                  <Layers className="input-icon" size={18} />
-                  <select name="id_sprint" value={formData.id_sprint} onChange={handleChange}>
-                    <option value="">Aucun sprint</option>
-                    {sprints.map(s => (
-                      <option key={s.id_sprint} value={s.id_sprint}>{s.nom_s}</option>
-                    ))}
-                  </select>
-                </div>
+              {error && <p className="form-error">{error}</p>}
               </div>
 
-              {error && <p className="form-error">{error}</p>}
-
-              <div className="modal-footer">
-                <button type="button" onClick={onClose} className="secondary-btn">Annuler</button>
-                <button type="submit" className="primary-btn" disabled={isSubmitting}>
-                  {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : 'Créer la tâche'}
+              <div className="modal-footer compact-modal-footer">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="secondary-btn"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  className="primary-btn"
+                  disabled={isSubmitting || !selectedProjectId}
+                >
+                  {isSubmitting ? (
+                    <Loader2 className="animate-spin" size={16} />
+                  ) : (
+                    'Créer tâche'
+                  )}
                 </button>
               </div>
             </form>
           </motion.div>
         </div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 };
 

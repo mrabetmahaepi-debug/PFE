@@ -1,6 +1,8 @@
+import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './hooks/useAuth';
 import ProtectedRoute from './components/ProtectedRoute';
+import PermissionRoute from './components/PermissionRoute';
 import DashboardLayout from './layouts/DashboardLayout';
 import Dashboard from './pages/Dashboard';
 import Projects from './pages/Projects';
@@ -12,8 +14,16 @@ import Enterprises from './pages/Enterprises';
 import Messages from './pages/Messages';
 import Permissions from './pages/Permissions';
 import ProjectAccess from './pages/ProjectAccess';
+import Workspace from './pages/Workspace';
+import Docs from './pages/Docs';
+import TaskDetailsPage from './pages/TaskDetail';
+import ListViewPage from './pages/ListViewPage';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
+import AcceptInvitation from './pages/AcceptInvitation';
+import Invite from './pages/Invite';
 
 
 import ProjectDetail from './pages/ProjectDetail';
@@ -21,14 +31,38 @@ import EnterpriseDetail from './pages/EnterpriseDetail';
 import UserDetail from './pages/UserDetail';
 import ActivityLogs from './pages/ActivityLogs';
 import { useAuth } from './hooks/useAuth';
+import { isSuperAdmin, isEnterpriseAdmin } from './lib/permissions';
+import { RouteErrorBoundary } from './components/RouteErrorBoundary';
 
 const NoSuperAdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
-  const roleName = typeof user?.role === 'object' ? user.role?.nom : user?.role;
-  
-  const r = roleName?.toString().trim().toUpperCase();
-  if (r === 'SUPERADMIN') {
-    return <Navigate to="/" replace />;
+  if (isSuperAdmin(user)) {
+    return <Navigate to="/home" replace />;
+  }
+  return <>{children}</>;
+};
+
+/** Tenant Admin: /workspace is not used; redirect home (route kept for other roles). */
+const AdminWorkspaceRedirect: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user, loading } = useAuth();
+  if (loading) {
+    return (
+      <div style={{ padding: 24 }}>
+        <span>Chargement…</span>
+      </div>
+    );
+  }
+  if (isEnterpriseAdmin(user)) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  return <>{children}</>;
+};
+
+/** Activity logs are global; backend requires SuperAdmin. */
+const SuperAdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user } = useAuth();
+  if (!isSuperAdmin(user)) {
+    return <Navigate to="/home" replace />;
   }
   return <>{children}</>;
 };
@@ -41,33 +75,185 @@ function App() {
           {/* Public Auth Routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-          
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/invitations/accept/:token" element={<AcceptInvitation />} />
+          <Route path="/accept-invitation" element={<AcceptInvitation />} />
+          <Route path="/invitation/:token" element={<AcceptInvitation />} />
+
           {/* Protected Dashboard Routes */}
           <Route path="/" element={
             <ProtectedRoute>
               <DashboardLayout />
             </ProtectedRoute>
           }>
-            <Route index element={<Dashboard />} />
+            <Route index element={<Navigate to="/home" replace />} />
+            <Route path="home" element={<Dashboard />} />
             <Route path="dashboard" element={<Dashboard />} />
-             <Route path="projects" element={<NoSuperAdminRoute><Projects /></NoSuperAdminRoute>} />
-            <Route path="projects/:id" element={<ProjectDetail />} />
-            <Route path="activities" element={<ActivityLogs />} />
-            <Route path="tasks" element={<NoSuperAdminRoute><Tasks /></NoSuperAdminRoute>} />
-            <Route path="team" element={<Team />} />
+            <Route
+              path="inbox"
+              element={
+                <PermissionRoute permission="MESSAGING_USE">
+                  <Messages />
+                </PermissionRoute>
+              }
+            />
+            <Route path="messages" element={<Navigate to="/inbox" replace />} />
+            <Route path="docs" element={<Docs />} />
+            <Route
+              path="projects"
+              element={
+                <PermissionRoute any={['PROJECT_VIEW_ALL', 'WORKSPACE_VIEW']}>
+                  <NoSuperAdminRoute>
+                    <RouteErrorBoundary pageLabel="la liste des projets">
+                      <Projects />
+                    </RouteErrorBoundary>
+                  </NoSuperAdminRoute>
+                </PermissionRoute>
+              }
+            />
+            <Route
+              path="lists/:listId"
+              element={
+                <PermissionRoute any={['PROJECT_VIEW_ALL', 'WORKSPACE_VIEW']}>
+                  <NoSuperAdminRoute>
+                    <RouteErrorBoundary pageLabel="la liste">
+                      <ListViewPage />
+                    </RouteErrorBoundary>
+                  </NoSuperAdminRoute>
+                </PermissionRoute>
+              }
+            />
+            <Route
+              path="spaces/*"
+              element={
+                <PermissionRoute any={['PROJECT_VIEW_ALL', 'WORKSPACE_VIEW']}>
+                  <NoSuperAdminRoute>
+                    <AdminWorkspaceRedirect>
+                      <Workspace />
+                    </AdminWorkspaceRedirect>
+                  </NoSuperAdminRoute>
+                </PermissionRoute>
+              }
+            />
+            <Route path="workspace" element={<Navigate to="/spaces" replace />} />
+            <Route
+              path="tasks/:taskId"
+              element={
+                <PermissionRoute any={['PROJECT_VIEW_ALL', 'WORKSPACE_VIEW', 'TASK_VIEW_ALL']}>
+                  <NoSuperAdminRoute>
+                    <RouteErrorBoundary pageLabel="la tâche">
+                      <TaskDetailsPage />
+                    </RouteErrorBoundary>
+                  </NoSuperAdminRoute>
+                </PermissionRoute>
+              }
+            />
+            <Route
+              path="projects/:id"
+              element={
+                <PermissionRoute any={['PROJECT_VIEW_ALL', 'WORKSPACE_VIEW']}>
+                  <RouteErrorBoundary pageLabel="le détail du projet">
+                    <ProjectDetail />
+                  </RouteErrorBoundary>
+                </PermissionRoute>
+              }
+            />
+            <Route
+              path="activities"
+              element={
+                <SuperAdminRoute>
+                  <ActivityLogs />
+                </SuperAdminRoute>
+              }
+            />
+            <Route
+              path="tasks"
+              element={
+                <PermissionRoute permission="TASK_VIEW_ALL">
+                  <NoSuperAdminRoute>
+                    <Tasks />
+                  </NoSuperAdminRoute>
+                </PermissionRoute>
+              }
+            />
+            <Route
+              path="team"
+              element={
+                <PermissionRoute permission="TEAM_VIEW">
+                  <Team />
+                </PermissionRoute>
+              }
+            />
             <Route path="team/:id" element={<UserDetail />} />
             <Route path="users/:id" element={<UserDetail />} />
-            <Route path="approvals" element={<Approvals />} />
-            <Route path="messages" element={<Messages />} />
-            <Route path="enterprises" element={<Enterprises />} />
-            <Route path="enterprises/:id" element={<EnterpriseDetail />} />
-            <Route path="permissions" element={<Permissions />} />
-            <Route path="access-management" element={<NoSuperAdminRoute><ProjectAccess /></NoSuperAdminRoute>} />
+            <Route
+              path="approvals"
+              element={
+                <PermissionRoute permission="SYSTEM_APPROVE_ADMINS">
+                  <Approvals />
+                </PermissionRoute>
+              }
+            />
+            <Route
+              path="messages"
+              element={
+                <PermissionRoute permission="MESSAGING_USE">
+                  <Messages />
+                </PermissionRoute>
+              }
+            />
+            <Route
+              path="enterprises"
+              element={
+                <PermissionRoute permission="SYSTEM_MANAGE_ENTERPRISES">
+                  <Enterprises />
+                </PermissionRoute>
+              }
+            />
+            <Route
+              path="enterprises/:id"
+              element={
+                <PermissionRoute permission="SYSTEM_MANAGE_ENTERPRISES">
+                  <EnterpriseDetail />
+                </PermissionRoute>
+              }
+            />
+            <Route
+              path="permissions"
+              element={
+                <PermissionRoute permission="TEAM_MANAGE_ROLES">
+                  <NoSuperAdminRoute>
+                    <Permissions />
+                  </NoSuperAdminRoute>
+                </PermissionRoute>
+              }
+            />
+            <Route
+              path="invite"
+              element={
+                <PermissionRoute any={['TEAM_INVITE', 'TEAM_MANAGE_ROLES']}>
+                  <NoSuperAdminRoute>
+                    <Invite />
+                  </NoSuperAdminRoute>
+                </PermissionRoute>
+              }
+            />
+            <Route
+              path="access-management"
+              element={
+                <PermissionRoute permission="PROJECT_MANAGE_ACCESS">
+                  <NoSuperAdminRoute>
+                    <ProjectAccess />
+                  </NoSuperAdminRoute>
+                </PermissionRoute>
+              }
+            />
             <Route path="settings" element={<Settings />} />
           </Route>
 
           {/* Fallback */}
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<Navigate to="/home" replace />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

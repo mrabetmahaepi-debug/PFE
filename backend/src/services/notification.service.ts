@@ -12,6 +12,7 @@ export const getMyNotifications = async (userId: number) => {
       is_read: true,
       date_envoi: true,
       id_utilisateur: true,
+      metadata: true,
     },
   });
 };
@@ -40,16 +41,17 @@ export const createNotification = async (data: any) => {
       is_read: true,
       date_envoi: true,
       id_utilisateur: true,
+      metadata: true,
     },
   });
 };
 
-export const markAsRead = async (notificationId: number) => {
+export const markAsRead = async (notificationId: number, userId: number) => {
   const existing = await prisma.notification.findUnique({
     where: { num_notification: notificationId },
   });
 
-  if (!existing) {
+  if (!existing || existing.id_utilisateur !== userId) {
     throw new Error("Notification non trouvée");
   }
 
@@ -64,6 +66,7 @@ export const markAsRead = async (notificationId: number) => {
       is_read: true,
       date_envoi: true,
       id_utilisateur: true,
+      metadata: true,
     },
   });
 };

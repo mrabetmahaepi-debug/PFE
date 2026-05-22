@@ -35,6 +35,10 @@ export const checkOverdueTasks = async () => {
     });
 
     if (!existingAlert && task.assigne_a) {
+      const taskMeta = JSON.stringify({
+        taskId: task.id_tache,
+        projectId: task.id_projet,
+      });
       // Alerte pour le Membre
       await prisma.notification.create({
         data: {
@@ -42,7 +46,8 @@ export const checkOverdueTasks = async () => {
           sujet: "Retard sur tâche",
           message: `La tâche "${task.nom_t}" est en retard. Date prévue : ${task.date_limite_t?.toLocaleDateString()}`,
           type: "danger",
-          date_envoi: new Date()
+          date_envoi: new Date(),
+          metadata: taskMeta,
         }
       });
 
@@ -55,7 +60,8 @@ export const checkOverdueTasks = async () => {
             sujet: "Alerte Retard Équipe",
             message: `L'utilisateur ${task.utilisateur?.prenom} est en retard sur la tâche "${task.nom_t}" (Projet: ${task.projet?.nom_p})`,
             type: "warning",
-            date_envoi: new Date()
+            date_envoi: new Date(),
+            metadata: taskMeta,
           }
         });
       }

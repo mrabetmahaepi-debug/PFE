@@ -1,8 +1,2 @@
-/* Reusing modal styles but adding specific ones if needed */
+/* Compact modal system (shared with Create Task / Create Project) */
 @import './CreateProjectModal.css';
-
-.modal-form .form-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-}

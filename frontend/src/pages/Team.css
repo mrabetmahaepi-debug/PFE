@@ -1,115 +1,1871 @@
+/* ═══════════════════════════════════════════════════════════════
+   Team page — Virtide palette (scoped to .team-page)
+   ═══════════════════════════════════════════════════════════════ */
+
 .team-page {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  max-width: 100%;
+}
+
+/* ── Page header: title + invite lower-right ── */
+.team-page .team-page-header {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto auto;
+  align-items: start;
+  gap: 0.25rem 1.5rem;
+  margin-top: 0.65rem;
+  margin-bottom: 2rem;
+  padding-top: 0.25rem;
+}
+
+.team-page .team-page-header__main {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  min-width: 0;
+}
+
+.team-page .team-page-header__invite {
+  grid-column: 2;
+  grid-row: 2;
+  align-self: end;
+  padding-top: 0.75rem;
+}
+
+/* Title size & position (unchanged) */
+.team-page .team-page-header h1,
+.team-page .team-page-title {
+  margin-top: 0.4rem;
+  margin-bottom: 0.15rem;
+  font-size: clamp(26px, 2vw, 34px);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1.1;
+}
+
+/* Title color — super-admin */
+.team-page:not(.team-page--admin-equipe) .page-header.team-page-header h1.team-page-title,
+.team-page:not(.team-page--admin-equipe) .team-page-header h1 {
+  background: linear-gradient(90deg, #14b8a6, #0ea5e9, #8b5cf6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Admin Équipe — Retour au-dessus, titre en dessous (comme Projets) */
+.team-page--admin-equipe > .back-button {
+  display: inline-flex;
+  margin-bottom: 0;
+}
+
+.team-page--admin-equipe .team-page-header {
+  display: block;
+  margin-top: 0.4rem;
+  margin-bottom: 1.75rem;
+}
+
+.team-page--admin-equipe .team-page-header__main {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+/* Title — Admin Équipe */
+.team-page--admin-equipe .page-header.team-page-header h1.team-page-title,
+.team-page--admin-equipe .team-page-header h1.team-page-title,
+.team-page--admin-equipe .team-page-header h1 {
+  display: block;
+  margin-top: 0;
+  margin-bottom: 0.15rem;
+  font-size: clamp(26px, 2vw, 34px);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1.1;
+  background: var(--equipe-gradient-text);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: transparent;
+}
+
+.team-page--admin-equipe .team-page-header__subtitle {
+  margin-top: 0.5rem;
+  line-height: 1.5;
+  max-width: 36rem;
+  color: var(--virtide-text-muted);
+  font-size: 0.875rem;
+}
+
+/* Super Admin — compact header (title only) */
+.team-page--super-admin .team-page-header {
+  display: block;
+  margin-top: 0.4rem;
+  margin-bottom: 1.25rem;
+  padding-top: 0;
+}
+
+.team-page--super-admin .team-page-header__main {
+  grid-row: auto;
+}
+
+.team-page--super-admin .team-page-title {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+/* team-invite-btn — uses virtide-btn--soft from virtide-theme.css */
+
+/* ── Cards base ── */
+.team-page .card-v3 {
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-soft);
+  border-radius: 16px;
+  box-shadow: var(--shadow-card);
+  transition: box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+/* ── Filters bar ── */
+.team-page .team-filters-card {
+  margin-bottom: 1.75rem;
+  padding: 1rem 1.15rem;
+  background: linear-gradient(135deg, var(--virtide-mint) 0%, var(--virtide-cyan) 70%, rgba(237, 233, 254, 0.65) 100%);
+}
+
+/* Admin Équipe — palette alignée sur Projects (.projects-page) */
+.team-page--admin-equipe {
+  --equipe-gradient-text: linear-gradient(90deg, #14b8a6 0%, #22d3ee 30%, #0ea5e9 55%, #8b5cf6 100%);
+  --equipe-gradient-btn: linear-gradient(90deg, #14b8a6 0%, #0ea5e9 55%, #8b5cf6 100%);
+  --equipe-btn-shadow:
+    0 10px 28px rgba(14, 165, 233, 0.35),
+    0 4px 14px rgba(139, 92, 246, 0.22);
+  --equipe-btn-shadow-hover:
+    0 14px 32px rgba(14, 165, 233, 0.4),
+    0 6px 18px rgba(139, 92, 246, 0.28);
+  --equipe-surface: rgba(255, 255, 255, 0.72);
+  --equipe-border: rgba(99, 102, 241, 0.16);
+  --equipe-shadow: 0 1px 3px rgba(99, 102, 241, 0.06);
+  --equipe-card-gradient: linear-gradient(135deg, #ffffff 0%, #f8faff 55%, #f5f3ff 100%);
+  --equipe-card-border: #dde7f3;
+  --equipe-card-shadow: 0 10px 30px rgba(64, 90, 150, 0.08);
+  --equipe-focus-border: rgba(14, 165, 233, 0.45);
+  --equipe-focus-ring: 0 0 0 3px rgba(14, 165, 233, 0.12);
+  --equipe-text-muted: #64748b;
+  --equipe-text-main: #334155;
+  --equipe-control-height: 42px;
+  --equipe-control-radius: 14px;
+  /* Grille colonnes partagée (Administrateurs + Membres) */
+  --team-w-user: 200px;
+  --team-w-id: 4.75rem;
+  --team-w-role: 5.5rem;
+  --team-w-projects: 14%;
+  --team-w-email: 14%;
+  --team-w-login: 13%;
+  --team-w-statut: 12%;
+  --team-w-actions: 7rem;
+}
+
+/* Admin Équipe — no outer filter card */
+.team-page--admin-equipe .team-filters-bar {
+  margin-bottom: 1.75rem;
+  padding: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  overflow: visible;
+}
+
+/* Toolbar: [ Search ~70% ] … [ Inviter | Statuts ] */
+.team-page--admin-equipe .team-filters-row.team-filters-row--toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.6rem;
+  overflow: visible;
+}
+
+.team-page--admin-equipe .team-filters-row--toolbar .team-search-field {
+  flex: 1 1 0;
+  width: auto;
+  max-width: min(72%, 68rem);
+  min-width: min(14rem, 100%);
+  margin: 0;
+}
+
+.team-page--admin-equipe .team-equipe-actions-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+  margin-left: auto;
+  overflow: visible;
+}
+
+.team-page--admin-equipe .team-filters-row--toolbar .team-search-field.search-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: var(--equipe-control-height);
+  width: 100%;
+  padding: 0;
+  background: var(--equipe-surface);
+  border: 1px solid var(--equipe-border);
+  border-radius: var(--equipe-control-radius);
+  box-shadow: var(--equipe-shadow);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.team-page--admin-equipe .team-filters-row--toolbar .team-search-field.search-container:focus-within {
+  border-color: var(--equipe-focus-border);
+  box-shadow: var(--equipe-focus-ring);
+}
+
+.team-page--admin-equipe .team-filters-row--toolbar .team-search-field .search-icon {
+  left: 0.85rem;
+  width: 16px;
+  height: 16px;
+  color: var(--equipe-text-muted);
+}
+
+.team-page--admin-equipe .team-filters-row--toolbar .team-search-field .search-input {
+  width: 100%;
+  height: 100%;
+  padding: 0 0.85rem 0 2.35rem;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: var(--equipe-control-radius);
+  font-size: 0.8125rem;
+  color: var(--equipe-text-main);
+}
+
+.team-page--admin-equipe .team-filters-row--toolbar .team-search-field .search-input:hover,
+.team-page--admin-equipe .team-filters-row--toolbar .team-search-field .search-input:focus {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none;
+}
+
+/* Boutons premium — dégradé teal → bleu → violet (comme la maquette) */
+.team-page--admin-equipe .team-equipe-premium-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+  height: var(--equipe-control-height);
+  min-height: var(--equipe-control-height);
+  padding: 0 0.95rem;
+  border-radius: var(--equipe-control-radius);
+  background: var(--equipe-gradient-btn) !important;
+  color: #fff !important;
+  border: none !important;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  box-shadow: var(--equipe-btn-shadow) !important;
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+.team-page--admin-equipe button.team-equipe-premium-btn {
+  font-family: inherit;
+}
+
+.team-page--admin-equipe .team-equipe-premium-btn:hover,
+.team-page--admin-equipe .team-equipe-premium-btn:focus-within {
+  transform: translateY(-2px);
+  box-shadow: var(--equipe-btn-shadow-hover) !important;
+  background: var(--equipe-gradient-btn) !important;
+  border: none !important;
+}
+
+.team-page--admin-equipe button.team-equipe-premium-btn:hover:not(:disabled),
+.team-page--admin-equipe button.team-equipe-premium-btn:active:not(:disabled) {
+  color: #fff !important;
+}
+
+.team-page--admin-equipe button.team-equipe-premium-btn:active:not(:disabled) {
+  transform: scale(0.98) translateY(0);
+}
+
+.team-page--admin-equipe .team-equipe-premium-btn svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+
+/* Status filter — custom themed dropdown */
+.team-status-select {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.team-status-select-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: none;
+  background: transparent;
+  outline: none;
+  padding: 0;
+  margin: 0;
+  font-family: inherit;
+  cursor: pointer;
+  transition: color 0.25s ease;
+}
+
+.team-status-select-trigger span {
+  white-space: nowrap;
+}
+
+.team-status-select-icon,
+.team-status-select-chevron {
+  flex-shrink: 0;
+  pointer-events: none;
+  transition:
+    color 0.25s ease,
+    transform 0.25s ease;
+}
+
+.team-status-select.is-open .team-status-select-chevron {
+  transform: rotate(180deg);
+}
+
+.team-status-select-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 220px;
+  min-width: 220px;
+  max-width: 220px;
+  padding: 8px;
+  background: linear-gradient(135deg, #f8fffc 0%, #eff6ff 55%, #f5f3ff 100%);
+  border: 1px solid rgba(14, 165, 233, 0.18);
+  border-radius: 18px;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.1);
+}
+
+/* Portal — escapes overflow:hidden on tables/cards */
+.team-status-select-menu--portal {
+  position: fixed;
+  z-index: 10050;
+  pointer-events: auto;
+  transform-origin: top right;
+}
+
+.team-status-select-option {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 40px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 12px;
+  background: transparent;
+  color: #475569;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background 0.25s ease,
+    color 0.25s ease;
+}
+
+/* Themed dropdown panel (Super Admin + shared portals) */
+.team-themed-dropdown-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  background: linear-gradient(135deg, #f8fffc 0%, #eff6ff 55%, #f5f3ff 100%);
+  border: 1px solid rgba(14, 165, 233, 0.18);
+  border-radius: 18px;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.1);
+  z-index: 9999;
+}
+
+.team-themed-dropdown-menu.team-status-select-menu--portal {
+  position: fixed;
+  z-index: 9999;
+  pointer-events: auto;
+  transform-origin: top right;
+}
+
+/* Enterprise filter — compact company list only (no header row) */
+.team-enterprise-select-menu {
+  width: 300px;
+  min-width: 300px;
+  max-width: 300px;
+  padding: 12px 8px 8px;
+  gap: 2px;
+  border-radius: 18px;
+  border: 1px solid rgba(14, 165, 233, 0.15);
+  background: linear-gradient(135deg, #f8fffc 0%, #eff6ff 55%, #f5f3ff 100%);
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.1);
+}
+
+.team-enterprise-select-menu .team-enterprise-select-option {
+  height: 40px;
+  padding: 0 16px;
+  font-size: 14px;
+  border-radius: 12px;
+}
+
+.team-status-select-option:hover {
+  background: rgba(14, 165, 233, 0.1);
+  color: #0f172a;
+}
+
+.team-status-select-option.is-selected {
+  background: linear-gradient(90deg, #14b8a6, #0ea5e9, #8b5cf6);
+  color: #fff;
+}
+
+.team-status-select-option.is-selected:hover {
+  background: linear-gradient(90deg, #14b8a6, #0ea5e9, #8b5cf6);
+  color: #fff;
+}
+
+/* Premium toolbar variant (Équipe admin) */
+.team-page--admin-equipe .team-status-select--premium {
+  height: var(--equipe-control-height);
+  min-height: var(--equipe-control-height);
+  padding: 0 0.95rem;
+  border-radius: var(--equipe-control-radius);
+  background: var(--equipe-gradient-btn) !important;
+  color: #fff !important;
+  border: none !important;
+  box-shadow: var(--equipe-btn-shadow) !important;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+.team-page--admin-equipe .team-status-select--premium:hover,
+.team-page--admin-equipe .team-status-select--premium:focus-within {
+  transform: translateY(-2px);
+  box-shadow: var(--equipe-btn-shadow-hover) !important;
+}
+
+.team-page--admin-equipe .team-status-select--premium .team-status-select-trigger {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #fff !important;
+  min-width: 6.75rem;
+}
+
+.team-page--admin-equipe .team-status-select--premium .team-status-select-icon,
+.team-page--admin-equipe .team-status-select--premium .team-status-select-chevron {
+  color: #fff !important;
+}
+
+.team-page--admin-equipe .team-status-select--premium.is-filter-active .team-status-select-trigger span {
+  font-weight: 700;
+}
+
+/* Super-admin filter bar variant */
+.team-page .team-status-select--filter-v3 {
+  min-height: 38px;
+  padding: 0 0.75rem;
+  border-radius: 10px;
+  border: 1px solid var(--border-soft);
+  background: var(--bg-surface-elevated);
+  box-shadow: none;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.team-page .team-status-select--filter-v3:hover {
+  border-color: rgba(244, 114, 182, 0.25);
+  background: var(--virtide-rose);
+}
+
+.team-page .team-status-select--filter-v3:focus-within,
+.team-page .team-status-select--filter-v3.is-open {
+  border-color: var(--virtide-teal);
+  box-shadow: var(--ring);
+}
+
+.team-page .team-status-select--filter-v3 .team-status-select-trigger {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  min-width: 8rem;
+}
+
+.team-page .team-status-select--filter-v3 .team-status-select-icon {
+  color: var(--virtide-text-muted);
+}
+
+.team-page .team-status-select--filter-v3 .team-status-select-chevron {
+  color: #64748b;
+}
+
+.team-page .team-status-select--filter-v3.is-filter-active .team-status-select-trigger span {
+  color: #0d9488;
+  font-weight: 700;
+}
+
+
+.team-page .team-filters-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 1.25rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.team-page .team-search-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1 1 280px;
+  max-width: 440px;
+  min-width: 0;
+  margin: 0;
+  cursor: text;
+}
+
+.team-page .team-search-field .search-icon {
+  position: absolute;
+  left: 1rem;
+  color: var(--text-muted);
+  pointer-events: none;
+  flex-shrink: 0;
+}
+
+.team-page .team-search-field .search-input {
+  width: 100%;
+  padding: 0.62rem 1rem 0.62rem 2.55rem;
+  border-radius: 10px;
+  border: 1px solid var(--border-soft);
+  background: var(--bg-surface-elevated);
+  font-size: 0.8125rem;
+  color: var(--virtide-text);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+.team-page .team-search-field .search-input:hover {
+  border-color: rgba(20, 184, 166, 0.28);
+  background: var(--bg-surface-elevated);
+}
+
+.team-page .team-search-field .search-input:focus {
+  border-color: var(--virtide-teal);
+  box-shadow: var(--ring);
+  background: var(--bg-surface-elevated);
+}
+
+.team-page .team-filters-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: flex-end;
+  flex: 0 1 auto;
+  overflow: visible;
+}
+
+.team-page .filter-group-v3 {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.7rem;
+  min-height: 38px;
+  border-radius: 10px;
+  border: 1px solid var(--border-soft);
+  background: var(--bg-surface-elevated);
+  color: var(--virtide-text-muted);
+  box-shadow: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.team-page .filter-group-v3:hover {
+  border-color: rgba(244, 114, 182, 0.25);
+  background: var(--virtide-rose);
+}
+
+.team-page .filter-group-v3:focus-within {
+  border-color: var(--virtide-teal);
+  box-shadow: var(--ring);
+}
+
+.team-page .filter-group-v3 select {
+  border: none;
+  background: transparent;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  cursor: pointer;
+  outline: none;
+  min-width: 8rem;
+}
+
+/* ── Admin Équipe tables only (enterprise admin, not super-admin) ── */
+
+/* ── Table sections stack ── */
+.team-page--admin-equipe .team-sections {
   display: flex;
   flex-direction: column;
   gap: 2rem;
 }
 
-.members-container {
-  margin-top: 1rem;
-}
-
-.members-table-wrapper {
+.team-page--admin-equipe .team-table-section {
+  --team-table-tint: var(--equipe-card-gradient);
+  --team-row-hover: rgba(14, 165, 233, 0.06);
+  --team-header-bg: linear-gradient(
+    90deg,
+    rgba(20, 184, 166, 0.06),
+    rgba(14, 165, 233, 0.07),
+    rgba(139, 92, 246, 0.07)
+  );
+  --team-border: var(--equipe-card-border);
   padding: 0;
   overflow: hidden;
+  border-radius: 22px !important;
+  background: var(--team-table-tint) !important;
+  border: 1px solid var(--team-border) !important;
+  box-shadow: var(--equipe-card-shadow) !important;
 }
 
-.members-table {
-  width: 100%;
-  border-collapse: collapse;
-  text-align: left;
+.team-page--admin-equipe .team-table-section:hover {
+  border-color: #c7d7eb !important;
+  box-shadow:
+    0 14px 36px rgba(64, 90, 150, 0.12),
+    0 6px 16px rgba(14, 165, 233, 0.08) !important;
 }
 
-.members-table th {
-  padding: 1rem 1.5rem;
-  background-color: var(--bg-main);
-  color: var(--text-muted);
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-weight: 700;
-  border-bottom: 1px solid var(--border);
+.team-page--admin-equipe .team-table-section--admin .team-table-section-head,
+.team-page--admin-equipe .team-table-section--members .team-table-section-head {
+  background: var(--team-header-bg);
+  border-bottom: 1px solid var(--team-border);
 }
 
-.members-table td {
-  padding: 1.25rem 1.5rem;
-  border-bottom: 1px solid var(--border);
-  vertical-align: middle;
+.team-page--admin-equipe .team-table-section-head {
+  padding: 1rem 1.25rem;
 }
 
-.member-info {
+.team-page--admin-equipe .team-table-section-head-inner {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 1rem;
 }
 
-.member-avatar {
-  width: 40px;
-  height: 40px;
-  background-color: var(--primary-light);
+.team-page--admin-equipe .team-table-section-head h2 {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--equipe-text-main);
+  letter-spacing: -0.02em;
+}
+
+.team-page--admin-equipe .team-table-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  height: 2rem;
+  padding: 0 0.65rem;
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--equipe-text-muted);
+  background: var(--equipe-surface);
+  border: 1px solid var(--equipe-border);
+  box-shadow: var(--equipe-shadow);
+}
+
+/* ── Table ── */
+.team-page--admin-equipe .team-table-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(14, 165, 183, 0.35) transparent;
+  background: var(--team-table-tint, linear-gradient(135deg, #ffffff 0%, #f8faff 55%, #f5f3ff 100%));
+}
+
+.team-page--admin-equipe .team-table-wrapper::-webkit-scrollbar {
+  height: 6px;
+}
+
+.team-page--admin-equipe .team-table-wrapper::-webkit-scrollbar-thumb {
+  background: rgba(14, 165, 183, 0.35);
+  border-radius: 99px;
+}
+
+.team-page--admin-equipe .team-table {
+  width: 100%;
+  border-collapse: collapse;
+  border-spacing: 0;
+  text-align: left;
+  background: transparent;
+  table-layout: fixed;
+}
+
+.team-page--admin-equipe .team-table tbody {
+  background: transparent;
+}
+
+.team-page--admin-equipe .team-table-section--admin .team-table {
+  min-width: 920px;
+}
+
+/* Unified header row — one gradient across the row (not per cell) */
+.team-page--admin-equipe .team-table thead tr {
+  background: var(
+    --team-header-bg,
+    linear-gradient(
+      90deg,
+      rgba(20, 184, 166, 0.06),
+      rgba(14, 165, 233, 0.06),
+      rgba(139, 92, 246, 0.06)
+    )
+  );
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.team-page--admin-equipe .team-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 0.5rem 1rem;
+  background: inherit;
+  background-color: transparent;
+  color: var(--equipe-text-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid var(--team-border, #dde7f3);
+  white-space: nowrap;
+  vertical-align: middle;
+  box-shadow: none;
+}
+
+.team-page--admin-equipe .team-table tbody tr {
+  background: transparent;
+  transition: background 0.15s ease;
+}
+
+.team-page--admin-equipe .team-table tbody td {
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid var(--team-border, #dde7f3);
+  vertical-align: middle;
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  color: var(--equipe-text-main);
+  background: transparent;
+  transition: background 0.15s ease;
+}
+
+.team-page--admin-equipe .team-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.team-page--admin-equipe .team-table tbody tr:hover,
+.team-page--admin-equipe .team-table tbody tr:hover td {
+  background: var(--team-row-hover, rgba(14, 165, 233, 0.06));
+}
+
+/* Column alignment */
+.team-page--admin-equipe .team-table th.team-col-statut,
+.team-page--admin-equipe .team-table td.team-cell-statut {
+  text-align: center;
+  vertical-align: middle;
+}
+
+.team-page--admin-equipe .team-table td.team-cell-statut .team-statut-badge {
+  display: inline-flex;
+  vertical-align: middle;
+}
+
+.team-page--admin-equipe .team-table th.team-table-actions,
+.team-page--admin-equipe .team-table td.team-table-actions {
+  text-align: right;
+  vertical-align: middle;
+  width: 6.5rem;
+}
+
+.team-page--admin-equipe .team-table td.team-table-actions .team-actions {
+  margin-left: auto;
+}
+
+.team-page--admin-equipe .team-table th.team-col-id,
+.team-page--admin-equipe .team-table th.team-col-role,
+.team-page--admin-equipe .team-table td.team-cell-id,
+.team-page--admin-equipe .team-table td.team-cell-role {
+  text-align: left;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+  vertical-align: middle;
+}
+
+.team-page--admin-equipe .team-table td.team-email-cell,
+.team-page--admin-equipe .team-table td.team-login-cell {
+  vertical-align: middle;
+}
+
+/* Colonne Utilisateur — même décalage avant ID sur les deux tableaux */
+.team-page--admin-equipe .team-table th:nth-child(1),
+.team-page--admin-equipe .team-table td:nth-child(1),
+.team-page--admin-equipe .team-table td.team-cell-user {
+  padding-right: 0.65rem;
+}
+
+.team-page--admin-equipe .team-table-section--members .team-project-cell {
+  vertical-align: middle;
+}
+
+.team-page--admin-equipe .team-table-section--members .team-table td.team-cell-statut {
+  overflow: visible;
+}
+
+/* ── User cell ── */
+.team-page--admin-equipe .team-user-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.team-page--admin-equipe .team-user-cell > div:last-child {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.team-page--admin-equipe .team-user-name,
+.team-page--admin-equipe .team-user-sub {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.team-page--admin-equipe .team-user-avatar-wrap {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  padding: 2px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #14b8a6, #0ea5e9, #8b5cf6);
+  box-shadow: 0 2px 8px rgba(14, 165, 233, 0.18);
+}
+
+.team-page--admin-equipe .team-user-avatar-wrap .team-user-avatar {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+  border: 2px solid #fff;
+  box-shadow: none;
+  background: #f1f5f9;
+}
+
+.team-page--admin-equipe .team-user-name {
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: #0f172a;
+  margin: 0;
+  line-height: 1.25;
+}
+
+.team-page--admin-equipe .team-user-sub {
+  font-size: 0.6875rem;
+  color: #64748b;
+  margin: 0.1rem 0 0;
+  line-height: 1.2;
+}
+
+.team-page--admin-equipe .team-id-code {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #0e7490;
+  font-family: ui-monospace, 'Cascadia Code', monospace;
+  padding: 0.15rem 0.4rem;
+  border-radius: 6px;
+  background: rgba(14, 165, 233, 0.08);
+  line-height: 1.2;
+  vertical-align: middle;
+}
+
+/* ── Badges: role ── */
+.team-page--admin-equipe .team-role-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.18rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #fff;
+  border: none;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.06);
+  white-space: nowrap;
+  line-height: 1.2;
+  vertical-align: middle;
+}
+
+.team-page--admin-equipe .team-role-badge--admin {
+  background: linear-gradient(90deg, #14b8a6, #0ea5e9);
+  box-shadow: 0 2px 10px rgba(14, 165, 233, 0.25);
+}
+
+.team-page--admin-equipe .team-role-badge--chef {
+  background: linear-gradient(90deg, #0ea5e9, #8b5cf6);
+  box-shadow: 0 2px 10px rgba(139, 92, 246, 0.22);
+}
+
+.team-page--admin-equipe .team-role-badge--designer {
+  background: linear-gradient(135deg, #c4b5fd, #a78bfa);
+  color: #4c1d95;
+  box-shadow: 0 2px 8px rgba(167, 139, 250, 0.28);
+}
+
+.team-page--admin-equipe .team-role-badge--analyste {
+  background: linear-gradient(135deg, #2dd4bf, #14b8a6);
+  box-shadow: 0 2px 8px rgba(20, 184, 166, 0.25);
+}
+
+.team-page--admin-equipe .team-role-badge--dev,
+.team-page--admin-equipe .team-role-badge--default {
+  background: linear-gradient(135deg, rgba(224, 242, 254, 0.95), rgba(237, 233, 254, 0.95));
+  color: #475569;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  box-shadow: none;
+}
+
+/* ── Badges: projects ── */
+.team-page--admin-equipe .team-project-cell {
+  vertical-align: middle;
+}
+
+.team-page--admin-equipe .team-project-badges {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+  align-items: center;
+  max-width: 100%;
+  line-height: 1.2;
+}
+
+.team-page--admin-equipe .team-project-badge {
+  display: inline-block;
+  max-width: 7.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.2;
+  padding: 0.12rem 0.4rem;
+  border-radius: 999px;
+  background: rgba(224, 242, 254, 0.95);
+  color: #0e7490;
+  border: 1px solid rgba(14, 165, 233, 0.16);
+  vertical-align: middle;
+}
+
+.team-page--admin-equipe .team-project-badge--chef {
+  background: linear-gradient(90deg, rgba(14, 165, 233, 0.15), rgba(139, 92, 246, 0.18));
+  color: #5b21b6;
+  border-color: rgba(139, 92, 246, 0.25);
+}
+
+.team-page--admin-equipe .team-project-badge--designer {
+  background: rgba(237, 233, 254, 0.95);
+  color: #6d28d9;
+  border-color: rgba(167, 139, 250, 0.35);
+}
+
+.team-page--admin-equipe .team-project-badge--analyste {
+  background: rgba(204, 251, 241, 0.95);
+  color: #0f766e;
+  border-color: rgba(20, 184, 166, 0.3);
+}
+
+.team-page--admin-equipe .team-project-none {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  font-style: italic;
+  line-height: 1.2;
+}
+
+/* ── Text cells ── */
+.team-page--admin-equipe .team-email-cell {
+  color: #64748b;
+  font-size: 0.8125rem;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.35;
+}
+
+.team-page--admin-equipe .team-login-cell {
+  color: #64748b;
+  font-size: 0.8125rem;
+  white-space: nowrap;
+  line-height: 1.35;
+}
+
+/* ── Badges: status ── */
+.team-page--admin-equipe .team-statut-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.2;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+
+.team-page--admin-equipe .team-statut-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.team-page--admin-equipe .team-statut-active {
+  background: linear-gradient(135deg, #34d399, #10b981);
+  color: #fff;
+  border: none;
+  box-shadow: 0 1px 6px rgba(16, 185, 129, 0.25);
+  padding: 0.2rem 0.5rem;
+  font-weight: 600;
+}
+
+.team-page--admin-equipe .team-statut-active .team-statut-dot {
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.8);
+}
+
+.team-page--admin-equipe .team-statut-inactive {
+  background: #f8fafc;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+}
+
+.team-page--admin-equipe .team-statut-inactive .team-statut-dot {
+  background: #94a3b8;
+}
+
+.team-page--admin-equipe .team-statut-invitation {
+  background: #fff8eb;
+  color: #b45309;
+  border: 1px solid #fde68a;
+  letter-spacing: -0.01em;
+}
+
+.team-page--admin-equipe .team-statut-pending {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+}
+
+/* ── Actions ── */
+.team-page--admin-equipe .team-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.25rem;
+  padding: 0.15rem;
+  border-radius: 10px;
+  background: var(--equipe-surface);
+  border: 1px solid var(--equipe-border);
+  box-shadow: var(--equipe-shadow);
+}
+
+.team-page--admin-equipe .team-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  color: #0e7490;
+  background: linear-gradient(135deg, rgba(240, 249, 255, 0.95), rgba(237, 233, 254, 0.9));
+  border: 1px solid rgba(14, 165, 233, 0.1);
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.team-page--admin-equipe .team-action-btn:hover {
+  background: linear-gradient(135deg, rgba(240, 249, 255, 1), rgba(245, 243, 255, 0.95));
+  color: #0d9488;
+  border-color: rgba(14, 165, 233, 0.18);
+  transform: scale(1.06);
+  box-shadow: 0 3px 10px rgba(14, 165, 233, 0.1);
+}
+
+.team-page--admin-equipe .team-action-btn--danger {
+  color: #b91c1c;
+  border-color: rgba(248, 113, 113, 0.25);
+}
+
+.team-page--admin-equipe .team-action-btn--danger:hover {
+  background: linear-gradient(135deg, #fef2f2, #fee2e2);
+  color: #dc2626;
+  border-color: rgba(239, 68, 68, 0.35);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15);
+  transform: scale(1.06);
+}
+
+/* ── Empty & loading ── */
+.team-page--admin-equipe .team-table-empty {
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+  background: var(--equipe-card-gradient);
+}
+
+.team-page--admin-equipe .team-table-empty h3 {
+  color: var(--text-strong);
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0.85rem 0 0.35rem;
+}
+
+.team-page--admin-equipe .team-table-empty p {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+.team-page .icon-wrapper-circle {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  background: var(--primary-soft);
   color: var(--primary);
-  border-radius: var(--radius-full);
   display: flex;
   align-items: center;
   justify-content: center;
+  margin: 0 auto;
+  box-shadow: 0 4px 12px rgba(14, 165, 183, 0.12);
+}
+
+.team-page .loading-state,
+.team-page .error-state {
+  padding: 4rem 2rem;
+  text-align: center;
+}
+
+/* ── Responsive ── */
+@media (max-width: 1024px) {
+  .team-page .team-filters-row,
+  .team-page--admin-equipe .team-filters-row--toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .team-page .team-search-field,
+  .team-page--admin-equipe .team-filters-row--toolbar .team-search-field {
+    flex: 1 1 100%;
+    max-width: 100%;
+  }
+
+  .team-page--admin-equipe .team-equipe-actions-group {
+    margin-left: 0;
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .team-page--admin-equipe .team-equipe-premium-btn {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+
+  .team-page .team-filters-actions {
+    justify-content: flex-start;
+    width: 100%;
+  }
+
+  .team-page .filter-group-v3 {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .team-page .filter-group-v3 select {
+    min-width: 0;
+    width: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  .team-page .team-page-header {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+    gap: 0.75rem;
+  }
+
+  .team-page .team-page-header__main {
+    grid-row: auto;
+  }
+
+  .team-page .team-page-header__invite {
+    grid-column: 1;
+    grid-row: auto;
+    align-self: stretch;
+    padding-top: 0;
+  }
+
+  .team-page .team-invite-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .team-page--admin-equipe .team-sections {
+    gap: 1.5rem;
+  }
+
+  .team-page--admin-equipe .team-table thead th,
+  .team-page--admin-equipe .team-table tbody td {
+    padding: 0.45rem 0.75rem;
+  }
+
+  .team-page--admin-equipe .team-user-avatar-wrap {
+    width: 30px;
+    height: 30px;
+  }
+
+  .team-page--admin-equipe .team-actions {
+    flex-direction: column;
+    background: transparent;
+    border: none;
+    padding: 0;
+    gap: 0.25rem;
+  }
+
+  .team-page--admin-equipe .team-action-btn {
+    width: 32px;
+    height: 32px;
+    background: var(--virtide-mint);
+    border: 1px solid var(--border-soft);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Super Admin — filters toolbar (no card wrapper)
+   ═══════════════════════════════════════════════════════════════ */
+
+.team-page--super-admin .team-filters-bar--super {
+  margin-bottom: 1.25rem;
+  padding: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  overflow: visible;
+}
+
+.team-page--super-admin .team-filters-row--super {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.6rem;
+  overflow: visible;
+}
+
+.team-page--super-admin .team-filters-row--super .team-search-field {
+  flex: 1 1 0;
+  width: auto;
+  max-width: none;
+  min-width: min(14rem, 100%);
+  margin: 0;
+}
+
+.team-page--super-admin .team-filters-row--super .team-search-field.search-container,
+.team-page--super-admin .team-enterprise-select,
+.team-page--super-admin .team-status-select--filter-v3 {
+  background: linear-gradient(135deg, #f8fffc 0%, #eff6ff 55%, #f5f3ff 100%);
+  border: 1px solid rgba(14, 165, 233, 0.2);
+  border-radius: 16px;
+  color: #334155;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+.team-page--super-admin .team-filters-row--super .team-search-field.search-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 42px;
+  width: 100%;
+  padding: 0;
+}
+
+.team-page--super-admin .team-filters-row--super .team-search-field.search-container:hover,
+.team-page--super-admin .team-enterprise-select:hover,
+.team-page--super-admin .team-status-select--filter-v3:hover {
+  border-color: rgba(14, 165, 233, 0.45);
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06), 0 0 0 4px rgba(14, 165, 233, 0.1);
+}
+
+.team-page--super-admin .team-filters-row--super .team-search-field.search-container:focus-within,
+.team-page--super-admin .team-enterprise-select:focus-within,
+.team-page--super-admin .team-enterprise-select.is-open,
+.team-page--super-admin .team-status-select--filter-v3:focus-within,
+.team-page--super-admin .team-status-select--filter-v3.is-open {
+  border-color: rgba(14, 165, 233, 0.45);
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06), 0 0 0 4px rgba(14, 165, 233, 0.1);
+}
+
+.team-page--super-admin .team-filters-row--super .team-search-field .search-icon {
+  left: 0.85rem;
+  width: 18px;
+  height: 18px;
+  color: #0ea5e9;
+}
+
+.team-page--super-admin .team-filters-row--super .team-search-field .search-input {
+  width: 100%;
+  height: 100%;
+  padding: 0 0.85rem 0 2.35rem;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none;
+  border-radius: 16px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #334155;
+}
+
+.team-page--super-admin .team-filters-row--super .team-search-field .search-input::placeholder {
+  color: #94a3b8;
+}
+
+.team-page--super-admin .team-filters-row--super .team-search-field .search-input:hover,
+.team-page--super-admin .team-filters-row--super .team-search-field .search-input:focus {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.team-page--super-admin .team-filters-actions--super {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+  margin-left: auto;
+  overflow: visible;
+}
+
+.team-page--super-admin .team-enterprise-select,
+.team-page--super-admin .team-status-select--filter-v3 {
+  min-height: 42px;
+  height: 42px;
+  padding: 0 0.85rem;
+}
+
+.team-page--super-admin .team-enterprise-select .team-status-select-trigger,
+.team-page--super-admin .team-status-select--filter-v3 .team-status-select-trigger {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #334155;
+  min-width: 9rem;
+}
+
+.team-page--super-admin .team-enterprise-select .team-status-select-icon,
+.team-page--super-admin .team-status-select--filter-v3 .team-status-select-icon,
+.team-page--super-admin .team-status-select--filter-v3 .team-status-select-chevron {
+  color: #0ea5e9;
+}
+
+.team-page--super-admin .team-enterprise-select.is-filter-active .team-status-select-trigger span,
+.team-page--super-admin .team-status-select--filter-v3.is-filter-active .team-status-select-trigger span {
+  color: #0d9488;
   font-weight: 700;
-  font-size: 0.875rem;
 }
 
-.member-name {
-  font-weight: 600;
-  color: var(--text-main);
+@media (max-width: 900px) {
+  .team-page--super-admin .team-filters-actions--super {
+    margin-left: 0;
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .team-page--super-admin .team-filters-row--super .team-search-field {
+    flex: 1 1 100%;
+    max-width: 100%;
+  }
 }
 
-.member-id {
-  font-size: 0.75rem;
-  color: var(--text-muted);
+/* ═══════════════════════════════════════════════════════════════
+   Super Admin — Gestion des Administrateurs table
+   ═══════════════════════════════════════════════════════════════ */
+
+.team-page--super-admin {
+  --sa-table-bg: linear-gradient(
+    135deg,
+    rgba(20, 184, 166, 0.06),
+    rgba(59, 130, 246, 0.05),
+    rgba(139, 92, 246, 0.05),
+    rgba(236, 72, 153, 0.04)
+  );
+  --sa-border: rgba(34, 211, 238, 0.18);
+  --sa-header-bg: linear-gradient(
+    90deg,
+    rgba(20, 184, 166, 0.1),
+    rgba(59, 130, 246, 0.09),
+    rgba(139, 92, 246, 0.09),
+    rgba(236, 72, 153, 0.07)
+  );
+  --sa-row-bg: rgba(255, 255, 255, 0.15);
+  --sa-row-hover: linear-gradient(
+    90deg,
+    rgba(20, 184, 166, 0.08),
+    rgba(59, 130, 246, 0.08)
+  );
+  --sa-divider: rgba(34, 211, 238, 0.1);
+  --sa-text-muted: #64748b;
+  --sa-text-main: #334155;
 }
 
-.role-badge {
+.team-page--super-admin .team-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.team-page--super-admin .team-table-section--super-admin {
+  padding: 0;
+  overflow: hidden;
+  border-radius: 24px !important;
+  background: var(--sa-table-bg) !important;
+  border: 1px solid rgba(34, 211, 238, 0.18) !important;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.team-page--super-admin .team-table-section-head {
+  padding: 1.1rem 1.5rem;
+  background: var(--sa-header-bg);
+  border-bottom: 1px solid var(--sa-divider);
+}
+
+.team-page--super-admin .team-table-section-head-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+}
+
+.team-page--super-admin .team-table-section-head h2 {
+  margin: 0;
+  font-size: 1.0625rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  background: linear-gradient(90deg, #14b8a6, #0ea5e9, #8b5cf6);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+.team-page--super-admin .team-table-count {
   display: inline-flex;
   align-items: center;
-  gap: 0.375rem;
-  padding: 0.375rem 0.75rem;
-  border-radius: var(--radius-full);
-  font-size: 0.75rem;
+  justify-content: center;
+  min-width: 1.75rem;
+  height: 1.75rem;
+  padding: 0 0.55rem;
+  border-radius: 999px;
+  font-size: 0.8125rem;
   font-weight: 700;
-  text-transform: capitalize;
+  color: #0e7490;
+  background: linear-gradient(135deg, rgba(240, 249, 255, 0.95), rgba(237, 233, 254, 0.9));
+  border: 1px solid rgba(14, 165, 233, 0.2);
+  box-shadow: 0 2px 8px rgba(14, 165, 233, 0.1);
+  line-height: 1;
 }
 
-.member-email {
+.team-page--super-admin .team-table-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(14, 165, 183, 0.35) transparent;
+  background: var(--sa-table-bg);
+}
+
+.team-page--super-admin .team-table-wrapper::-webkit-scrollbar {
+  height: 6px;
+}
+
+.team-page--super-admin .team-table-wrapper::-webkit-scrollbar-thumb {
+  background: rgba(14, 165, 183, 0.35);
+  border-radius: 99px;
+}
+
+.team-page--super-admin .team-table {
+  width: 100%;
+  border-collapse: collapse;
+  border-spacing: 0;
+  table-layout: fixed;
+  text-align: left;
+  background: transparent;
+}
+
+.team-page--super-admin .team-table-section--admin .team-table {
+  min-width: 960px;
+}
+
+.team-page--super-admin .team-table thead tr {
+  background: var(--sa-header-bg);
+}
+
+.team-page--super-admin .team-table thead th {
+  padding: 14px 24px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: #51627a;
+  border-bottom: 1px solid rgba(34, 211, 238, 0.1);
+  vertical-align: middle;
+  white-space: nowrap;
+  background: transparent;
+}
+
+.team-page--super-admin .team-table tbody tr {
+  background: var(--sa-row-bg);
+  transition: all 0.3s ease;
+}
+
+.team-page--super-admin .team-table tbody td {
+  padding: 16px 24px;
+  font-size: 0.875rem;
+  line-height: 1.35;
+  color: var(--sa-text-main);
+  vertical-align: middle;
+  border-bottom: 1px solid rgba(34, 211, 238, 0.1);
+  background: transparent;
+}
+
+.team-page--super-admin .team-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.team-page--super-admin .team-table tbody tr:hover {
+  background: var(--sa-row-hover);
+  transform: scale(1.003);
+}
+
+.team-page--super-admin .team-table tbody tr:hover td {
+  background: transparent;
+  border-bottom-color: rgba(34, 211, 238, 0.14);
+}
+
+.team-page--super-admin .team-table th.team-table-actions,
+.team-page--super-admin .team-table td.team-table-actions {
+  text-align: right;
+  width: 7rem;
+}
+
+.team-page--super-admin .team-table th.team-col-statut,
+.team-page--super-admin .team-table td.team-cell-statut {
+  text-align: center;
+}
+
+.team-page--super-admin .team-table td.team-table-actions .team-actions {
+  margin-left: auto;
+}
+
+/* User cell */
+.team-page--super-admin .team-user-cell {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  color: var(--text-muted);
-  font-size: 0.875rem;
+  gap: 0.85rem;
+  min-width: 0;
 }
 
-.action-buttons {
+.team-page--super-admin .team-user-cell > div:last-child {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.team-page--super-admin .team-user-name,
+.team-page--super-admin .team-user-sub {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.team-page--super-admin .team-user-avatar-wrap--super {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  min-height: 48px;
+  border-radius: 50%;
   display: flex;
-  gap: 0.5rem;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #14b8a6, #0ea5e9, #8b5cf6);
+  box-shadow: 0 4px 14px rgba(14, 165, 233, 0.22);
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
-.icon-btn {
-  padding: 0.5rem;
-  border-radius: var(--radius-md);
-  color: var(--text-muted);
-  transition: all 0.2s;
+.team-page--super-admin .team-user-avatar-wrap--super > .team-user-avatar {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+  border: 2px solid rgba(255, 255, 255, 0.85);
 }
 
-.icon-btn:hover {
-  background-color: var(--bg-main);
-}
-
-.icon-btn.edit:hover {
-  color: var(--primary);
-}
-
-.icon-btn.delete:hover {
-  color: #ef4444;
-}
-
-.empty-table-state {
-  padding: 3rem;
+.team-page--super-admin .team-user-avatar-wrap--super .team-user-avatar--initials {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
   text-align: center;
-  color: var(--text-muted);
+  line-height: 1;
+  font-size: 18px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: 0.02em;
+  user-select: none;
+  box-sizing: border-box;
+  overflow: hidden;
 }
+
+.team-page--super-admin .team-user-name {
+  margin: 0;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  color: #0f172a;
+  line-height: 1.25;
+}
+
+.team-page--super-admin .team-user-sub {
+  margin: 0.12rem 0 0;
+  font-size: 0.75rem;
+  color: var(--sa-text-muted);
+  line-height: 1.2;
+}
+
+.team-page--super-admin .team-id-code {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-family: ui-monospace, 'Cascadia Code', monospace;
+  color: #0e7490;
+  padding: 0.2rem 0.45rem;
+  border-radius: 8px;
+  background: rgba(14, 165, 233, 0.08);
+  line-height: 1.2;
+}
+
+/* Role badge — Admin teal → blue pill */
+.team-page--super-admin .team-role-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.28rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
+.team-page--super-admin .team-role-badge--admin {
+  background: linear-gradient(90deg, #14b8a6, #0ea5e9);
+  box-shadow: 0 2px 10px rgba(14, 165, 233, 0.28);
+}
+
+/* Status pills */
+.team-page--super-admin .team-statut-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.28rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
+.team-page--super-admin .team-statut-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.team-page--super-admin .team-statut-active {
+  color: #047857;
+  background: linear-gradient(135deg, rgba(209, 250, 229, 0.95), rgba(167, 243, 208, 0.85));
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.team-page--super-admin .team-statut-active .team-statut-dot {
+  background: #10b981;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.25);
+}
+
+.team-page--super-admin .team-statut-inactive {
+  color: #64748b;
+  background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+}
+
+.team-page--super-admin .team-statut-inactive .team-statut-dot {
+  background: #94a3b8;
+}
+
+.team-page--super-admin .team-statut-invitation,
+.team-page--super-admin .team-statut-pending {
+  color: #b45309;
+  background: linear-gradient(135deg, #fffbeb, #fef3c7);
+  border: 1px solid rgba(245, 158, 11, 0.28);
+}
+
+.team-page--super-admin .team-project-none {
+  font-size: 0.8125rem;
+  color: var(--sa-text-muted);
+}
+
+.team-page--super-admin .team-email-cell,
+.team-page--super-admin .team-login-cell {
+  font-size: 0.8125rem;
+  color: var(--sa-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Action buttons */
+.team-page--super-admin .team-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.35rem;
+}
+
+.team-page--super-admin .team-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  color: #0e7490;
+  background: linear-gradient(135deg, rgba(240, 249, 255, 0.98), rgba(237, 233, 254, 0.92));
+  border: 1px solid rgba(14, 165, 233, 0.16);
+  box-shadow: 0 2px 8px rgba(14, 165, 233, 0.08);
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.team-page--super-admin .team-action-btn:hover {
+  transform: scale(1.08);
+  color: #0d9488;
+  border-color: rgba(139, 92, 246, 0.28);
+  box-shadow: 0 4px 14px rgba(14, 165, 233, 0.14);
+}
+
+.team-page--super-admin .team-action-btn--danger {
+  color: #dc2626;
+  background: linear-gradient(135deg, rgba(254, 242, 242, 0.95), rgba(255, 241, 242, 0.9));
+  border-color: rgba(248, 113, 113, 0.3);
+}
+
+.team-page--super-admin .team-action-btn--danger:hover {
+  color: #b91c1c;
+  background: linear-gradient(135deg, #fef2f2, #fee2e2);
+  border-color: rgba(239, 68, 68, 0.4);
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.18);
+  transform: scale(1.08);
+}
+
+.team-page--super-admin .team-table-empty {
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+  background: var(--sa-table-bg);
+}
+
+.team-page--super-admin .team-table-empty h3 {
+  margin: 0.85rem 0 0.35rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.team-page--super-admin .team-table-empty p {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--sa-text-muted);
+}
+
+@media (max-width: 1200px) {
+  .team-page--super-admin .team-table thead th,
+  .team-page--super-admin .team-table tbody td {
+    padding: 14px 16px;
+  }
+}
+
+@media (max-width: 768px) {
+  .team-page--super-admin .team-user-avatar-wrap--super {
+    width: 40px;
+    height: 40px;
+  }
+
+  .team-page--super-admin .team-table thead th,
+  .team-page--super-admin .team-table tbody td {
+    padding: 12px 14px;
+  }
+}
+
+/* Team route — page background via global --bg-app-gradient */

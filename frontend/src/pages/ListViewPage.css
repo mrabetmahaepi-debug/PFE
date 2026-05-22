@@ -1,0 +1,14 @@
+.list-view-page {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  background: #fff;
+}
+
+.list-view-page--error {
+  padding: 2rem;
+  text-align: center;
+  color: #87909e;
+}

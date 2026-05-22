@@ -1,0 +1,89 @@
+.cu-create-popover {
+  background: #fff;
+  border: 1px solid #e6e8ef;
+  border-radius: 12px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12);
+  padding: 10px 0 8px;
+  animation: cu-create-popover-in 0.15s ease-out;
+}
+
+@keyframes cu-create-popover-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.cu-create-popover-title {
+  margin: 0 0 4px;
+  padding: 0 14px 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #87909e;
+  letter-spacing: 0.02em;
+}
+
+.cu-create-popover-items {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 6px;
+}
+
+.cu-create-popover-item {
+  display: flex;
+  width: 100%;
+  align-items: flex-start;
+  gap: 12px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  padding: 10px 8px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.cu-create-popover-item:hover {
+  background: #f4f4f6;
+}
+
+.cu-create-popover-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  color: #646f79;
+}
+
+.cu-create-popover-icon--task {
+  color: #7b68ee;
+}
+
+.cu-create-popover-text {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cu-create-popover-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #292d34;
+  line-height: 1.25;
+}
+
+.cu-create-popover-desc {
+  font-size: 12px;
+  font-weight: 400;
+  color: #87909e;
+  line-height: 1.35;
+}

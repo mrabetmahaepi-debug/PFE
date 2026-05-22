@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Calendar, Type, Loader2 } from 'lucide-react';
 import { sprintService } from '../services/sprint.service';
@@ -48,15 +49,23 @@ const CreateSprintModal: React.FC<CreateSprintModalProps> = ({ isOpen, projectId
     }
   };
 
-  return (
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
-        <div className="modal-overlay">
+        <div
+          className="modal-overlay"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) onClose();
+          }}
+        >
           <motion.div 
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             className="modal-container"
+            onMouseDown={(e) => e.stopPropagation()}
           >
             <div className="modal-header">
               <h2>Nouveau Sprint</h2>
@@ -120,7 +129,8 @@ const CreateSprintModal: React.FC<CreateSprintModalProps> = ({ isOpen, projectId
           </motion.div>
         </div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 };
 

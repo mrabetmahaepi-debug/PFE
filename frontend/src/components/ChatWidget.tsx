@@ -1,8 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { MessageSquare, Send, X, Minimize2, Bot, User, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { chatbotService, type ChatMessage } from '../services/chatbot.service';
 import { useAuth } from '../hooks/useAuth';
+import { usePermission } from '../hooks/usePermission';
 import './ChatWidget.css';
 
 interface ChatWidgetProps {
@@ -11,6 +13,8 @@ interface ChatWidgetProps {
 
 const ChatWidget: React.FC<ChatWidgetProps> = ({ inline = false }) => {
   const { user } = useAuth();
+  const { can } = usePermission();
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(inline);
   const [messages, setMessages] = useState<ChatMessage[]>([
     { id: '1', text: 'Bonjour ! Comment puis-je vous aider dans vos projets aujourd\'hui ?', sender: 'bot', timestamp: new Date().toISOString() }
@@ -66,6 +70,23 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ inline = false }) => {
   };
 
   const isWidgetOpen = inline || isOpen;
+
+  if (!inline) {
+    if (!can('MESSAGING_USE')) return null;
+    return (
+      <div className="chat-widget-container">
+        <button
+          type="button"
+          className="chat-toggle-btn"
+          onClick={() => navigate('/messages')}
+          aria-label="Ouvrir la messagerie"
+          title="Messagerie"
+        >
+          <MessageSquare size={24} />
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className={`chat-widget-container${inline ? ' inline' : ''}`}>
@@ -140,14 +161,6 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ inline = false }) => {
         )}
       </AnimatePresence>
 
-      {!inline && (
-        <button 
-          className={`chat-toggle-btn ${isOpen ? 'active' : ''}`} 
-          onClick={() => setIsOpen(!isOpen)}
-        >
-          {isOpen ? <X size={24} /> : <MessageSquare size={24} />}
-        </button>
-      )}
     </div>
   );
 };

@@ -1,67 +1,426 @@
-import React, { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Search, Filter, MoreVertical, Users, CheckCircle2, Briefcase, ShieldAlert, Building2, ArrowRight } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { AnimatePresence, motion } from 'framer-motion';
+import {
+  Plus,
+  Search,
+  Filter,
+  MoreVertical,
+  Users,
+  CheckCircle2,
+  Check,
+  Briefcase,
+  ShieldAlert,
+  Building2,
+  ArrowRight,
+  AlertTriangle,
+  X,
+  Calendar,
+  Flag,
+  Trash2,
+  Pencil,
+  ChevronDown,
+  ArrowUpDown,
+} from 'lucide-react';
 import { projectService } from '../services/project.service';
-import { useAuth } from '../hooks/useAuth';
+import { usePermission } from '../hooks/usePermission';
+import { getRoleKey, isEnterpriseAdmin } from '../lib/permissions';
+import {
+  canManageProject,
+  normalizeProjectManageContext,
+  type ProjectManageContext,
+} from '../lib/projectManageAccess';
 import { ProjectStatus } from '../types/project';
+import {
+  STATUS_FILTER_OPTIONS,
+  formatProjectStatus,
+  getProjectStatusColor,
+  normalizeProjectStatus,
+  projectMatchesStatusFilter,
+} from '../lib/projectStatus';
+import type { User } from '../types/auth.types';
 import CreateProjectModal from '../components/CreateProjectModal';
+import EditProjectModal from '../components/EditProjectModal';
+import ProjectProgress from '../components/ProjectProgress';
 import BackButton from '../components/BackButton';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { teamService } from '../services/team.service';
+import { useAuth } from '../hooks/useAuth';
 import './Projects.css';
 
+const LOW_PROGRESS_THRESHOLD = 35;
+
+function safeLower(value: unknown): string {
+  return String(value ?? '')
+    .toLowerCase()
+    .trim();
+}
+
+function formatProjectShortDate(iso: string | undefined | null): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  return new Intl.DateTimeFormat('fr-FR', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  }).format(d);
+}
+
+function formatMemberCount(count: number): string {
+  const n = count || 0;
+  return n <= 1 ? `${n} membre` : `${n} membres`;
+}
+
+function formatTaskCount(count: number): string {
+  const n = count || 0;
+  return n <= 1 ? `${n} tâche` : `${n} tâches`;
+}
+
+function getProjectDateValue(project: {
+  createdAt?: string | null;
+  date_debut?: string | null;
+  id_projet?: number;
+}): number {
+  const raw = project.createdAt || project.date_debut;
+  if (raw) {
+    const t = new Date(raw).getTime();
+    if (!Number.isNaN(t)) return t;
+  }
+  return typeof project.id_projet === 'number' ? project.id_projet : 0;
+}
+
+type ToolbarMenuId = 'status' | 'sort' | 'enterprise';
+
+type ToolbarSelectOption = { value: string; label: string };
+
+function ToolbarSelect({
+  menuId,
+  value,
+  options,
+  onChange,
+  openMenu,
+  setOpenMenu,
+  icon: Icon,
+  ariaLabel,
+  showActiveState = false,
+}: {
+  menuId: ToolbarMenuId;
+  value: string;
+  options: ToolbarSelectOption[];
+  onChange: (value: string) => void;
+  openMenu: ToolbarMenuId | null;
+  setOpenMenu: (id: ToolbarMenuId | null) => void;
+  icon?: React.ComponentType<{ size?: number; className?: string }>;
+  ariaLabel: string;
+  showActiveState?: boolean;
+}) {
+  const isOpen = openMenu === menuId;
+  const selected = options.find((o) => o.value === value);
+  const isFilterActive = showActiveState && value !== 'ALL';
+
+  return (
+    <motion.div
+      className={`filter-group projects-toolbar-select${isOpen ? ' is-open' : ''}${isFilterActive ? ' is-filter-active' : ''}`}
+      onClick={(e) => e.stopPropagation()}
+    >
+      {Icon ? <Icon size={16} className="projects-toolbar-select-icon" aria-hidden /> : null}
+      <button
+        type="button"
+        className={`projects-toolbar-select-trigger${isFilterActive ? ' is-filter-active' : ''}`}
+        aria-label={ariaLabel}
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
+        onClick={() => setOpenMenu(isOpen ? null : menuId)}
+      >
+        <span>{selected?.label ?? '—'}</span>
+        <ChevronDown size={14} className="projects-toolbar-select-chevron" aria-hidden />
+      </button>
+      {isOpen ? (
+        <div className="projects-toolbar-select-menu" role="listbox" aria-label={ariaLabel}>
+          {options.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              role="option"
+              aria-selected={opt.value === value}
+              className={`projects-toolbar-select-option${opt.value === value ? ' is-selected' : ''}`}
+              onClick={() => {
+                onChange(opt.value);
+                setOpenMenu(null);
+              }}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </motion.div>
+  );
+}
+
+const SORT_OPTIONS: ToolbarSelectOption[] = [
+  { value: 'newest', label: 'Plus récents' },
+  { value: 'oldest', label: 'Plus anciens' },
+  { value: 'name_asc', label: 'Nom A-Z' },
+  { value: 'name_desc', label: 'Nom Z-A' },
+  { value: 'prog_high', label: 'Progression ↑' },
+  { value: 'prog_low', label: 'Progression ↓' },
+];
+
 const Projects: React.FC = () => {
-  const { user, hasPermission } = useAuth();
-  const isSuperAdmin = user?.role === 'SuperAdmin';
+  const { can, isSuperAdmin } = usePermission();
+  const { user } = useAuth();
+  const roleKey = getRoleKey(user);
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const riskFilter = searchParams.get('risk');
+  const isLowProgress = riskFilter === 'low-progress';
+
   const [projects, setProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<ProjectStatus | 'ALL'>('ALL');
   const [enterpriseFilter, setEnterpriseFilter] = useState<string>('ALL');
-  const [sortOption, setSortOption] = useState<string>('newest');
+  const [teamMembers, setTeamMembers] = useState<User[]>([]);
+  const [cardMenuAnchor, setCardMenuAnchor] = useState<{
+    projectId: number;
+    top: number;
+    right: number;
+  } | null>(null);
+  const [dropdownOpenId, setDropdownOpenId] = useState<number | null>(null);
+  const [memberSearch, setMemberSearch] = useState('');
+  const [sortOption, setSortOption] = useState<string>(
+    isLowProgress ? 'prog_low' : 'newest'
+  );
+  const [toolbarMenuOpen, setToolbarMenuOpen] = useState<ToolbarMenuId | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editProjectId, setEditProjectId] = useState<number | null>(null);
+  const [saveSuccessMessage, setSaveSuccessMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (searchParams.get('create') !== '1') return;
+    setIsModalOpen(true);
+    const next = new URLSearchParams(searchParams);
+    next.delete('create');
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  /** Filtre statut depuis la carte « KPI » admin (ex. ?status=DELAYED). */
+  useEffect(() => {
+    const raw = searchParams.get('status');
+    if (!raw) return;
+    const norm = normalizeProjectStatus(raw);
+    if (!norm) return;
+    setFilter(norm);
+    const next = new URLSearchParams(searchParams);
+    next.delete('status');
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  const clearRiskFilter = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete('risk');
+    setSearchParams(next);
+  };
 
   useEffect(() => {
     fetchProjects();
+    if (can('PROJECT_EDIT') || isSuperAdmin || isEnterpriseAdmin(user)) {
+      teamService.getAllMembers({ type: 'all' }).then(setTeamMembers).catch(console.error);
+    }
+
+    const handleClickOutside = () => {
+      setCardMenuAnchor(null);
+      setDropdownOpenId(null);
+      setToolbarMenuOpen(null);
+    };
+    const handleProjectsUpdated = () => {
+      void fetchProjects();
+    };
+    document.addEventListener('click', handleClickOutside);
+    window.addEventListener('projects:updated', handleProjectsUpdated);
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+      window.removeEventListener('projects:updated', handleProjectsUpdated);
+    };
   }, []);
 
+  useEffect(() => {
+    if (!cardMenuAnchor) return;
+    const close = () => setCardMenuAnchor(null);
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') close();
+    };
+    window.addEventListener('resize', close);
+    window.addEventListener('scroll', close, true);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('resize', close);
+      window.removeEventListener('scroll', close, true);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [cardMenuAnchor]);
+
+  useEffect(() => {
+    if (!saveSuccessMessage) return;
+    const t = window.setTimeout(() => setSaveSuccessMessage(null), 5000);
+    return () => window.clearTimeout(t);
+  }, [saveSuccessMessage]);
+
+  const eligibleMembers = teamMembers.filter(m => {
+    const roleName = typeof m.role === 'string' ? m.role : m.role?.nom;
+    if (!roleName) return false;
+    const r = roleName.toLowerCase();
+    
+    // Exclure strictement les Admins et SuperAdmins
+    if (r.includes('admin')) return false;
+    
+    // Autoriser Chef de projet, Team Lead ou permissions explicites
+    const isLead = r.includes('chef') || r.includes('lead') || r.includes('responsable');
+    const hasPerms = m.permissions?.some(p => p.includes('PROJECT_EDIT') || p.includes('PROJECT_MANAGE'));
+    
+    return isLead || hasPerms;
+  }).filter(m => {
+    if (!memberSearch) return true;
+    const fullName = `${m.prenom ?? ''} ${m.nom ?? ''}`.toLowerCase();
+    const emailLower = safeLower(m.email);
+    return (
+      fullName.includes(memberSearch.toLowerCase()) ||
+      emailLower.includes(memberSearch.toLowerCase())
+    );
+  });
+
+  const handleAssignResponsable = async (
+    project: ProjectManageContext & { id_projet: number },
+    userId: number
+  ) => {
+    if (!canManageProject(user, project)) return;
+    try {
+      await projectService.assignChef(project.id_projet, userId, {
+        project: toProjectCtx(project),
+      });
+      fetchProjects();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const fetchProjects = async () => {
+    setFetchError(null);
     try {
       const data = await projectService.getAll();
-      setProjects(data);
-    } catch (error) {
-      console.error("Failed to fetch projects:", error);
+      const list = Array.isArray(data) ? data : [];
+      setProjects(list);
+    } catch (error: unknown) {
+      console.error('Failed to fetch projects:', error);
+      setProjects([]);
+      const msg =
+        (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setFetchError(
+        typeof msg === 'string'
+          ? msg
+          : 'Impossible de charger les projets. Vérifiez que le serveur est démarré et reconnectez-vous si besoin.'
+      );
     } finally {
       setLoading(false);
     }
   };
 
-  const filteredProjects = projects.filter(p => {
-    const searchLower = searchQuery.toLowerCase();
-    const matchesSearch = p.nom_p?.toLowerCase().includes(searchLower) || 
-                          p.responsable?.toLowerCase().includes(searchLower) ||
-                          p.entreprise?.nom?.toLowerCase().includes(searchLower);
-    const matchesFilter = filter === 'ALL' || p.statut_p === filter;
-    const matchesEnterprise = enterpriseFilter === 'ALL' || p.id_entreprise?.toString() === enterpriseFilter;
-    return matchesSearch && matchesFilter && matchesEnterprise;
-  }).sort((a, b) => {
-    if (sortOption === 'newest') return new Date(b.createdAt || b.date_debut || 0).getTime() - new Date(a.createdAt || a.date_debut || 0).getTime();
-    if (sortOption === 'oldest') return new Date(a.createdAt || a.date_debut || 0).getTime() - new Date(b.createdAt || b.date_debut || 0).getTime();
-    if (sortOption === 'prog_high') return (b.avancement || 0) - (a.avancement || 0);
-    if (sortOption === 'prog_low') return (a.avancement || 0) - (b.avancement || 0);
-    return 0;
-  });
+  const hasActiveListFilters =
+    filter !== 'ALL' ||
+    searchQuery.trim() !== '' ||
+    enterpriseFilter !== 'ALL' ||
+    isLowProgress;
+
+  const filteredProjects = useMemo(() => {
+    const searchLower = searchQuery.trim().toLowerCase();
+    return projects
+      .filter((p) => {
+        const matchesSearch =
+          !searchLower ||
+          safeLower(p.nom_p).includes(searchLower) ||
+          safeLower(p.responsable).includes(searchLower) ||
+          safeLower(p.entreprise?.nom).includes(searchLower) ||
+          formatProjectStatus(p.statut_p ?? p.status).toLowerCase().includes(searchLower);
+        const matchesFilter = projectMatchesStatusFilter(p, filter);
+        const matchesEnterprise =
+          enterpriseFilter === 'ALL' || p.id_entreprise?.toString() === enterpriseFilter;
+        const matchesRisk =
+          !isLowProgress ||
+          ((p.tachesCount ?? 0) > 0 && (p.avancement ?? 0) < LOW_PROGRESS_THRESHOLD);
+        return matchesSearch && matchesFilter && matchesEnterprise && matchesRisk;
+      })
+      .sort((a, b) => {
+        if (sortOption === 'newest') return getProjectDateValue(b) - getProjectDateValue(a);
+        if (sortOption === 'oldest') return getProjectDateValue(a) - getProjectDateValue(b);
+        if (sortOption === 'name_asc') {
+          return safeLower(a.nom_p).localeCompare(safeLower(b.nom_p), 'fr', { sensitivity: 'base' });
+        }
+        if (sortOption === 'name_desc') {
+          return safeLower(b.nom_p).localeCompare(safeLower(a.nom_p), 'fr', { sensitivity: 'base' });
+        }
+        if (sortOption === 'prog_high') return (b.avancement || 0) - (a.avancement || 0);
+        if (sortOption === 'prog_low') return (a.avancement || 0) - (b.avancement || 0);
+        return getProjectDateValue(b) - getProjectDateValue(a);
+      });
+  }, [projects, searchQuery, filter, enterpriseFilter, isLowProgress, sortOption]);
+
+  const cardMenuProject = useMemo(
+    () => filteredProjects.find((p) => p.id_projet === cardMenuAnchor?.projectId),
+    [filteredProjects, cardMenuAnchor?.projectId],
+  );
+
+  const CARD_MENU_WIDTH = 220;
+  const CARD_MENU_EST_HEIGHT = 132;
+
+  const toggleCardMenu = (e: React.MouseEvent<HTMLButtonElement>, projectId: number) => {
+    e.stopPropagation();
+    if (cardMenuAnchor?.projectId === projectId) {
+      setCardMenuAnchor(null);
+      return;
+    }
+    const rect = e.currentTarget.getBoundingClientRect();
+    let top = rect.bottom + 8;
+    if (top + CARD_MENU_EST_HEIGHT > window.innerHeight - 12) {
+      top = Math.max(12, rect.top - CARD_MENU_EST_HEIGHT - 8);
+    }
+    let right = window.innerWidth - rect.right;
+    const maxRight = window.innerWidth - CARD_MENU_WIDTH - 8;
+    right = Math.max(8, Math.min(right, maxRight));
+    setCardMenuAnchor({ projectId, top, right });
+  };
+
+  const closeCardMenu = () => setCardMenuAnchor(null);
 
   const uniqueEnterprises = Array.from(new Set(projects.filter(p => p.entreprise).map(p => p.entreprise.id_entreprise)))
     .map(id => projects.find(p => p.entreprise?.id_entreprise === id)?.entreprise);
 
-  const getStatusColor = (status: ProjectStatus) => {
-    switch (status) {
-      case ProjectStatus.IN_PROGRESS: return '#4f46e5';
-      case ProjectStatus.COMPLETED: return '#10b981';
-      case ProjectStatus.ON_HOLD: return '#f59e0b';
-      case ProjectStatus.PLANNING: return '#64748b';
-      default: return '#64748b';
+  const toProjectCtx = (p: ProjectManageContext & { id_projet?: number }) =>
+    normalizeProjectManageContext(p);
+
+  const menuCanManage =
+    cardMenuProject != null ? canManageProject(user, cardMenuProject) : false;
+
+  const handleDeleteProject = async (
+    e: React.MouseEvent,
+    project: ProjectManageContext & { id_projet: number; nom_p?: string }
+  ) => {
+    e.stopPropagation();
+    if (!canManageProject(user, project)) return;
+    const projectId = project.id_projet;
+    const projectName = project.nom_p;
+    if (!window.confirm(`Supprimer le projet « ${projectName || projectId} » ? Cette action est irréversible.`)) {
+      return;
+    }
+    try {
+      await projectService.delete(projectId, { project: toProjectCtx(project) });
+      setCardMenuAnchor(null);
+      await fetchProjects();
+    } catch (err) {
+      console.error(err);
+      alert('Impossible de supprimer ce projet.');
     }
   };
 
@@ -71,16 +430,16 @@ const Projects: React.FC = () => {
       <header className="page-header">
         <div>
           <h1>Projets {isSuperAdmin ? '(Supervision)' : ''}</h1>
-          <p className="subtitle">
-            {isSuperAdmin 
-              ? 'Supervision globale de tous les projets de la plateforme.' 
-              : 'Gérez et suivez l\'avancement de vos projets d\'équipe.'}
-          </p>
+          {isSuperAdmin ? (
+            <p className="subtitle">
+              Supervision globale de tous les projets de la plateforme.
+            </p>
+          ) : null}
         </div>
-        {!isSuperAdmin && hasPermission('PROJECT_CREATE') && (
+        {!isSuperAdmin && (can('PROJECT_CREATE') || isEnterpriseAdmin(user)) && (
           <button className="primary-btn" onClick={() => setIsModalOpen(true)}>
-            <Plus size={20} />
-            <span>Nouveau Projet</span>
+            <Plus size={15} />
+            <span>Créer un projet</span>
           </button>
         )}
       </header>
@@ -92,164 +451,351 @@ const Projects: React.FC = () => {
         </div>
       )}
 
-      <div className="filters-bar">
-        <div className="filters-left">
-          <div className="search-box">
-            <Search size={18} />
-            <input 
-              type="text" 
-              placeholder="Rechercher par nom, responsable ou entreprise..." 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
+      {saveSuccessMessage && (
+        <div className="filter-banner tone-success" role="status">
+          <Check size={18} className="filter-banner-icon" aria-hidden />
+          <p className="filter-banner-text">{saveSuccessMessage}</p>
         </div>
-        
-        <div className="filters-right">
-          {isSuperAdmin && (
-            <div className="filter-group">
-              <Building2 size={16} />
-              <select value={enterpriseFilter} onChange={(e) => setEnterpriseFilter(e.target.value)}>
-                <option value="ALL">Toutes Entreprises</option>
-                {uniqueEnterprises.map(e => e && (
-                  <option key={e.id_entreprise} value={e.id_entreprise.toString()}>{e.nom}</option>
-                ))}
-              </select>
-            </div>
+      )}
+
+      {fetchError && (
+        <div className="filter-banner tone-danger" role="alert">
+          <span className="filter-banner-text">{fetchError}</span>
+          <button type="button" className="filter-banner-reset" onClick={() => {
+            setLoading(true);
+            void fetchProjects();
+          }}>
+            Réessayer
+          </button>
+        </div>
+      )}
+
+      {isLowProgress && (
+        <div className="filter-banner tone-warning">
+          <span className="filter-banner-icon">
+            <AlertTriangle size={16} />
+          </span>
+          <div className="filter-banner-text">
+            <strong>Projets à faible progression</strong>
+            <span>
+              {filteredProjects.length} projet{filteredProjects.length > 1 ? 's' : ''}
+              {' '}sous {LOW_PROGRESS_THRESHOLD}% avec des tâches déjà ouvertes
+            </span>
+          </div>
+          <button
+            type="button"
+            className="filter-banner-reset"
+            onClick={clearRiskFilter}
+            aria-label="Réinitialiser le filtre"
+          >
+            <X size={14} />
+            Réinitialiser
+          </button>
+        </div>
+      )}
+
+      <div className="projects-toolbar">
+        <div className="search-box">
+          <Search size={18} />
+          <input
+            type="text"
+            placeholder="Rechercher par nom, responsable ou entreprise…"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+
+        {isSuperAdmin && (
+            <ToolbarSelect
+              menuId="enterprise"
+              value={enterpriseFilter}
+              options={[
+                { value: 'ALL', label: 'Toutes Entreprises' },
+                ...uniqueEnterprises
+                  .filter((e): e is NonNullable<typeof e> => Boolean(e))
+                  .map((e) => ({
+                    value: String(e.id_entreprise),
+                    label: e.nom || `Entreprise #${e.id_entreprise}`,
+                  })),
+              ]}
+              onChange={setEnterpriseFilter}
+              openMenu={toolbarMenuOpen}
+              setOpenMenu={setToolbarMenuOpen}
+              icon={Building2}
+              ariaLabel="Filtrer par entreprise"
+            />
           )}
 
-          <div className="filter-group">
-            <Filter size={16} />
-            <select value={filter} onChange={(e) => setFilter(e.target.value as any)}>
-              <option value="ALL">Tous Statuts</option>
-              <option value={ProjectStatus.PLANNING}>Planning</option>
-              <option value={ProjectStatus.IN_PROGRESS}>En cours</option>
-              <option value={ProjectStatus.ON_HOLD}>En attente</option>
-              <option value={ProjectStatus.COMPLETED}>Terminé</option>
-            </select>
-          </div>
+          <ToolbarSelect
+            menuId="status"
+            value={filter}
+            options={STATUS_FILTER_OPTIONS}
+            onChange={(v) => setFilter(v as ProjectStatus | 'ALL')}
+            openMenu={toolbarMenuOpen}
+            setOpenMenu={setToolbarMenuOpen}
+            icon={Filter}
+            ariaLabel="Filtrer par statut"
+            showActiveState
+          />
 
-          <div className="filter-group">
-            <select value={sortOption} onChange={(e) => setSortOption(e.target.value)}>
-              <option value="newest">Plus récents</option>
-              <option value="oldest">Plus anciens</option>
-              <option value="prog_high">Progression ↑</option>
-              <option value="prog_low">Progression ↓</option>
-            </select>
-          </div>
-        </div>
+          <ToolbarSelect
+            menuId="sort"
+            value={sortOption}
+            options={SORT_OPTIONS}
+            onChange={setSortOption}
+            openMenu={toolbarMenuOpen}
+            setOpenMenu={setToolbarMenuOpen}
+            icon={ArrowUpDown}
+            ariaLabel="Trier les projets"
+          />
       </div>
 
       {loading ? (
-        <div className="loading-state">
-          <div className="loader"></div>
-          <p>Chargement des projets...</p>
+        <div
+          className="projects-skeleton-grid"
+          aria-busy="true"
+          aria-label="Chargement des projets en cours"
+        >
+          {Array.from({ length: 6 }).map((_, sk) => (
+            <div key={sk} className="project-skeleton-card" />
+          ))}
         </div>
       ) : (
-        <motion.div layout className="projects-grid">
-          <AnimatePresence mode='popLayout'>
+        <div className="projects-grid">
             {filteredProjects.map((project) => (
-              <motion.div 
+              <motion.div
                 key={project.id_projet}
-                layout
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                whileHover={{ y: -8, boxShadow: '0 20px 40px rgba(0,0,0,0.12)' }}
-                className="project-super-card"
+                whileHover={{ y: -4 }}
+                className="project-super-card project-card-cu"
                 onClick={() => navigate(`/projects/${project.id_projet}`)}
               >
-                {/* Zone 1: Header */}
-                <div className="card-top-zone">
-                  <div className="project-title-area">
+                <div className="project-card-header">
+                  <div className="project-card-head-main">
                     <h3 className="project-title">{project.nom_p}</h3>
-                    <span 
-                      className="status-pill" 
-                      style={{ 
-                        backgroundColor: `${getStatusColor(project.statut_p as any)}15`, 
-                        color: getStatusColor(project.statut_p as any),
-                        border: `1px solid ${getStatusColor(project.statut_p as any)}30`
-                      }}
-                    >
-                      {project.statut_p?.replace('_', ' ')}
-                    </span>
+                    <p className={`project-desc ${!project.description_p ? 'empty-desc' : ''}`}>
+                      {project.description_p || 'Aucune description fournie.'}
+                    </p>
                   </div>
                   {!isSuperAdmin && (
-                    <button className="card-action-btn" onClick={(e) => { e.stopPropagation(); }}>
-                      <MoreVertical size={16} />
-                    </button>
+                    <div className="project-card-menu-wrap">
+                      <button 
+                        type="button"
+                        className={`card-action-btn${cardMenuAnchor?.projectId === project.id_projet ? ' is-active' : ''}`} 
+                        aria-label="Actions du projet"
+                        aria-expanded={cardMenuAnchor?.projectId === project.id_projet}
+                        aria-haspopup="menu"
+                        onClick={(e) => toggleCardMenu(e, project.id_projet)}
+                      >
+                        <MoreVertical size={16} />
+                      </button>
+                    </div>
                   )}
                 </div>
                 
-                {/* Zone 2: Body */}
-                <div className="card-body-zone">
-                  <p className="project-desc">{project.description_p || 'Aucune description fournie.'}</p>
-                  <div className="entity-info">
-                    <Building2 size={14} className="entity-icon" />
-                    <span 
-                      className="entity-link"
-                      onClick={(e) => { 
-                        e.stopPropagation(); 
-                        if (project.entreprise) navigate(`/enterprises/${project.entreprise.id_entreprise}`); 
+                <hr className="project-card-divider" aria-hidden />
+
+                <div
+                  className="project-card-chips"
+                  onClick={(e) => e.stopPropagation()}
+                  onKeyDown={(e) => e.stopPropagation()}
+                  role="presentation"
+                >
+                  <div className="project-card-chips-row">
+                    <div className="project-info-chip" title="Date de création">
+                      <Calendar size={14} aria-hidden className="project-info-chip-icon" />
+                      <span className="project-info-chip-value">
+                        {formatProjectShortDate(project.createdAt || project.date_debut)}
+                      </span>
+                    </div>
+                    <div className="project-info-chip" title="Échéance">
+                      <Flag size={14} aria-hidden className="project-info-chip-icon" />
+                      <span className="project-info-chip-value">
+                        {formatProjectShortDate(project.date_fin)}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="project-card-chips-row project-card-chips-row--stats">
+                    <div className="project-info-chip" title="Membres">
+                      <Users size={14} aria-hidden className="project-info-chip-icon" />
+                      <span className="project-info-chip-value">
+                        {formatMemberCount(project.membresCount || 0)}
+                      </span>
+                    </div>
+                    <div className="project-info-chip project-info-chip--tasks" title="Tâches">
+                      <CheckCircle2 size={14} aria-hidden className="project-info-chip-icon" />
+                      <span className="project-info-chip-value">
+                        {formatTaskCount(project.tachesCount || 0)}
+                      </span>
+                    </div>
+                  </div>
+                  {isSuperAdmin && (
+                    <button
+                      type="button"
+                      className="project-info-chip project-info-chip--wide project-info-chip--link"
+                      title="Entreprise"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (project.entreprise) {
+                          navigate(`/enterprises/${project.entreprise.id_entreprise}`);
+                        }
                       }}
                     >
-                      {project.entreprise?.nom || 'Plateforme'}
-                    </span>
-                  </div>
+                      <Building2 size={14} aria-hidden className="project-info-chip-icon" />
+                      <span className="project-info-chip-value">
+                        {project.entreprise?.nom || 'Plateforme'}
+                      </span>
+                    </button>
+                  )}
                 </div>
 
-                {/* Zone 3: Stats */}
-                <div className="card-stats-zone">
-                  <div className="stats-row">
-                    <div className="stat-pill">
-                      <Users size={14} />
-                      <span>{project.membresCount || 0}</span>
-                    </div>
-                    <div className="stat-pill">
-                      <CheckCircle2 size={14} />
-                      <span>{project.tachesCount || 0} tâches</span>
-                    </div>
-                  </div>
+                <hr className="project-card-divider" aria-hidden />
 
-                  <div className="progress-section">
-                    <div className="progress-labels">
-                      <span>Progression</span>
-                      <span className="percent-label">{project.avancement || 0}%</span>
-                    </div>
-                    <div className="super-progress-bar">
-                      <motion.div 
-                        initial={{ width: 0 }}
-                        animate={{ width: `${project.avancement || 0}%` }}
-                        className="progress-track"
-                        style={{ backgroundColor: getStatusColor(project.statut_p as any) }}
-                      />
-                    </div>
-                    {project.tachesCount === 0 && (
-                      <span className="empty-tasks-hint">Aucune tâche assignée</span>
-                    )}
-                  </div>
+                <div className="project-card-progress">
+                  <ProjectProgress
+                    projectId={project.id_projet}
+                    statusColor={getProjectStatusColor(project.statut_p)}
+                  />
                 </div>
 
-                {/* Zone 4: Footer */}
-                <div className="card-footer-zone">
-                  <div className="responsable-area">
-                    <div className="responsable-avatar">
-                      {String(project.responsable || '?')[0].toUpperCase()}
+                <hr className="project-card-divider" aria-hidden />
+
+                <div className="project-card-footer-cu">
+                  <div className="project-card-chef" onClick={(e) => e.stopPropagation()}>
+                    <div className="project-card-chef-row">
+                    <div className="responsable-avatar project-card-chef-avatar">
+                      {(() => {
+                        const label =
+                          project.responsable && project.responsable !== 'Non assigné'
+                            ? String(project.responsable)
+                            : '?';
+                        const ch = label.charAt(0);
+                        return ch ? ch.toUpperCase() : '?';
+                      })()}
                     </div>
-                    <div className="responsable-info">
-                      <span className="responsable-label">Responsable</span>
-                      <span className="responsable-name">{project.responsable || 'Non assigné'}</span>
+                    <div className="responsable-info" style={{ flex: 1 }}>
+                      {canManageProject(user, project) ? (
+                        <div style={{ position: 'relative' }}>
+                          <div
+                            className="project-chef-picker"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDropdownOpenId(dropdownOpenId === project.id_projet ? null : project.id_projet);
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setDropdownOpenId(dropdownOpenId === project.id_projet ? null : project.id_projet);
+                              }
+                            }}
+                            role="button"
+                            tabIndex={0}
+                          >
+                            <div className="project-chef-picker-text">
+                              <span className="project-card-meta-value project-chef-picker-name">
+                                {project.responsable && project.responsable !== 'Non assigné'
+                                  ? project.responsable
+                                  : 'Choisir un chef de projet'}
+                              </span>
+                              {project.responsable_role && project.responsable !== 'Non assigné' && (
+                                <span className="project-chef-picker-role">
+                                  {project.responsable_role}
+                                </span>
+                              )}
+                            </div>
+                            <span className="project-chef-picker-chevron" aria-hidden>
+                              ▼
+                            </span>
+                          </div>
+
+                          {dropdownOpenId === project.id_projet && (
+                            <div 
+                              onClick={(e) => e.stopPropagation()}
+                              style={{
+                                position: 'absolute', bottom: '110%', left: 0, minWidth: '260px',
+                                background: 'var(--bg-surface)', border: '1px solid var(--border)',
+                                borderRadius: 'var(--radius-lg)', padding: '0.75rem',
+                                boxShadow: '0 20px 40px -10px rgba(0,0,0,0.2)', zIndex: 100,
+                                maxHeight: '300px', overflowY: 'auto'
+                              }}
+                            >
+                              <div className="search-box" style={{ marginBottom: '0.75rem', padding: '0.25rem 0.5rem', height: '32px' }}>
+                                <Search size={14} />
+                                <input 
+                                  type="text" 
+                                  placeholder="Chercher un membre..." 
+                                  value={memberSearch}
+                                  onChange={(e) => setMemberSearch(e.target.value)}
+                                  style={{ fontSize: '0.8rem' }}
+                                  autoFocus
+                                />
+                              </div>
+
+                              <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 800, padding: '0.25rem 0.5rem', letterSpacing: '0.05em' }}>
+                                Responsables Éligibles
+                              </div>
+                              
+                              <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                {eligibleMembers.length === 0 ? (
+                                  <div style={{ padding: '1rem', textAlign: 'center', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                                    Aucun responsable éligible trouvé
+                                  </div>
+                                ) : (
+                                  eligibleMembers.map(m => {
+                                    const roleName = typeof m.role === 'string' ? m.role : m.role?.nom;
+                                    return (
+                                      <div 
+                                        key={m.id_utilisateur}
+                                        onClick={() => {
+                                          handleAssignResponsable(project, Number(m.id_utilisateur));
+                                          setDropdownOpenId(null);
+                                          setMemberSearch('');
+                                        }}
+                                        style={{
+                                          display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.625rem',
+                                          cursor: 'pointer', borderRadius: 'var(--radius-md)', transition: 'all 0.2s',
+                                          backgroundColor: project.chef_id === m.id_utilisateur ? 'var(--primary-light)' : 'transparent'
+                                        }}
+                                        onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-main)'}
+                                        onMouseOut={(e) => e.currentTarget.style.backgroundColor = project.chef_id === m.id_utilisateur ? 'var(--primary-light)' : 'transparent'}
+                                      >
+                                        <div className="responsable-avatar" style={{
+                                          width: '32px', height: '32px', fontSize: '0.85rem',
+                                          background: project.chef_id === m.id_utilisateur ? 'var(--primary)' : 'var(--bg-main)',
+                                          color: project.chef_id === m.id_utilisateur ? 'white' : 'var(--text-main)'
+                                        }}>
+                                          {String(m.prenom?.[0] || m.email?.[0] || '?').toUpperCase()}
+                                        </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+                                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-main)' }}>{m.prenom} {m.nom}</span>
+                                            {project.chef_id === m.id_utilisateur && <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--primary)' }}></div>}
+                                          </div>
+                                          <span style={{ fontSize: '0.7rem', color: 'var(--primary)', fontWeight: 600, textTransform: 'uppercase' }}>
+                                            {roleName}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    );
+                                  })
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="responsable-name">{project.responsable || 'Non assigné'}</span>
+                      )}
+                    </div>
                     </div>
                   </div>
-                  <div className="card-action-hint">
-                    <span>Détails</span>
-                    <ArrowRight size={14} />
-                  </div>
+                  <div className="card-action-hint">Détails →</div>
                 </div>
               </motion.div>
             ))}
-          </AnimatePresence>
-        </motion.div>
+        </div>
       )}
 
       {!loading && filteredProjects.length === 0 && (
@@ -257,18 +803,145 @@ const Projects: React.FC = () => {
           <div className="empty-icon-box">
             <Briefcase size={48} />
           </div>
-          <h3>Aucun projet trouvé</h3>
-          <p>{isSuperAdmin ? "Aucun projet n'a été créé sur la plateforme." : "Commencez par créer votre premier projet pour l'équipe."}</p>
+          <h3>
+            {projects.length === 0 && roleKey === 'MEMBRE'
+              ? 'Aucun projet assigné'
+              : projects.length === 0 && !fetchError
+                ? 'Aucun projet pour le moment'
+                : hasActiveListFilters
+                  ? 'Aucun projet trouvé'
+                  : 'Aucun résultat'}
+          </h3>
+          <p>
+            {fetchError
+              ? 'Corrigez l’erreur ci-dessus ou rechargez la page.'
+              : projects.length === 0 && roleKey === 'MEMBRE'
+                ? 'Aucun projet ne vous a encore été assigné.'
+                : projects.length === 0
+                  ? isSuperAdmin
+                    ? "Aucun projet n'a été créé sur la plateforme."
+                    : "Créez un premier projet pour votre entreprise ou affinez les filtres."
+                  : hasActiveListFilters
+                    ? filter !== 'ALL'
+                      ? `Aucun projet avec le statut « ${formatProjectStatus(filter)} ». Essayez « Tous Statuts » ou un autre filtre.`
+                      : 'Aucun projet ne correspond à votre recherche ou à vos filtres. Réinitialisez les filtres ou la recherche.'
+                    : 'Aucun projet ne correspond à votre recherche ou à vos filtres. Réinitialisez les filtres ou la recherche.'}
+          </p>
+          {hasActiveListFilters && projects.length > 0 && (
+            <button
+              type="button"
+              className="secondary-btn empty-state-cta"
+              onClick={() => {
+                setFilter('ALL');
+                setSearchQuery('');
+                setEnterpriseFilter('ALL');
+                clearRiskFilter();
+              }}
+            >
+              Réinitialiser les filtres
+            </button>
+          )}
+          {!fetchError && projects.length === 0 && !isSuperAdmin && (can('PROJECT_CREATE') || isEnterpriseAdmin(user)) && (
+            <button type="button" className="primary-btn empty-state-cta" onClick={() => setIsModalOpen(true)}>
+              <Plus size={16} />
+              Créer un projet
+            </button>
+          )}
         </div>
       )}
 
       {!isSuperAdmin && (
-        <CreateProjectModal 
-          isOpen={isModalOpen} 
-          onClose={() => setIsModalOpen(false)} 
-          onSuccess={fetchProjects} 
-        />
+        <>
+          <CreateProjectModal
+            isOpen={isModalOpen}
+            onClose={() => setIsModalOpen(false)}
+            onSuccess={fetchProjects}
+          />
+          <EditProjectModal
+            isOpen={editProjectId != null}
+            projectId={editProjectId}
+            onClose={() => setEditProjectId(null)}
+            onSuccess={() => {
+              void fetchProjects();
+              setSaveSuccessMessage('Projet modifié avec succès.');
+              window.dispatchEvent(new CustomEvent('projects:updated'));
+            }}
+          />
+        </>
       )}
+
+      {typeof document !== 'undefined' &&
+        createPortal(
+          <AnimatePresence>
+            {cardMenuAnchor && cardMenuProject && (
+              <>
+                <motion.button
+                  type="button"
+                  className="project-action-menu-backdrop"
+                  aria-label="Fermer le menu"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  onClick={closeCardMenu}
+                />
+                <motion.div
+                  role="menu"
+                  className="project-action-menu project-action-menu--portal"
+                  style={{
+                    top: cardMenuAnchor.top,
+                    right: cardMenuAnchor.right,
+                  }}
+                  initial={{ opacity: 0, y: -8, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -6, scale: 0.98 }}
+                  transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+                  onClick={(e) => e.stopPropagation()}
+                  onMouseDown={(e) => e.stopPropagation()}
+                >
+                  {menuCanManage && (
+                    <>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className="project-menu-item"
+                        onClick={() => {
+                          closeCardMenu();
+                          setEditProjectId(cardMenuProject.id_projet);
+                        }}
+                      >
+                        <Pencil size={14} aria-hidden />
+                        Modifier
+                      </button>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className="project-menu-item project-menu-item--danger"
+                        onClick={(ev) => handleDeleteProject(ev, cardMenuProject)}
+                      >
+                        <Trash2 size={14} aria-hidden />
+                        Supprimer
+                      </button>
+                    </>
+                  )}
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="project-menu-item"
+                    onClick={() => {
+                      closeCardMenu();
+                      navigate(`/projects/${cardMenuProject.id_projet}`);
+                    }}
+                  >
+                    <ArrowRight size={14} aria-hidden />
+                    Voir détails
+                  </button>
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>,
+          document.body,
+        )}
     </div>
   );
 };

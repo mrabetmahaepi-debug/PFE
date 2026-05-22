@@ -1,23 +1,187 @@
-/* Reuse project modal styles with task-specific tweaks if needed */
+/* Task creation modal — uses the shared compact modal design system, plus
+   a few task-specific bits (the searchable project combobox).
+
+   Order of imports matters: base modal classes first, then compact overrides
+   on top of them. */
 @import "./CreateProjectModal.css";
+@import "./CompactModal.css";
 
-.task-priority-selector {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 1rem;
+/* ==========================================================================
+   Project combobox — searchable picker (task-specific)
+   ========================================================================== */
+.task-combobox {
+  position: relative;
 }
 
-.priority-option {
-  padding: 0.75rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
+.task-combobox-trigger {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  width: 100%;
+  padding: 0.55rem 2rem 0.55rem 2.25rem;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--bg-surface);
+  font-size: 0.8125rem;
+  color: var(--text-main);
+  text-align: left;
   cursor: pointer;
-  text-align: center;
-  transition: all 0.2s;
+  position: relative;
+  transition: border-color 0.15s var(--ease-out),
+    box-shadow 0.15s var(--ease-out), background 0.15s var(--ease-out);
 }
 
-.priority-option.active {
-  border-color: #4f46e5;
-  background-color: #f5f3ff;
-  color: #4f46e5;
+.task-combobox-trigger:hover {
+  border-color: var(--border-strong);
+}
+
+.task-combobox.open .task-combobox-trigger,
+.task-combobox-trigger:focus-visible {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+  background: var(--bg-surface-elevated);
+}
+
+.task-combobox-trigger > .input-icon {
+  position: absolute;
+  left: 0.7rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+}
+
+.task-combobox-value {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.task-combobox-value.placeholder {
+  color: var(--text-muted);
+}
+
+.task-combobox-chevron {
+  position: absolute;
+  right: 0.7rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  transition: transform 0.15s var(--ease-out);
+}
+
+.task-combobox.open .task-combobox-chevron {
+  transform: translateY(-50%) rotate(180deg);
+  color: var(--primary);
+}
+
+.task-combobox-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 10;
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow:
+    0 12px 28px -10px rgba(15, 23, 42, 0.18),
+    0 2px 6px rgba(15, 23, 42, 0.06);
+  overflow: hidden;
+  animation: comboboxDrop 0.14s ease-out;
+}
+
+@keyframes comboboxDrop {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.task-combobox-search {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.55rem 0.7rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-surface-2);
+  color: var(--text-muted);
+}
+
+.task-combobox-search input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 0.8125rem;
+  color: var(--text-main);
+  padding: 0;
+}
+
+.task-combobox-search input::placeholder {
+  color: var(--text-muted);
+}
+
+.task-combobox-options {
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 0.25rem;
+}
+
+.task-combobox-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.5rem 0.55rem;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: var(--text-main);
+  transition: background 0.12s var(--ease-out);
+}
+
+.task-combobox-option:hover {
+  background: var(--bg-surface-2);
+}
+
+.task-combobox-option.active {
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.task-combobox-option .option-label {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.task-combobox-option .option-name {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.task-combobox-option .option-meta {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  margin-top: 0.05rem;
+}
+
+.task-combobox-option.active .option-meta {
+  color: var(--primary);
+  opacity: 0.75;
+}
+
+.task-combobox-empty {
+  padding: 0.85rem;
+  text-align: center;
+  font-size: 0.78rem;
+  color: var(--text-muted);
 }

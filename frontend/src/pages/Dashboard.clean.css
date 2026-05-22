@@ -1,0 +1,240 @@
+/**
+ * ClickUp-clean dashboard overrides — flat white surfaces, purple accents only.
+ */
+
+.cu-dashboard {
+  --cu-surface-card: #ffffff;
+  --cu-surface-card-alt: #ffffff;
+  --cu-surface-inset: #f7f8fa;
+  --cu-border-teal: #e6e8ef;
+  --cu-border-rose: #e6e8ef;
+  --cu-shadow-card: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --cu-shadow-hover: 0 2px 8px rgba(0, 0, 0, 0.06);
+  gap: 1.25rem;
+}
+
+.cu-loader {
+  border-color: #ede9fe;
+  border-bottom-color: #7b68ee;
+}
+
+/* Hero — simple white card */
+.cu-hero {
+  margin-top: 0;
+  padding: 1.25rem 1.5rem;
+  border-radius: 12px;
+  background: #ffffff;
+  border: 1px solid #e6e8ef;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.cu-hero-badge {
+  color: #7b68ee;
+  background: #f3f1fd;
+  border: 1px solid #e6e8ef;
+  font-weight: 600;
+}
+
+.cu-hero-title-gradient,
+.cu-hero--super-admin .cu-hero-title-gradient {
+  background: none;
+  -webkit-text-fill-color: #292d34;
+  color: #292d34;
+  animation: none;
+  font-weight: 700;
+}
+
+.cu-hero-time__main,
+.cu-hero-time__seconds {
+  background: none;
+  -webkit-text-fill-color: #292d34;
+  color: #292d34;
+}
+
+.cu-hero:not(.cu-hero--super-admin) > .cu-hero-time {
+  transform: none;
+}
+
+/* KPI cards */
+.cu-kpi-card {
+  background: #ffffff !important;
+  border: 1px solid #e6e8ef !important;
+  border-radius: 12px !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+  padding: 1rem 1.1rem !important;
+}
+
+.cu-kpi-card:hover {
+  border-color: #d1d5db !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06) !important;
+  transform: none !important;
+}
+
+.cu-kpi-card--featured,
+.cu-kpi-card--primary {
+  background: #ffffff !important;
+  border-color: #7b68ee !important;
+  box-shadow: 0 1px 3px rgba(123, 104, 238, 0.12) !important;
+}
+
+.cu-kpi-card--risk {
+  background: #ffffff !important;
+  border-color: #fecaca !important;
+}
+
+.cu-kpi-card--risk .cu-kpi-icon {
+  background: #fef2f2 !important;
+  color: #dc2626 !important;
+}
+
+.cu-kpi-card--primary .cu-kpi-value,
+.cu-kpi-card--primary .cu-kpi-label,
+.cu-kpi-card--primary .cu-kpi-sub {
+  color: #292d34 !important;
+}
+
+.cu-dashboard--super-admin .cu-kpi-card--featured {
+  background: #ffffff !important;
+  color: #292d34 !important;
+  border: 1px solid #7b68ee !important;
+  box-shadow: 0 1px 3px rgba(123, 104, 238, 0.12) !important;
+}
+
+.cu-kpi-card:not(.cu-kpi-card--primary):nth-child(1) .cu-kpi-icon {
+  background: #f3f1fd !important;
+  color: #7b68ee !important;
+  box-shadow: none !important;
+}
+
+.cu-kpi-icon {
+  background: #f3f1fd !important;
+  color: #7b68ee !important;
+  border-radius: 10px;
+}
+
+.cu-kpi-trend.up {
+  color: #059669;
+  background: #ecfdf5;
+}
+
+.cu-kpi-trend.down {
+  color: #dc2626;
+  background: #fef2f2;
+}
+
+/* Panels */
+.cu-panel {
+  background: #ffffff !important;
+  border: 1px solid #e6e8ef !important;
+  border-radius: 12px !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+}
+
+.cu-panel:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06) !important;
+  transform: none !important;
+}
+
+.cu-panel-head {
+  border-bottom: 1px solid #e6e8ef;
+  padding-bottom: 0.75rem;
+}
+
+.cu-title-gradient,
+.cu-panel-head h3.cu-title-gradient {
+  background: none !important;
+  -webkit-text-fill-color: #292d34 !important;
+  color: #292d34 !important;
+  font-weight: 600;
+}
+
+.cu-panel-label {
+  color: #87909e;
+}
+
+/* Progress bars */
+.cu-progress-track {
+  background: #f0f1f3 !important;
+}
+
+.cu-progress-fill {
+  background: #7b68ee !important;
+}
+
+/* Activity / list rows */
+.cu-activity-item,
+.cu-project-row,
+.cu-recent-row {
+  border-radius: 10px;
+  border: 1px solid transparent;
+}
+
+.cu-activity-item:hover,
+.cu-project-row:hover,
+.cu-recent-row:hover {
+  background: #f7f8fa !important;
+  border-color: #e6e8ef;
+}
+
+.cu-activity-head-icon {
+  background: #f3f1fd !important;
+  color: #7b68ee !important;
+}
+
+/* Badges — soft pastel */
+.cu-badge,
+.cu-status-pill,
+.cu-pill {
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.6875rem;
+}
+
+.cu-badge--teal,
+.cu-badge--primary {
+  color: #6b58de;
+  background: #f3f1fd;
+  border: 1px solid #e6e8ef;
+}
+
+/* Donut center */
+.cu-donut-center {
+  color: #292d34;
+}
+
+.cu-donut-legend-item {
+  color: #646f79;
+}
+
+/* Search in dashboard */
+.cu-admin-search,
+.cu-projects-search {
+  background: #f7f8fa !important;
+  border: 1px solid #e6e8ef !important;
+  border-radius: 10px !important;
+}
+
+.cu-admin-search:focus-within,
+.cu-projects-search:focus-within {
+  background: #fff !important;
+  border-color: #7b68ee !important;
+  box-shadow: 0 0 0 2px rgba(123, 104, 238, 0.15) !important;
+}
+
+/* Top actions */
+.cu-dashboard-top-actions .virtide-btn--primary {
+  background: #7b68ee !important;
+  border-color: #7b68ee !important;
+}
+
+.cu-dashboard-top-actions .virtide-btn--soft,
+.cu-dashboard-top-actions .virtide-btn {
+  background: #fff !important;
+  border: 1px solid #e6e8ef !important;
+  color: #646f79 !important;
+}
+
+.cu-dashboard-top-actions .virtide-btn--soft:hover {
+  background: #f7f8fa !important;
+  color: #292d34 !important;
+}

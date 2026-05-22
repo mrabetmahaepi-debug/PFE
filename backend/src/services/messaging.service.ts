@@ -11,7 +11,7 @@ export class MessagingService {
     try {
       // 1. Trouver ou créer la conversation système
       let conversation = await prisma.conversation.findFirst({
-        where: { nom: this.ADMIN_GROUP_NAME, is_system: true }
+        where: { nom: this.ADMIN_GROUP_NAME, is_system: true },
       });
 
       if (!conversation) {
@@ -20,39 +20,52 @@ export class MessagingService {
             nom: this.ADMIN_GROUP_NAME,
             is_group: true,
             is_system: true,
-            updatedAt: new Date()
-          }
+            updatedAt: new Date(),
+          },
         });
         console.log(`[Messaging] Groupe "${this.ADMIN_GROUP_NAME}" créé.`);
+      }
 
-        // 2. Trouver tous les utilisateurs éligibles (SuperAdmin + Admins)
-        const eligibleUsers = await prisma.utilisateur.findMany({
-          where: {
-            OR: [
-              { role: { nom: { in: ["SuperAdmin", "SUPERADMIN", "superadmin"] } } },
-              { role: { nom: { in: ["Admin", "ADMIN", "admin"] } } }
-            ],
-            statut: "ACTIVE"
-          }
-        });
-
-        // 3. Ajouter tous les participants éligibles
-        for (const user of eligibleUsers) {
-          await prisma.participant.upsert({
-            where: {
-              id_utilisateur_id_conversation: {
-                id_utilisateur: user.id_utilisateur,
-                id_conversation: conversation.id_conversation
-              }
+      // 2. Toujours resynchroniser les participants (nouveau SuperAdmin, admins réactivés, etc.)
+      const eligibleUsers = await prisma.utilisateur.findMany({
+        where: {
+          statut: "ACTIVE",
+          OR: [
+            { role: { nom: { in: ["SuperAdmin", "SUPERADMIN", "superadmin"] } } },
+            {
+              role: {
+                nom: {
+                  in: [
+                    "Admin",
+                    "ADMIN",
+                    "admin",
+                    "Administrateur",
+                    "ADMINISTRATEUR",
+                    "AdminEntreprise",
+                  ],
+                },
+              },
             },
-            update: {},
-            create: {
+          ],
+        },
+        select: { id_utilisateur: true },
+      });
+
+      for (const user of eligibleUsers) {
+        await prisma.participant.upsert({
+          where: {
+            id_utilisateur_id_conversation: {
               id_utilisateur: user.id_utilisateur,
               id_conversation: conversation.id_conversation,
-              isAdmin: true
-            }
-          });
-        }
+            },
+          },
+          update: {},
+          create: {
+            id_utilisateur: user.id_utilisateur,
+            id_conversation: conversation.id_conversation,
+            isAdmin: true,
+          },
+        });
       }
 
       return conversation;
@@ -79,8 +92,12 @@ export class MessagingService {
         return;
       }
 
-      const roleNom = user.role.nom?.toLowerCase();
-      const isEligible = roleNom === "admin" || roleNom === "superadmin";
+      const roleNom = user.role.nom?.toLowerCase() ?? "";
+      const isEligible =
+        roleNom === "superadmin" ||
+        roleNom === "admin" ||
+        roleNom === "administrateur" ||
+        roleNom.includes("admin");
 
       if (!isEligible) {
         console.log(`[Messaging] Utilisateur ${userId} n'est pas un admin (rôle: ${user.role.nom}).`);

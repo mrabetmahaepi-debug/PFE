@@ -1,30 +1,42 @@
 import { Request, Response, NextFunction } from "express";
 import { ZodError } from "zod";
 import { errorResponse } from "../utils/response";
+import { logger } from "../lib/logger";
 
 export const errorHandler = (
   err: any,
-  req: Request,
+  _req: Request,
   res: Response,
-  next: NextFunction
+  _next: NextFunction
 ) => {
-  console.error("Global Error:", err);
-
-  if (err instanceof ZodError) {
-    const zodErr = err as any;
-    const formattedErrors = zodErr.errors.map((e: any) => ({
-      field: e.path.join("."),
+  if (err instanceof ZodError || err?.name === "ZodError") {
+    const issues = (err as any).issues ?? (err as any).errors ?? [];
+    const formattedErrors = issues.map((e: any) => ({
+      field: Array.isArray(e.path) ? e.path.join(".") : String(e.path ?? ""),
       message: e.message,
     }));
-    return errorResponse(res, "Erreur de validation des données", 400, formattedErrors);
+    return errorResponse(
+      res,
+      "Erreur de validation des données",
+      400,
+      formattedErrors
+    );
   }
 
-  // Si l'erreur est une instance de Error standard avec un message connu
+  logger.error("Unhandled error", {
+    message: err?.message,
+    name: err?.name,
+  });
+
   if (err instanceof Error) {
-    const statusCode = err.message.includes("inexistant") || err.message.includes("non trouvé") ? 404 : 
-                      err.message.includes("obligatoire") || err.message.includes("invalide") ? 400 : 500;
-    
-    return errorResponse(res, err.message, statusCode);
+    const msg = err.message;
+    const statusCode =
+      msg.includes("inexistant") || msg.includes("non trouvé")
+        ? 404
+        : msg.includes("obligatoire") || msg.includes("invalide")
+        ? 400
+        : 500;
+    return errorResponse(res, msg, statusCode);
   }
 
   return errorResponse(res, "Erreur interne du serveur", 500);

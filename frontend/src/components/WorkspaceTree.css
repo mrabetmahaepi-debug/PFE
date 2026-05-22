@@ -1,0 +1,255 @@
+.workspace-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  padding: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--text-main);
+}
+
+.tree-branch {
+  display: flex;
+  flex-direction: column;
+}
+
+.tree-children {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  margin-left: 0;
+  border-left: none;
+  padding-left: 0;
+}
+
+.tree-depth-sprint {
+  padding-left: 40px;
+}
+
+.tree-depth-list {
+  padding-left: 60px;
+}
+
+.tree-depth-task {
+  padding-left: 80px;
+}
+
+.tree-list-tasks {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.tree-row-list .tree-row-main {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.tree-row-task {
+  font-size: 0.8125rem;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.tree-row-task.selected {
+  color: var(--primary);
+  font-weight: 500;
+}
+
+.tree-task-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1.5px solid var(--text-muted);
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+.tree-row-task.selected .tree-task-dot {
+  border-color: var(--primary);
+  background: var(--primary);
+}
+
+.tree-row-task:hover .tree-task-dot {
+  border-color: var(--primary);
+}
+
+.tree-row-task.menu-open .tree-row-actions {
+  display: inline-flex;
+}
+
+.tree-row {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.5rem;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background 0.15s;
+  user-select: none;
+  position: relative;
+}
+
+.tree-row:hover {
+  background: var(--bg-main);
+}
+
+.tree-row.selected {
+  background: var(--primary-light);
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.tree-row.tree-row-folder {
+  cursor: pointer;
+}
+
+.tree-row.tree-row-folder:hover {
+  background: var(--bg-main);
+}
+
+.tree-row.root-row {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.tree-row-icon {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.tree-row.selected .tree-row-icon {
+  color: var(--primary);
+}
+
+.tree-row-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tree-toggle {
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  border-radius: var(--radius-md);
+  flex-shrink: 0;
+}
+
+.tree-toggle:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.tree-spacer {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.tree-count {
+  background: var(--bg-main);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  border-radius: var(--radius-full);
+  padding: 0 0.5rem;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.tree-color-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.tree-row-actions {
+  display: none;
+  align-items: center;
+  gap: 0.25rem;
+  margin-left: auto;
+}
+
+.tree-row:hover .tree-row-actions,
+.tree-row.selected .tree-row-actions {
+  display: inline-flex;
+}
+
+.tree-icon-btn {
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.tree-icon-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.tree-add-menu {
+  position: relative;
+}
+
+.tree-menu-popover {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  z-index: 50;
+  min-width: 160px;
+  padding: 0.25rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.tree-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8125rem;
+  color: var(--text-main);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  text-align: left;
+}
+
+.tree-menu-item:hover {
+  background: var(--primary-light);
+  color: var(--primary);
+}
+
+.tree-empty {
+  padding: 0.5rem;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}

@@ -1,0 +1,13 @@
+{
+  "name": "gestion-de-projet",
+  "private": true,
+  "description": "Démarre l’API et le frontend ensemble en développement (évite les 502 du proxy Vite quand le backend n’écoute pas).",
+  "scripts": {
+    "dev": "concurrently -n api,web -c blue,magenta \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\"",
+    "dev:backend": "npm run dev --prefix backend",
+    "dev:frontend": "npm run dev --prefix frontend"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
