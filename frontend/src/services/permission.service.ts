@@ -6,9 +6,44 @@ export interface Permission {
   description: string;
 }
 
+/** Slugs de permissions **dans un projet** (pas le catalogue global). */
+export type ProjectRolePermissionMatrix = Record<string, string[]>;
+
+export interface ProjectRoleMatrixResponse {
+  matrix: ProjectRolePermissionMatrix;
+  roleLabels: Record<string, string>;
+  roleOrder: string[];
+  permissionSlugs: string[];
+  permissionLabels: Record<string, string>;
+}
+
 export const permissionService = {
   async getAll(): Promise<Permission[]> {
     const response = await api.get<Permission[]>('/permissions');
+    return response.data;
+  },
+
+  async getProjectRoleMatrix(): Promise<ProjectRoleMatrixResponse> {
+    const response = await api.get<ProjectRoleMatrixResponse>(
+      '/permissions/project-roles/matrix'
+    );
+    return response.data;
+  },
+
+  async saveProjectRoleMatrix(
+    matrix: ProjectRolePermissionMatrix
+  ): Promise<ProjectRoleMatrixResponse> {
+    const response = await api.put<ProjectRoleMatrixResponse>(
+      '/permissions/project-roles/matrix',
+      { matrix }
+    );
+    return response.data;
+  },
+
+  async resetProjectRoleMatrix(): Promise<ProjectRoleMatrixResponse> {
+    const response = await api.delete<ProjectRoleMatrixResponse>(
+      '/permissions/project-roles/matrix'
+    );
     return response.data;
   },
 

@@ -27,7 +27,12 @@ yarn-error.log*
 backend/.env
 frontend/.env
 
+# Messagerie — fichiers uploadés (local)
+backend/uploads/messages/
+
 /generated/prisma
 node_modules
 .env
 dist
+backups/
+*.log

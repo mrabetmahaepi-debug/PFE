@@ -1,0 +1,141 @@
+.cu-corbeille-section {
+  margin-top: 4px;
+  padding: 0 4px 8px;
+}
+
+.cu-corbeille-toggle {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  padding: 6px 8px;
+  color: #646f79;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.cu-corbeille-toggle:hover {
+  background: #f0f1f3;
+  color: #292d34;
+}
+
+.cu-corbeille-toggle[aria-expanded='true'] {
+  background: #f3f1fd;
+  color: #7b68ee;
+}
+
+.cu-corbeille-toggle[aria-expanded='true'] .cu-corbeille-toggle-icon {
+  color: #7b68ee;
+}
+
+.cu-corbeille-toggle-icon {
+  flex-shrink: 0;
+  color: #87909e;
+}
+
+.cu-corbeille-toggle-label {
+  flex: 1;
+  text-align: left;
+}
+
+.cu-corbeille-count {
+  font-size: 10px;
+  font-weight: 700;
+  color: #87909e;
+  background: #ebecef;
+  border-radius: 10px;
+  padding: 1px 6px;
+}
+
+.cu-corbeille-chevron {
+  flex-shrink: 0;
+  color: #87909e;
+}
+
+.cu-corbeille-list {
+  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.cu-corbeille-empty {
+  margin: 0;
+  padding: 8px 10px;
+  font-size: 11px;
+  color: #87909e;
+}
+
+.cu-corbeille-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px 4px 10px;
+  border-radius: 6px;
+  transition: background 0.12s ease;
+}
+
+.cu-corbeille-row:hover {
+  background: #f4f4f6;
+}
+
+.cu-corbeille-row-main {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.cu-corbeille-row-type {
+  font-size: 10px;
+  font-weight: 600;
+  color: #87909e;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.cu-corbeille-row-name {
+  font-size: 12px;
+  color: #292d34;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cu-corbeille-row-actions {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.cu-corbeille-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: #87909e;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.cu-corbeille-action:hover {
+  background: #ebecef;
+  color: #292d34;
+}
+
+.cu-corbeille-action--danger:hover {
+  background: #fef2f2;
+  color: #dc2626;
+}

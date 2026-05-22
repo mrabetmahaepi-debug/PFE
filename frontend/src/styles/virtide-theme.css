@@ -1,0 +1,668 @@
+/**
+ * Virtide design system — shared surfaces, forms, tables, badges, modals.
+ * Import after global.css. Pages should prefer these tokens/classes.
+ */
+
+:root {
+  --virtide-text-muted: #64748b;
+  --text-muted: var(--virtide-text-muted);
+  --text-secondary: var(--virtide-text-muted);
+
+  --surface-card: #ffffff;
+  --surface-card-alt: #ffffff;
+  --surface-inset: #f7f8fa;
+  --surface-inset-rose: #fef2f2;
+  --surface-hover: #f0f1f3;
+  --border-rose: #fecdd3;
+  --radius-lg: 16px;
+  --radius-md: 12px;
+  --radius-sm: 10px;
+}
+
+/* ── Page shells ───────────────────────────────────────────── */
+.page-wrapper {
+  background: transparent;
+}
+
+.coach-layout--dashboard .page-wrapper,
+.coach-layout--team .page-wrapper {
+  background: transparent;
+}
+
+/* Page-specific shells */
+.projects-page,
+.permissions-page,
+.settings-page,
+.messages-page,
+.invite-page,
+.workspace-page,
+.tasks-page,
+.approvals-page,
+.enterprises-page {
+  color: var(--virtide-text);
+}
+
+.matrix-wrapper.premium-card,
+.projects-page .filters-bar,
+.invite-card {
+  background: var(--surface-card);
+}
+
+/* permissions-page .premium-card — Permissions.css */
+
+.projects-page .projects-toolbar {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+/* ── Shared page header ─────────────────────────────────────── */
+.page-header h1,
+.page-title {
+  color: var(--virtide-text);
+}
+
+.page-header .subtitle {
+  color: var(--virtide-text-muted);
+}
+
+/* ── Cards & panels ─────────────────────────────────────────── */
+.virtide-card,
+.premium-card {
+  background: var(--surface-card);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+}
+
+.virtide-card--rose {
+  background: var(--surface-card-alt);
+  border-color: var(--border-rose);
+}
+
+.virtide-card:hover,
+.premium-card:hover {
+  border-color: rgba(123, 104, 238, 0.25);
+  box-shadow: var(--shadow-card-hover);
+}
+
+.virtide-card--rose:hover {
+  border-color: var(--border-rose);
+}
+
+/* ── Form controls ──────────────────────────────────────────── */
+.virtide-input,
+.virtide-select,
+.virtide-textarea,
+input.virtide-field,
+select.virtide-field,
+textarea.virtide-field {
+  width: 100%;
+  padding: 0.55rem 0.85rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-soft);
+  background: var(--surface-inset);
+  color: var(--virtide-text);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+.virtide-input:focus,
+.virtide-select:focus,
+.virtide-textarea:focus,
+input.virtide-field:focus,
+select.virtide-field:focus,
+textarea.virtide-field:focus {
+  outline: none;
+  border-color: #7b68ee;
+  background: #ffffff;
+  box-shadow: var(--ring);
+}
+
+.virtide-input::placeholder,
+.virtide-textarea::placeholder {
+  color: var(--virtide-text-muted);
+}
+
+/* Common form patterns in page CSS */
+.form-group input:not([type='checkbox']):not([type='radio']),
+.form-group select,
+.form-group textarea,
+.input-wrapper input,
+.auth-form input,
+.settings-section input:not([type='checkbox']),
+.settings-section select,
+.settings-section textarea,
+.invite-field input,
+.invite-field select,
+.invite-field textarea {
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-soft);
+  background: var(--surface-inset);
+  color: var(--virtide-text);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus,
+.input-wrapper input:focus,
+.auth-form input:focus,
+.settings-section input:focus,
+.settings-section select:focus,
+.settings-section textarea:focus,
+.invite-field input:focus,
+.invite-field select:focus,
+.invite-field textarea:focus {
+  outline: none;
+  border-color: #7b68ee;
+  background: #ffffff;
+  box-shadow: var(--ring);
+}
+
+/* ── Tables ─────────────────────────────────────────────────── */
+.virtide-table thead th,
+table.virtide-table thead th {
+  background: linear-gradient(90deg, #dcfce7 0%, #e0f7fa 55%, #ede9fe 100%);
+  color: var(--virtide-text);
+  font-weight: 700;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.virtide-table tbody tr:hover,
+table.virtide-table tbody tr:hover {
+  background: var(--surface-hover);
+}
+
+.virtide-table tbody td,
+table.virtide-table tbody td {
+  border-bottom: 1px solid var(--border-soft);
+  color: var(--virtide-text);
+}
+
+/* Matrix / permissions tables */
+.permissions-matrix thead th {
+  background: linear-gradient(90deg, #dcfce7 0%, #e0f7fa 55%, #ede9fe 100%) !important;
+}
+
+.permissions-matrix tbody tr:hover td:not(.group-row td) {
+  background: rgba(220, 252, 231, 0.5);
+}
+
+.group-row td {
+  background: linear-gradient(90deg, #dcfce7 0%, #e0f7fa 100%) !important;
+}
+
+/* ── Badges ─────────────────────────────────────────────────── */
+.virtide-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  border: 1px solid transparent;
+}
+
+.virtide-badge--teal {
+  color: var(--virtide-teal-deep);
+  background: linear-gradient(135deg, rgba(20, 184, 166, 0.18) 0%, rgba(14, 165, 233, 0.14) 100%);
+  border-color: rgba(20, 184, 166, 0.32);
+}
+
+.virtide-badge--rose {
+  color: #be185d;
+  background: linear-gradient(135deg, #fce7f3 0%, rgba(244, 114, 182, 0.2) 100%);
+  border-color: var(--border-rose);
+}
+
+.virtide-badge--blue {
+  color: #0369a1;
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.16) 0%, rgba(59, 130, 246, 0.14) 100%);
+  border-color: rgba(14, 165, 233, 0.3);
+}
+
+.virtide-badge--purple {
+  color: var(--virtide-purple-deep);
+  background: linear-gradient(135deg, rgba(243, 232, 255, 0.95) 0%, rgba(139, 92, 246, 0.2) 100%);
+  border-color: rgba(139, 92, 246, 0.32);
+}
+
+/* ── Modals ─────────────────────────────────────────────────── */
+.modal-overlay {
+  background: rgba(15, 118, 110, 0.22);
+  backdrop-filter: blur(6px);
+}
+
+.modal-container,
+.modal-container.compact-modal {
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-soft);
+  box-shadow: var(--shadow-card-hover);
+}
+
+.compact-modal-header {
+  background: linear-gradient(180deg, #dcfce7 0%, #e0f7fa 50%, var(--bg-surface-elevated) 100%);
+}
+
+.compact-modal-footer {
+  background: linear-gradient(180deg, #ecfdf5 0%, #e0f7fa 100%);
+  border-top: 1px solid var(--border-soft);
+}
+
+/* Nouveau projet — keep blue/mauve theme (no green header/footer strip) */
+.modal-container.compact-modal.create-project-modal-wide .compact-modal-header,
+.modal-container.compact-modal.create-project-modal-wide .modal-header.compact-modal-header {
+  background: linear-gradient(
+    135deg,
+    #f4f8ff 0%,
+    #eef6ff 35%,
+    #f3f0ff 70%,
+    #fafaff 100%
+  ) !important;
+  border-bottom-color: rgba(129, 140, 248, 0.14) !important;
+}
+
+.modal-container.compact-modal.create-project-modal-wide .compact-modal-footer,
+.modal-container.compact-modal.create-project-modal-wide .modal-footer.compact-modal-footer {
+  background: linear-gradient(
+    135deg,
+    #f4f8ff 0%,
+    #eef6ff 35%,
+    #f3f0ff 70%,
+    #fafaff 100%
+  ) !important;
+  border-top-color: rgba(129, 140, 248, 0.14) !important;
+}
+
+/* Legacy modal base (CreateProjectModal.css) */
+.modal-content {
+  background: var(--bg-surface-elevated) !important;
+  border: 1px solid var(--border-soft) !important;
+}
+
+/* ── Dropdowns / popovers ───────────────────────────────────── */
+.dropdown-menu,
+.navbar-dropdown,
+.notif-dropdown {
+  background: linear-gradient(155deg, #f8fffe 0%, #ecfdf5 45%, #e0f7fa 100%) !important;
+  border: 1px solid var(--border-soft) !important;
+  box-shadow: var(--shadow-card-hover) !important;
+}
+
+/* profile-dropdown — Virtide card in Navbar.css */
+
+.dropdown-menu button:hover,
+.navbar-dropdown button:hover,
+.notif-dropdown button:hover {
+  background: rgba(220, 252, 231, 0.85) !important;
+}
+
+/* ── Filters & search bars (projects, team, etc.) ───────────── */
+.filters-bar,
+.search-box,
+.filter-group {
+  background: var(--surface-inset) !important;
+  border-color: var(--border-soft) !important;
+}
+
+.search-box:focus-within,
+.filter-group:focus-within {
+  border-color: var(--virtide-teal) !important;
+  box-shadow: var(--ring) !important;
+}
+
+/* ── Settings nav ───────────────────────────────────────────── */
+.settings-nav .nav-item:hover {
+  background: linear-gradient(90deg, #dcfce7 0%, #e0f7fa 100%);
+  color: var(--virtide-teal-deep);
+}
+
+.settings-nav .nav-item.active {
+  background: var(--gradient-active);
+  color: #fff;
+  border: 1px solid transparent;
+  box-shadow: var(--shadow-active);
+}
+
+.settings-nav .nav-item.active svg {
+  color: #fff;
+}
+
+.settings-section {
+  background: var(--surface-card);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-card);
+}
+
+/* ── Project cards ──────────────────────────────────────────── */
+.project-card {
+  background: var(--surface-card) !important;
+  border-color: var(--border-soft) !important;
+}
+
+.projects-page .project-super-card:not(.project-card-cu) {
+  background: var(--surface-card) !important;
+  border-color: var(--border-soft) !important;
+}
+
+.projects-page .project-super-card.project-card-cu {
+  background: linear-gradient(135deg, #ffffff 0%, #f8faff 55%, #f5f3ff 100%) !important;
+  border-color: #dde7f3 !important;
+  box-shadow: 0 10px 30px rgba(64, 90, 150, 0.08) !important;
+}
+
+.project-super-card:hover,
+.project-card:hover {
+  border-color: rgba(139, 92, 246, 0.18) !important;
+  box-shadow: var(--shadow-card-hover) !important;
+}
+
+.projects-page .project-super-card.project-card-cu:hover {
+  border-color: #c7d7eb !important;
+  box-shadow:
+    0 14px 36px rgba(64, 90, 150, 0.12),
+    0 6px 16px rgba(14, 165, 233, 0.08) !important;
+}
+
+/* ── Team tables ────────────────────────────────────────────── */
+.team-table-wrapper {
+  background: var(--surface-card);
+  border: 1px solid var(--border-soft);
+}
+
+/* Team table header gradient is defined in Team.css (unified row) */
+
+.team-table tbody tr:hover {
+  background: var(--surface-hover);
+}
+
+/* ── Virtide button system (global) ─────────────────────────── */
+.virtide-btn,
+.primary-btn,
+.secondary-btn,
+.cu-hero-btn,
+.cu-header-btn,
+.invite-submit,
+.messaging-light-btn-primary,
+.messaging-light-btn-secondary,
+.page-header .primary-btn,
+.page-header .secondary-btn,
+.compact-modal-footer .primary-btn,
+.compact-modal-footer .secondary-btn,
+.modal-container .primary-btn,
+.modal-container .secondary-btn,
+.modal-content .primary-btn,
+.modal-content .secondary-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--virtide-btn-gap);
+  height: var(--virtide-btn-height);
+  min-height: var(--virtide-btn-height);
+  padding: 0 var(--virtide-btn-padding-x);
+  border-radius: var(--virtide-btn-radius);
+  font-size: var(--virtide-btn-font-size);
+  font-weight: var(--virtide-btn-font-weight);
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    color 0.2s ease,
+    background 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.2s ease;
+}
+
+.virtide-btn--icon,
+.navbar-icon-btn {
+  width: var(--virtide-btn-height);
+  min-width: var(--virtide-btn-height);
+  padding: 0;
+}
+
+.virtide-btn,
+.secondary-btn,
+.cu-hero-btn--secondary,
+.cu-header-btn--secondary,
+.messaging-light-btn-secondary,
+.invite-actions .secondary-btn {
+  border: var(--virtide-btn-border);
+  background: var(--virtide-btn-bg);
+  color: var(--virtide-text-muted);
+  box-shadow: var(--virtide-btn-shadow);
+}
+
+.virtide-btn:hover:not(:disabled),
+.secondary-btn:hover:not(:disabled),
+.cu-hero-btn--secondary:hover:not(:disabled),
+.cu-header-btn--secondary:hover:not(:disabled),
+.messaging-light-btn-secondary:hover:not(:disabled) {
+  color: var(--virtide-teal-deep);
+  background: var(--virtide-btn-hover-bg);
+  border-color: var(--virtide-btn-hover-border);
+  box-shadow: var(--virtide-btn-hover-shadow);
+}
+
+.virtide-btn--soft,
+.cu-hero-btn--secondary,
+.cu-header-btn--secondary {
+  background: linear-gradient(145deg, #dcfce7 0%, #d1fae5 55%, #e0f7fa 100%);
+  color: var(--virtide-teal-deep);
+  border: 1px solid rgba(20, 184, 166, 0.24);
+}
+
+.virtide-btn--soft:hover:not(:disabled),
+.cu-hero-btn--secondary:hover:not(:disabled),
+.cu-header-btn--secondary:hover:not(:disabled) {
+  color: var(--virtide-teal-deep);
+  background: linear-gradient(135deg, #bbf7d0 0%, #bae6fd 55%, rgba(237, 233, 254, 0.5) 100%);
+  border-color: rgba(20, 184, 166, 0.32);
+}
+
+.virtide-btn--primary,
+.primary-btn,
+.cu-hero-btn--primary,
+.cu-header-btn--primary,
+.messaging-light-btn-primary,
+.invite-submit {
+  border: 1px solid transparent;
+  background: var(--gradient-active);
+  color: #fff;
+  box-shadow: var(--shadow-active);
+}
+
+.virtide-btn--primary:hover:not(:disabled),
+.primary-btn:hover:not(:disabled),
+.cu-hero-btn--primary:hover:not(:disabled),
+.cu-header-btn--primary:hover:not(:disabled),
+.messaging-light-btn-primary:hover:not(:disabled),
+.invite-submit:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(20, 184, 166, 0.32);
+}
+
+.virtide-btn:active:not(:disabled),
+.primary-btn:active:not(:disabled),
+.secondary-btn:active:not(:disabled),
+.cu-hero-btn:active:not(:disabled),
+.cu-header-btn:active:not(:disabled),
+.navbar-icon-btn:active,
+.profile-mini-v2:active,
+.messaging-light-btn-primary:active:not(:disabled),
+.messaging-light-btn-secondary:active:not(:disabled),
+.invite-submit:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.virtide-btn--primary:active:not(:disabled),
+.primary-btn:active:not(:disabled),
+.cu-hero-btn--primary:active:not(:disabled),
+.messaging-light-btn-primary:active:not(:disabled),
+.invite-submit:active:not(:disabled) {
+  transform: scale(0.96) translateY(0);
+}
+
+.virtide-btn:disabled,
+.primary-btn:disabled,
+.secondary-btn:disabled,
+.cu-hero-btn:disabled,
+.messaging-light-btn-primary:disabled,
+.messaging-light-btn-secondary:disabled,
+.invite-submit:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Icon toolbar chips (navbar + dashboard) */
+.navbar-icon-btn,
+.profile-mini-v2 {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--virtide-btn-height);
+  min-height: var(--virtide-btn-height);
+  border-radius: var(--virtide-btn-radius);
+  border: var(--virtide-btn-border);
+  background: var(--virtide-btn-bg);
+  color: var(--virtide-text-muted);
+  box-shadow: var(--virtide-btn-shadow);
+  transition:
+    color 0.2s ease,
+    background 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.navbar-icon-btn:hover,
+.profile-mini-v2:hover {
+  color: var(--virtide-teal-deep);
+  background: var(--virtide-btn-hover-bg);
+  border-color: var(--virtide-btn-hover-border);
+  box-shadow: var(--virtide-btn-hover-shadow);
+}
+
+.navbar-notif-trigger.is-active,
+.coach-layout--dashboard .navbar-notif-trigger.is-active {
+  color: var(--virtide-teal-deep);
+  background: linear-gradient(135deg, #bbf7d0 0%, #bae6fd 55%, rgba(221, 214, 254, 0.55) 100%);
+  border-color: rgba(20, 184, 166, 0.32);
+  box-shadow:
+    var(--virtide-btn-shadow),
+    0 0 0 2px rgba(20, 184, 166, 0.12);
+}
+
+/* Dashboard — top toolbar row (+ Projet / Inviter + navbar cluster) */
+.coach-layout--dashboard .cu-dashboard-top-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  min-height: var(--virtide-btn-height);
+  margin-bottom: 0.75rem;
+  padding-right: var(--dashboard-nav-cluster-width);
+}
+
+.coach-layout--dashboard .cu-hero .cu-hero-actions {
+  display: none !important;
+}
+
+/* Inner pages — navbar icon chips match toolbar */
+.coach-layout:not(.coach-layout--dashboard) .navbar-icon-btn {
+  width: var(--virtide-btn-height);
+  min-width: var(--virtide-btn-height);
+}
+
+/* Semantic / danger buttons keep shape */
+.approve-btn,
+.reject-btn,
+.messaging-light-btn-danger,
+.text-btn-danger {
+  min-height: var(--virtide-btn-height);
+  border-radius: var(--virtide-btn-radius);
+  font-size: var(--virtide-btn-font-size);
+  font-weight: var(--virtide-btn-font-weight);
+  padding: 0 var(--virtide-btn-padding-x);
+}
+
+/* Messaging header actions (btn-new-discussion / btn-manage-members--prominent in Messages.css) */
+.messages-layout--saas .btn-manage-members:not(.btn-manage-members--prominent),
+.btn-manage-members:not(.btn-manage-members--prominent),
+.btn-create-meeting {
+  height: var(--virtide-btn-height);
+  min-height: var(--virtide-btn-height);
+  border-radius: var(--virtide-btn-radius);
+  border: var(--virtide-btn-border);
+  background: var(--virtide-btn-bg);
+  box-shadow: var(--virtide-btn-shadow);
+  font-size: var(--virtide-btn-font-size);
+  font-weight: var(--virtide-btn-font-weight);
+}
+
+.messages-layout--saas .btn-manage-members:not(.btn-manage-members--prominent):hover,
+.btn-manage-members:not(.btn-manage-members--prominent):hover,
+.btn-create-meeting:hover {
+  background: var(--virtide-btn-hover-bg);
+  border-color: var(--virtide-btn-hover-border);
+  box-shadow: var(--virtide-btn-hover-shadow);
+  color: var(--virtide-teal-deep);
+}
+
+.messages-layout--saas .btn-manage-members--prominent,
+.btn-manage-members--prominent {
+  height: var(--virtide-btn-height);
+  min-height: var(--virtide-btn-height);
+  border-radius: var(--virtide-btn-radius);
+  font-size: var(--virtide-btn-font-size);
+}
+
+.messages-layout--saas .btn-new-discussion,
+.btn-new-discussion {
+  height: var(--virtide-btn-height);
+  min-height: var(--virtide-btn-height);
+  border-radius: var(--virtide-btn-radius);
+  font-size: var(--virtide-btn-font-size);
+}
+
+/* Outline / ghost page actions */
+.outline-btn {
+  height: var(--virtide-btn-height);
+  min-height: var(--virtide-btn-height);
+  padding: 0 var(--virtide-btn-padding-x);
+  border-radius: var(--virtide-btn-radius);
+  border: var(--virtide-btn-border);
+  background: var(--virtide-btn-bg);
+  color: var(--virtide-teal-deep);
+  font-weight: var(--virtide-btn-font-weight);
+  font-size: var(--virtide-btn-font-size);
+  box-shadow: var(--virtide-btn-shadow);
+}
+
+.outline-btn:hover:not(:disabled) {
+  background: var(--virtide-btn-hover-bg);
+  border-color: var(--virtide-btn-hover-border);
+}
+
+@media (max-width: 480px) {
+  :root {
+    --virtide-btn-height: 38px;
+    --dashboard-nav-cluster-width: 10.5rem;
+    --dashboard-toolbar-inset: 1.25rem;
+  }
+
+  .coach-layout--dashboard .cu-dashboard-top-actions {
+    padding-right: var(--dashboard-nav-cluster-width);
+  }
+}

@@ -1,21 +1,26 @@
 import { Request, Response, NextFunction } from "express";
+import { isEnterpriseAdmin, isSuperAdmin } from "./permissions";
 
-export const checkAdminEntreprise = (req: Request, res: Response, next: NextFunction) => {
+/**
+ * Tenant-scoped guard: SuperAdmin OR enterprise admin attached to an enterprise.
+ */
+export const checkAdminEntreprise = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   const user = (req as any).user;
-   
-
   if (!user) {
-    return res.status(403).json({ error: "Accès refusé, vous devez être connecté" });
+    return res
+      .status(401)
+      .json({ error: "Accès refusé, vous devez être connecté" });
   }
 
-  
-  if (user.role === "SuperAdmin") {
-    return next();
-  }
+  if (isSuperAdmin(user)) return next();
 
-  if (user.role === "Admin" && user.id_entreprise) {
-    return next();
-  }
+  if (isEnterpriseAdmin(user)) return next();
 
-  return res.status(403).json({ error: "Accès refusé, vous devez être admin ou superadmin" });
+  return res.status(403).json({
+    error: "Accès refusé, vous devez être administrateur d'entreprise",
+  });
 };

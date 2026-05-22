@@ -12,8 +12,13 @@ export interface CreateMemberData {
 }
 
 export const teamService = {
-  async getAllMembers(): Promise<User[]> {
-    const response = await api.get<User[]>('/utilisateurs');
+  async getAllMembers(params?: Record<string, any>): Promise<User[]> {
+    const response = await api.get<User[]>('/utilisateurs', { params });
+    return response.data;
+  },
+
+  async getMemberById(id: string | number): Promise<User> {
+    const response = await api.get<User>(`/utilisateurs/${id}`);
     return response.data;
   },
 

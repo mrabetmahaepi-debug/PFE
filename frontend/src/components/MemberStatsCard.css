@@ -1,0 +1,112 @@
+/* Member dashboard KPI — ClickUp clean */
+
+.member-stats-card:not(.member-stats-card--clickable) {
+  cursor: default;
+}
+
+.member-stats-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  padding: 0.85rem 1rem;
+  text-align: left;
+  border-radius: 12px;
+  background: #ffffff;
+  border: 1px solid #e6e8ef;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  height: auto;
+  align-self: start;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.member-stats-card--clickable {
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  width: 100%;
+}
+
+.member-stats-card--clickable:hover {
+  border-color: #d1d5db;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  transform: none;
+}
+
+.member-stats-card--clickable:focus-visible {
+  outline: 2px solid rgba(123, 104, 238, 0.35);
+  outline-offset: 2px;
+}
+
+.member-stats-card--loading {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.member-stats-card__icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.1rem;
+  background: #f3f1fd;
+  color: #7b68ee;
+}
+
+.member-stats-card__icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.member-stats-card--projects {
+  background: #ffffff;
+  border-color: #7b68ee;
+  box-shadow: 0 1px 3px rgba(123, 104, 238, 0.1);
+  color: #292d34;
+}
+
+.member-stats-card--projects.member-stats-card--clickable:hover {
+  border-color: #6b58de;
+  box-shadow: 0 2px 8px rgba(123, 104, 238, 0.12);
+  filter: none;
+}
+
+.member-stats-card--projects .member-stats-card__icon {
+  background: #f3f1fd;
+  color: #7b68ee;
+}
+
+.member-stats-card--projects .member-stats-card__value,
+.member-stats-card--projects .member-stats-card__label {
+  color: #292d34;
+}
+
+.member-stats-card--tasks .member-stats-card__icon {
+  background: #eff6ff;
+  color: #3b82f6;
+}
+
+.member-stats-card--risks .member-stats-card__icon {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.member-stats-card__value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.1;
+  color: #292d34;
+  letter-spacing: -0.02em;
+}
+
+.member-stats-card__label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #87909e;
+  text-transform: none;
+  letter-spacing: 0;
+}

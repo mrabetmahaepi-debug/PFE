@@ -1,0 +1,431 @@
+/* ==========================================================================
+   Compact creation modal — shared design system
+   --------------------------------------------------------------------------
+   Used by every "create something" modal (CreateTaskModal,
+   CreateProjectModal, …) so the UI stays consistent: same width, same
+   header / body / footer rhythm, same input style, same buttons.
+
+   Layered on top of the global modal base classes (`.modal-overlay`,
+   `.modal-container`, `.modal-header`, `.close-btn`, …) defined in
+   CreateProjectModal.css. Adding `.compact-modal*` to a modal swaps it
+   into the compact design system without touching the legacy modals.
+   ========================================================================== */
+
+/* ---- Overlay ------------------------------------------------------------- */
+.modal-overlay.compact-modal-overlay {
+  padding: clamp(1rem, 4vh, 2rem) 1rem;
+  align-items: center;
+  /* When the viewport gets very short the modal hits its max-height and the
+     overlay itself stays scroll-free; if a browser still computes overflow,
+     fall back to top-aligned scrolling so the header remains reachable. */
+  overflow-y: auto;
+}
+
+/* ---- Container ----------------------------------------------------------- */
+.modal-container.compact-modal {
+  max-width: 460px;
+  width: 100%;
+  /* Always fit inside the viewport with breathing room top + bottom. */
+  max-height: min(680px, calc(100dvh - 2rem));
+  border-radius: 14px;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.06),
+    0 18px 40px -12px rgba(15, 23, 42, 0.18);
+  /* Flex column → header / scrollable body / footer */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ---- Header -------------------------------------------------------------- */
+.compact-modal-header {
+  flex: 0 0 auto;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  align-items: flex-start;
+}
+
+.compact-modal-header h2 {
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+.compact-modal-header p {
+  margin: 0.15rem 0 0;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.compact-modal-header .close-btn {
+  padding: 0.35rem;
+  border-radius: 8px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+/* ---- Form is a transparent flex parent for body + footer ----------------- */
+.compact-modal-form {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0;
+  gap: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ---- Scrollable body ----------------------------------------------------- */
+.compact-modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(20, 184, 166, 0.3) transparent;
+}
+
+.compact-modal-body::-webkit-scrollbar {
+  width: 8px;
+}
+
+.compact-modal-body::-webkit-scrollbar-thumb {
+  background: rgba(20, 184, 166, 0.25);
+  border-radius: 999px;
+}
+
+.compact-modal-body::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.45);
+}
+
+/* ---- Labels -------------------------------------------------------------- */
+.compact-modal-form .form-group {
+  gap: 0.35rem;
+}
+
+.compact-modal-form label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-main);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.compact-modal-form label .required {
+  color: var(--color-danger);
+  font-weight: 700;
+}
+
+.compact-modal-form label .optional {
+  color: var(--text-muted);
+  font-weight: 500;
+  font-size: 0.7rem;
+}
+
+/* ---- Inputs / Selects / Textareas --------------------------------------- */
+.compact-modal-form .input-wrapper {
+  position: relative;
+}
+
+.compact-modal-form .input-wrapper > .input-icon {
+  position: absolute;
+  left: 0.7rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.compact-modal-form .input-wrapper > .input-icon-top {
+  position: absolute;
+  left: 0.7rem;
+  top: 0.65rem;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.compact-modal-form .input-wrapper input,
+.compact-modal-form .input-wrapper select,
+.compact-modal-form .input-wrapper textarea {
+  width: 100%;
+  padding: 0.55rem 0.8rem 0.55rem 2.25rem;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  font-size: 0.8125rem;
+  font-family: inherit;
+  background: var(--bg-surface);
+  color: var(--text-main);
+  outline: none;
+  transition: border-color 0.15s var(--ease-out),
+    box-shadow 0.15s var(--ease-out), background 0.15s var(--ease-out);
+}
+
+.compact-modal-form .input-wrapper input::placeholder,
+.compact-modal-form .input-wrapper textarea::placeholder {
+  color: var(--text-muted);
+}
+
+.compact-modal-form .input-wrapper input:hover,
+.compact-modal-form .input-wrapper select:hover,
+.compact-modal-form .input-wrapper textarea:hover {
+  border-color: var(--border-strong);
+}
+
+.compact-modal-form .input-wrapper input:focus,
+.compact-modal-form .input-wrapper select:focus,
+.compact-modal-form .input-wrapper textarea:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+  background: var(--bg-surface-elevated);
+}
+
+.compact-modal-form .input-wrapper textarea {
+  min-height: 72px;
+  padding: 0.6rem 0.8rem 0.6rem 2.25rem;
+  resize: vertical;
+  line-height: 1.45;
+}
+
+/* Custom chevron for native <select> */
+.compact-modal-form .input-wrapper select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding-right: 2rem;
+  cursor: pointer;
+}
+
+.compact-modal-form .input-wrapper select:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  background: var(--bg-surface-2);
+}
+
+.compact-modal-form .select-chevron {
+  position: absolute;
+  right: 0.7rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.compact-modal-form input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.55;
+  transition: opacity 0.15s var(--ease-out);
+}
+
+.compact-modal-form input[type="date"]:hover::-webkit-calendar-picker-indicator {
+  opacity: 0.95;
+}
+
+.compact-modal-form .form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.65rem;
+}
+
+/* ---- Inline error chip --------------------------------------------------- */
+.compact-modal-form .form-error {
+  margin: 0;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid #fecaca;
+  background: var(--color-danger-bg);
+  color: #b91c1c;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border-radius: 8px;
+}
+
+/* ---- Footer -------------------------------------------------------------- */
+.compact-modal-footer {
+  flex: 0 0 auto;
+  padding: 0.85rem 1.25rem;
+  background: var(--bg-surface-2);
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.compact-modal-footer .secondary-btn,
+.compact-modal-footer .primary-btn {
+  padding: 0.5rem 0.95rem;
+  font-size: 0.8125rem;
+  border-radius: 9px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  transition: background 0.15s var(--ease-out),
+    border-color 0.15s var(--ease-out), color 0.15s var(--ease-out),
+    transform 0.05s var(--ease-out);
+}
+
+.compact-modal-footer .primary-btn {
+  background: var(--primary);
+  color: #fff;
+  border: 1px solid var(--primary);
+  box-shadow: 0 6px 14px -8px rgba(99, 102, 241, 0.7);
+}
+
+.compact-modal-footer .primary-btn:hover:not(:disabled) {
+  background: var(--primary-hover);
+  border-color: var(--primary-hover);
+}
+
+.compact-modal-footer .primary-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.compact-modal-footer .primary-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+/* ---- Responsive ---------------------------------------------------------- */
+@media (max-width: 520px) {
+  .modal-overlay.compact-modal-overlay {
+    padding: 0.75rem;
+  }
+  .modal-container.compact-modal {
+    max-width: 100%;
+    max-height: calc(100dvh - 1.5rem);
+    border-radius: 12px;
+  }
+  .compact-modal-header,
+  .compact-modal-body,
+  .compact-modal-footer {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  .compact-modal-form .form-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* On very short viewports (e.g. landscape phones, browser DevTools open),
+   shrink internal padding so the form is fully usable without giant scroll. */
+@media (max-height: 640px) {
+  .modal-container.compact-modal {
+    max-height: calc(100dvh - 1.5rem);
+  }
+  .compact-modal-body {
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+    gap: 0.7rem;
+  }
+}
+
+/* ---- Hierarchy create (sprint / tâche / liste…) --------------------------- */
+.modal-container.hierarchy-create-modal {
+  background: linear-gradient(
+    168deg,
+    rgba(255, 255, 255, 0.98) 0%,
+    rgba(240, 253, 250, 0.96) 45%,
+    rgba(224, 242, 254, 0.94) 100%
+  );
+  border: 1px solid rgba(34, 211, 238, 0.24);
+}
+
+.modal-container.hierarchy-create-modal .compact-modal-header {
+  border-bottom-color: rgba(34, 211, 238, 0.18);
+}
+
+.modal-container.hierarchy-create-modal .compact-modal-header h2 {
+  background: linear-gradient(90deg, #14b8a6, #0ea5e9, #8b5cf6);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+.hierarchy-create-modal .form-group--accent label {
+  color: #0d9488;
+  font-weight: 700;
+}
+
+.hierarchy-create-modal .form-group--accent .input-wrapper input,
+.hierarchy-create-modal .form-group--accent .input-wrapper select,
+.hierarchy-create-modal .form-group--accent .input-wrapper textarea {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.95) 0%,
+    rgba(220, 252, 231, 0.65) 50%,
+    rgba(224, 242, 254, 0.75) 100%
+  );
+  border-color: rgba(34, 211, 238, 0.3);
+  color: #0f766e;
+}
+
+.hierarchy-create-modal .form-group--accent .input-wrapper input::placeholder,
+.hierarchy-create-modal .form-group--accent .input-wrapper textarea::placeholder {
+  color: #64748b;
+}
+
+.hierarchy-create-modal .form-group--accent .input-wrapper input:hover,
+.hierarchy-create-modal .form-group--accent .input-wrapper select:hover,
+.hierarchy-create-modal .form-group--accent .input-wrapper textarea:hover {
+  border-color: rgba(20, 184, 166, 0.45);
+}
+
+.hierarchy-create-modal .form-group--accent .input-wrapper input:focus,
+.hierarchy-create-modal .form-group--accent .input-wrapper select:focus,
+.hierarchy-create-modal .form-group--accent .input-wrapper textarea:focus {
+  border-color: rgba(20, 184, 166, 0.55);
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.18);
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.98) 0%,
+    rgba(187, 247, 208, 0.5) 50%,
+    rgba(186, 230, 253, 0.7) 100%
+  );
+}
+
+.hierarchy-create-modal .form-group--accent .input-wrapper > .input-icon,
+.hierarchy-create-modal .form-group--accent .input-wrapper > .input-icon-top,
+.hierarchy-create-modal .form-group--accent .input-wrapper .select-chevron {
+  color: #0ea5e9;
+}
+
+.hierarchy-create-modal .compact-modal-form input[type='date'] {
+  accent-color: #14b8a6;
+  color-scheme: light;
+}
+
+.hierarchy-create-modal .compact-modal-form input[type='date']::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 1;
+  filter: invert(42%) sepia(72%) saturate(1200%) hue-rotate(145deg) brightness(0.95);
+}
+
+.hierarchy-create-modal .compact-modal-form input[type='date']:hover::-webkit-calendar-picker-indicator {
+  filter: invert(36%) sepia(85%) saturate(1400%) hue-rotate(145deg) brightness(0.9);
+}
+
+.hierarchy-create-modal-footer {
+  justify-content: flex-end;
+  background: transparent;
+  border-top: none;
+  padding-top: 0.35rem;
+  margin-top: 0;
+}
+
+.hierarchy-create-modal-footer .primary-btn {
+  background: linear-gradient(135deg, #14b8a6 0%, #0ea5e9 55%, #8b5cf6 100%);
+  border-color: transparent;
+  box-shadow: 0 6px 18px rgba(14, 165, 233, 0.28);
+}
+
+.hierarchy-create-modal-footer .primary-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #0d9488 0%, #0284c7 55%, #7c3aed 100%);
+  border-color: transparent;
+}

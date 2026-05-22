@@ -1,23 +1,42 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  Briefcase, 
-  CheckSquare, 
-  Users, 
-  ArrowRight, 
+import {
+  Activity,
+  AlertTriangle,
+  Briefcase,
   Building2,
   Bell,
-  ShieldCheck,
-  PlusCircle,
-  UserPlus,
-  Key,
-  ExternalLink,
-  Zap,
-  Activity,
+  CheckSquare,
   ChevronRight,
-  Clock
+  Mail,
+  Search,
+  ShieldCheck,
+  TrendingDown,
+  TrendingUp,
+  UserPlus,
+  Users,
+  Zap,
 } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
+import { useNavigate } from 'react-router-dom';
+import HeroTimeWidget from '../components/HeroTimeWidget';
+import MemberStatsCard from '../components/MemberStatsCard';
+import MemberTasksByProjectChart from '../components/MemberTasksByProjectChart';
+import MemberInsightsRow from '../components/MemberInsightsRow';
+import MemberActivityFeed from '../components/MemberActivityFeed';
+import SuperAdminAdminsByEnterpriseChart from '../components/SuperAdminAdminsByEnterpriseChart';
+import SuperAdminProjectsByCompanyChart from '../components/SuperAdminProjectsByCompanyChart';
+import SuperAdminCompanyGrowthChart from '../components/SuperAdminCompanyGrowthChart';
+import { entrepriseService, type Entreprise } from '../services/entreprise.service';
+import '../components/MemberStatsCard.css';
+import { formatRelativeTime } from '../lib/formatRelativeTime';
+import {
+  isSuperAdminDashboardActivityVisible,
+  normalizeSuperAdminAction,
+} from '../lib/superAdminActivityFilter';
+import { getRoleKey, isEnterpriseAdmin } from '../lib/permissions';
+import TenantAdminDashboard from './TenantAdminDashboard';
+import type { EnterpriseActivityType } from '../services/activity.service';
 import { projectService } from '../services/project.service';
 import { taskService } from '../services/task.service';
 import { teamService } from '../services/team.service';
@@ -25,321 +44,877 @@ import { alertService } from '../services/alert.service';
 import { superAdminService } from '../services/superadmin.service';
 import { useAuth } from '../hooks/useAuth';
 import api from '../services/api';
-import { type Projet } from '../types/project';
-import { TaskStatus } from '../types/task';
+import { TaskPriority, TaskStatus, type Tache } from '../types/task';
+import { ProjectStatus } from '../types/project';
+import type { Projet } from '../types/project';
+import type { User } from '../types/auth.types';
 import './Dashboard.css';
+import './Dashboard.clean.css';
+
+const DONUT_COLORS = ['#7B68EE', '#A8A0E8', '#86EFAC', '#FCD34D'];
+
+function normalizeTaskStatusValue(statut: string | undefined | null): TaskStatus | null {
+  const raw = String(statut ?? '').trim();
+  if (!raw) return TaskStatus.TODO;
+  const upper = raw.toUpperCase().replace(/\s+/g, '_');
+  if (
+    upper === 'TODO' ||
+    upper === 'A_FAIRE' ||
+    raw === 'À faire' ||
+    raw === 'A faire'
+  ) {
+    return TaskStatus.TODO;
+  }
+  if (upper === 'IN_PROGRESS' || upper === 'EN_COURS' || raw === 'En cours') {
+    return TaskStatus.IN_PROGRESS;
+  }
+  if (
+    upper === 'DONE' ||
+    upper === 'TERMINEE' ||
+    upper === 'TERMINÉE' ||
+    raw === 'Terminée' ||
+    raw === 'Terminé'
+  ) {
+    return TaskStatus.DONE;
+  }
+  if (raw === TaskStatus.TODO || raw === TaskStatus.IN_PROGRESS || raw === TaskStatus.DONE) {
+    return raw;
+  }
+  return null;
+}
+
+function isTaskDoneStatus(task: Tache): boolean {
+  return normalizeTaskStatusValue(task.statut_t) === TaskStatus.DONE;
+}
+
+function isTaskTodoStatus(task: Tache): boolean {
+  return normalizeTaskStatusValue(task.statut_t) === TaskStatus.TODO;
+}
+
+function isTaskInProgressStatus(task: Tache): boolean {
+  return normalizeTaskStatusValue(task.statut_t) === TaskStatus.IN_PROGRESS;
+}
+
+function isTaskLateStatus(task: Tache): boolean {
+  if (isTaskDoneStatus(task)) return false;
+  if (!task.date_limite_t) return false;
+  const due = new Date(task.date_limite_t);
+  if (Number.isNaN(due.getTime())) return false;
+  due.setHours(0, 0, 0, 0);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return due.getTime() < today.getTime();
+}
+
+/** Comptes exclusifs pour le dashboard membre (évite le double comptage retard + statut). */
+function partitionMemberTaskAnalytics(tasks: Tache[]) {
+  let todoCount = 0;
+  let inProgressCount = 0;
+  let doneCount = 0;
+  let lateCount = 0;
+
+  for (const task of tasks) {
+    if (isTaskDoneStatus(task)) {
+      doneCount += 1;
+      continue;
+    }
+    if (isTaskLateStatus(task)) {
+      lateCount += 1;
+      continue;
+    }
+    if (isTaskInProgressStatus(task)) {
+      inProgressCount += 1;
+      continue;
+    }
+    if (isTaskTodoStatus(task)) {
+      todoCount += 1;
+      continue;
+    }
+    todoCount += 1;
+  }
+
+  const donutSegments = [
+    { name: 'À faire', value: todoCount },
+    { name: 'En cours', value: inProgressCount },
+    { name: 'Terminée', value: doneCount },
+    { name: 'En retard', value: lateCount },
+  ].filter((row) => row.value > 0);
+
+  return {
+    todoCount,
+    inProgressCount,
+    doneCount,
+    lateCount,
+    total: tasks.length,
+    donutSegments,
+  };
+}
+
+function getProjectStatusColor(status: string): string {
+  switch (status) {
+    case ProjectStatus.IN_PROGRESS:
+      return '#4f46e5';
+    case ProjectStatus.COMPLETED:
+      return '#10b981';
+    case ProjectStatus.ON_HOLD:
+      return '#f59e0b';
+    case ProjectStatus.DELAYED:
+      return '#ef4444';
+    case ProjectStatus.PLANNING:
+    default:
+      return '#64748b';
+  }
+}
+
+function getActivityIcon(type: EnterpriseActivityType) {
+  switch (type) {
+    case 'project':
+      return <Briefcase size={14} />;
+    case 'task':
+      return <CheckSquare size={14} />;
+    case 'user':
+    case 'member':
+      return <UserPlus size={14} />;
+    case 'invitation':
+      return <Mail size={14} />;
+    case 'alert':
+      return <AlertTriangle size={14} />;
+    case 'access':
+      return <ShieldCheck size={14} />;
+    default:
+      return <Activity size={14} />;
+  }
+}
+
+function formatProjectStatus(status: string): string {
+  switch (status) {
+    case ProjectStatus.IN_PROGRESS:
+      return 'En cours';
+    case ProjectStatus.COMPLETED:
+      return 'Terminé';
+    case ProjectStatus.ON_HOLD:
+      return 'En attente';
+    case ProjectStatus.DELAYED:
+      return 'En retard';
+    case ProjectStatus.PLANNING:
+      return 'Planning';
+    default:
+      return status?.replace(/_/g, ' ') || 'Planning';
+  }
+}
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const roleName = typeof user?.role === 'object' ? user.role.nom : user?.role;
+  const roleName = typeof user?.role === 'object' ? user.role?.nom : user?.role;
   const isSuperAdmin = roleName === 'SuperAdmin';
-  
+  const isTenantAdmin = getRoleKey(user) === 'ADMIN';
+  const showTaskAnalytics = !isSuperAdmin && !isTenantAdmin;
+  const showProjectProgress = !isSuperAdmin && !isTenantAdmin;
+  const showProjectsPanel = isTenantAdmin;
+
   const [stats, setStats] = useState({
     projectsCount: 0,
     tasksCount: 0,
     teamCount: 0,
     completionRate: 0,
     enterprisesCount: 0,
-    pendingApprovals: 0
+    pendingApprovals: 0,
   });
-  
+
   const [recentProjects, setRecentProjects] = useState<any[]>([]);
+  const [adminProjects, setAdminProjects] = useState<Projet[]>([]);
+  const [adminProjectSearch, setAdminProjectSearch] = useState('');
   const [recentActivities, setRecentActivities] = useState<any[]>([]);
+  const [scopeTasks, setScopeTasks] = useState<Tache[]>([]);
+  const [memberProjects, setMemberProjects] = useState<Projet[]>([]);
+  const [superAdminMembers, setSuperAdminMembers] = useState<User[]>([]);
+  const [superAdminProjects, setSuperAdminProjects] = useState<Projet[]>([]);
+  const [superAdminCompanies, setSuperAdminCompanies] = useState<Entreprise[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (isSuperAdmin) {
-      fetchSuperAdminData();
+      void fetchSuperAdminData();
     } else {
-      fetchDashboardData();
+      void fetchDashboardData();
     }
   }, [isSuperAdmin]);
 
   const fetchSuperAdminData = async () => {
     try {
       setLoading(true);
-      const dashboardStats = await superAdminService.getDashboardStats();
-      
+      const [dashboardStats, members, projects, companies] = await Promise.all([
+        superAdminService.getDashboardStats(),
+        teamService.getAllMembers().catch(() => [] as User[]),
+        projectService.getAll().catch(() => [] as Projet[]),
+        entrepriseService.getAll().catch(() => [] as Entreprise[]),
+      ]);
+
+      setSuperAdminMembers(Array.isArray(members) ? members : []);
+      setSuperAdminProjects(Array.isArray(projects) ? projects : []);
+      setSuperAdminCompanies(Array.isArray(companies) ? companies : []);
+
       setStats({
         projectsCount: dashboardStats.totalProjects,
         tasksCount: 0,
         teamCount: dashboardStats.totalAdmins,
         completionRate: 0,
         enterprisesCount: dashboardStats.totalEnterprises,
-        pendingApprovals: dashboardStats.pendingApprovals
+        pendingApprovals: dashboardStats.pendingApprovals,
       });
-      
+
       const actRes = await api.get('/activities').catch(() => ({ data: [] }));
-      setRecentActivities((actRes.data || []).slice(0, 5));
-      
-      const projects = await projectService.getAll();
-      setRecentProjects(projects.slice(0, 4));
-      
+      const platformOnly = (actRes.data || []).filter(
+        isSuperAdminDashboardActivityVisible
+      );
+      setRecentActivities(platformOnly.slice(0, 5));
+
+      setRecentProjects([]);
     } catch (error) {
-      console.error("Failed to fetch superadmin data:", error);
+      console.error('Failed to fetch superadmin data:', error);
     } finally {
       setLoading(false);
     }
   };
 
   const fetchDashboardData = async () => {
+    const tenantAdmin = getRoleKey(user) === 'ADMIN';
     try {
-      alertService.triggerCheck().catch(e => console.error("Alert check failed:", e));
+      alertService.triggerCheck().catch((e) => console.error('Alert check failed:', e));
 
-      const [projects, members, tasks] = await Promise.all([
+      const [projects, members, myTasks] = await Promise.all([
         projectService.getAll(),
-        user?.role === 'Admin' ? teamService.getAllMembers() : Promise.resolve([]),
-        taskService.getMyTasks().catch(() => [])
+        teamService.getAllMembers({ type: 'all' }).catch(() => []),
+        taskService.getMyTasks().catch(() => [] as Tache[]),
       ]);
 
-      const completedTasks = tasks.filter(t => t.statut_t === TaskStatus.DONE).length;
-      const rate = tasks.length > 0 ? Math.round((completedTasks / tasks.length) * 100) : 0;
+      let enterpriseTasks = myTasks;
+      if (tenantAdmin && projects.length > 0) {
+        const chunks = await Promise.all(
+          projects.map((p) =>
+            taskService.getByProject(String(p.id_projet)).catch(() => [] as Tache[])
+          )
+        );
+        enterpriseTasks = chunks.flat();
+      }
 
-      setStats(prev => ({
-        ...prev,
+      const completedTasks = enterpriseTasks.filter((t) => t.statut_t === TaskStatus.DONE).length;
+      const rate =
+        enterpriseTasks.length > 0
+          ? Math.round((completedTasks / enterpriseTasks.length) * 100)
+          : 0;
+
+      setStats({
         projectsCount: projects.length,
-        tasksCount: tasks.length,
+        tasksCount: enterpriseTasks.length,
         teamCount: members.length,
-        completionRate: rate
-      }));
+        completionRate: rate,
+        enterprisesCount: 0,
+        pendingApprovals: 0,
+      });
 
-      setRecentProjects(projects.slice(0, 3));
+      setScopeTasks(tenantAdmin ? [] : enterpriseTasks);
+      if (tenantAdmin) {
+        setAdminProjects(projects);
+        setRecentProjects([]);
+        setMemberProjects([]);
+      } else {
+        setAdminProjects([]);
+        setRecentProjects(projects.slice(0, 4));
+        setMemberProjects(projects);
+      }
     } catch (error) {
-      console.error("Failed to fetch dashboard data:", error);
+      console.error('Failed to fetch dashboard data:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const statCards = isSuperAdmin ? [
-    { label: 'Entreprises', value: stats.enterprisesCount, icon: <Building2 />, color: '#6366f1', type: 'xl', path: '/enterprises' },
-    { label: 'Administrateurs', value: stats.teamCount, icon: <ShieldCheck />, color: '#10b981', type: 'xl', path: '/team' },
-    { label: 'Projets Totaux', value: stats.projectsCount, icon: <Briefcase />, color: '#f59e0b', type: 'md', path: '/projects' },
-    { label: 'En attente', value: stats.pendingApprovals, icon: <Bell />, color: '#ef4444', type: 'md', path: '/approvals' },
-  ] : [
-    { label: 'Projets Actifs', value: stats.projectsCount, icon: <Briefcase />, color: '#6366f1', type: 'xl', path: '/projects' },
-    { label: 'Tâches Totales', value: stats.tasksCount, icon: <CheckSquare />, color: '#10b981', type: 'xl', path: '/tasks' },
-    { label: 'Complétion', value: `${stats.completionRate}%`, icon: <Zap />, color: '#f59e0b', type: 'md', path: '/tasks' },
-    { label: 'Membres', value: stats.teamCount, icon: <Users />, color: '#ef4444', type: 'md', path: '/team' },
+  const workspaceStatCards = [
+    {
+      label: 'Projets actifs',
+      value: stats.projectsCount,
+      icon: <Briefcase size={20} />,
+      color: '#7B68EE',
+      path: '/projects',
+      trend: 8,
+      up: true,
+    },
+    {
+      label: 'Complétion',
+      value: `${stats.completionRate}%`,
+      icon: <Zap size={20} />,
+      color: '#f59e0b',
+      path: '/tasks',
+      trend: stats.completionRate,
+      up: stats.completionRate >= 50,
+    },
+    {
+      label: 'Membres',
+      value: stats.teamCount,
+      icon: <Users size={20} />,
+      color: '#86EFAC',
+      path: '/team',
+      trend: 2,
+      up: true,
+    },
   ];
 
-  const quickActions = [
-    { label: 'Ajouter Entreprise', icon: <PlusCircle size={20} />, path: '/enterprises', color: '#6366f1' },
-    { label: 'Inviter Admin', icon: <UserPlus size={20} />, path: '/enterprises', color: '#10b981' },
-    { label: 'Gérer Permissions', icon: <Key size={20} />, path: '/permissions', color: '#f59e0b' },
-  ];
+  const statCards = isSuperAdmin
+    ? [
+        {
+          label: 'Entreprises',
+          value: stats.enterprisesCount,
+          icon: <Building2 size={20} />,
+          color: '#7B68EE',
+          path: '/enterprises',
+          trend: 12,
+          up: true,
+          featured: true,
+        },
+        {
+          label: 'Administrateurs',
+          value: stats.teamCount,
+          icon: <ShieldCheck size={20} />,
+          color: '#86EFAC',
+          path: '/team',
+          trend: 5,
+          up: true,
+        },
+        {
+          label: 'Projets totaux',
+          value: stats.projectsCount,
+          icon: <Briefcase size={20} />,
+          color: '#A8A0E8',
+          path: '/projects',
+          trend: 3,
+          up: true,
+        },
+        {
+          label: 'En attente',
+          value: stats.pendingApprovals,
+          icon: <Bell size={20} />,
+          color: '#FCA5A5',
+          path: '/approvals',
+          trend: stats.pendingApprovals > 0 ? 8 : 0,
+          up: false,
+        },
+      ]
+    : isTenantAdmin
+      ? workspaceStatCards.filter((card) => card.label !== 'Complétion')
+      : workspaceStatCards;
+
+  const filteredAdminProjects = useMemo(() => {
+    if (!isTenantAdmin) return [];
+
+    const searchLower = adminProjectSearch.trim().toLowerCase();
+    const filtered = adminProjects.filter((project) => {
+      if (!searchLower) return true;
+      return (
+        project.nom_p?.toLowerCase().includes(searchLower) ||
+        project.responsable?.toLowerCase().includes(searchLower) ||
+        formatProjectStatus(project.statut_p).toLowerCase().includes(searchLower)
+      );
+    });
+
+    return [...filtered].sort(
+      (a, b) =>
+        new Date(b.createdAt || b.date_debut || 0).getTime() -
+        new Date(a.createdAt || a.date_debut || 0).getTime()
+    );
+  }, [adminProjectSearch, adminProjects, isTenantAdmin]);
+
+  const progressBars = useMemo(() => {
+    return recentProjects.map((p) => {
+      const prog = p.avancement || 0;
+      const total = p.totalTasks ?? p._count?.tache ?? 0;
+      return {
+        id: p.id_projet,
+        name: p.nom_p,
+        percent: total > 0 ? prog : 0,
+        label: total > 0 ? `${prog}%` : '—',
+      };
+    });
+  }, [recentProjects]);
+
+  const taskAnalyticsSource = useMemo(() => {
+    if (!showTaskAnalytics) return [];
+    return scopeTasks;
+  }, [scopeTasks, showTaskAnalytics]);
+
+  const taskAnalytics = useMemo(() => {
+    if (!showTaskAnalytics) return null;
+    return partitionMemberTaskAnalytics(taskAnalyticsSource);
+  }, [showTaskAnalytics, taskAnalyticsSource]);
+
+  const donutData =
+    taskAnalytics && taskAnalytics.donutSegments.length > 0
+      ? taskAnalytics.donutSegments
+      : [{ name: 'Aucune', value: 1 }];
+
+  const memberRisksCount = useMemo(() => {
+    if (!taskAnalytics) return 0;
+    return taskAnalytics.lateCount;
+  }, [taskAnalytics]);
+
+  const displayName = user?.prenom || user?.name || 'Admin';
+  const fullName =
+    [user?.prenom, user?.nom].filter(Boolean).join(' ').trim() || displayName;
+
+  const heroDateLabel = useMemo(() => {
+    const formatted = new Intl.DateTimeFormat('fr-FR', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    }).format(new Date());
+    return formatted
+      .split(' ')
+      .map((word) => (/\d/.test(word) ? word : word.charAt(0).toUpperCase() + word.slice(1)))
+      .join(' ');
+  }, []);
 
   if (loading) {
     return (
-      <div className="dashboard-loading">
-        <div className="loader"></div>
-        <p>Préparation de votre espace de travail...</p>
+      <div className="cu-dashboard cu-dashboard--loading">
+        <div className="cu-loader" />
+        <p>Préparation de votre espace de travail…</p>
       </div>
     );
   }
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1
-      }
-    }
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    show: { opacity: 1, y: 0 }
-  };
+  if (isEnterpriseAdmin(user) && !isSuperAdmin) {
+    return <TenantAdminDashboard />;
+  }
 
   return (
-    <motion.div 
-      variants={containerVariants}
-      initial="hidden"
-      animate="show"
-      className="dashboard-page"
+    <motion.div
+      className={`cu-dashboard${isSuperAdmin ? ' cu-dashboard--super-admin' : ''}${
+        isTenantAdmin ? ' cu-dashboard--tenant-admin' : ''
+      }${showTaskAnalytics ? ' cu-dashboard--member' : ''}`}
     >
-      <header className="page-header">
-        <motion.div variants={itemVariants}>
-          <h1>
-            {isSuperAdmin 
-              ? 'Centre de contrôle Super Admin' 
-              : `Bonjour, ${user?.prenom || 'Admin'} 👋`}
-          </h1>
-          <p className="subtitle">
-            {isSuperAdmin 
-              ? 'Supervisez la plateforme, les entreprises, les administrateurs et les accès depuis un seul espace.' 
-              : 'Gérez et suivez l\'avancement de vos projets.'}
-          </p>
+      {isTenantAdmin && (
+        <motion.div className="cu-dashboard-top-actions" aria-label="Actions rapides">
+            <button
+              type="button"
+              className="virtide-btn virtide-btn--primary"
+              onClick={() => navigate('/projects')}
+            >
+              <span>+ Projet</span>
+            </button>
+            <button
+              type="button"
+              className="virtide-btn virtide-btn--soft"
+              onClick={() => navigate('/invite')}
+            >
+              <UserPlus size={17} />
+              <span>Inviter</span>
+            </button>
         </motion.div>
-        <motion.div variants={itemVariants} className="header-badges">
-          {stats.pendingApprovals > 0 && isSuperAdmin && (
-            <Link to="/approvals" className="pending-badge">
-              <Bell size={14} /> {stats.pendingApprovals} demandes
-            </Link>
-          )}
-        </motion.div>
-      </header>
-
-      {/* KPI Stats */}
-      <div className="stats-grid">
-        {statCards.map((stat) => (
-          <motion.div 
-            key={stat.label}
-            variants={itemVariants}
-            whileHover={{ y: -8, borderBottom: `4px solid ${stat.color}` }}
-            whileTap={{ scale: 0.97 }}
-            onClick={() => navigate(stat.path)}
-            className={`premium-card stat-card ${stat.type}`}
-            style={{ cursor: 'pointer' }}
-          >
-            <div className="stat-card-top">
-              <div className="stat-icon-wrapper" style={{ backgroundColor: `${stat.color}15`, color: stat.color }}>
-                {stat.icon}
-              </div>
-            </div>
-            <div className="stat-info">
-              <p>{stat.label}</p>
-              <h3>{stat.value}</h3>
-            </div>
-          </motion.div>
-        ))}
-      </div>
-
-      {/* Quick Actions - Only for SuperAdmin */}
-      {isSuperAdmin && (
-        <section className="quick-actions-section">
-          <div className="section-header">
-            <h3>Actions rapides</h3>
-          </div>
-          <div className="quick-actions-grid">
-            {quickActions.map((action) => (
-              <motion.div 
-                key={action.label}
-                variants={itemVariants}
-                whileHover={{ y: -4 }}
-                className="action-card"
-                onClick={() => navigate(action.path)}
-              >
-                <div className="action-icon" style={{ backgroundColor: action.color }}>
-                  {action.icon}
-                </div>
-                <div className="action-info">
-                  <span>{action.label}</span>
-                </div>
-                <ArrowRight size={16} style={{ marginLeft: 'auto', opacity: 0.5 }} />
-              </motion.div>
-            ))}
-          </div>
-        </section>
       )}
 
-      {/* Main Content */}
-      <div className="dashboard-content-grid">
-        {/* Supervision Projets */}
-        <motion.section variants={itemVariants} className="dashboard-card supervision-sec">
-          <div className="card-header">
-            <h3>{isSuperAdmin ? 'Supervision des Projets' : 'Mes Projets'}</h3>
-            <button className="text-btn" onClick={() => navigate('/projects')}>
-              Voir tout <ChevronRight size={16} />
+      <section
+        className={`cu-hero${isSuperAdmin ? ' cu-hero--super-admin' : ''}`}
+        aria-label="En-tête workspace"
+      >
+        <div className="cu-hero-main">
+          <span className="cu-hero-badge">Espaces</span>
+          <h1 className="cu-hero-title">
+            {isSuperAdmin ? (
+              <>
+                <span className="cu-hero-title-gradient">Bonjour {fullName}</span>{' '}
+                <span className="cu-hero-title-wave" aria-hidden="true">
+                  👋
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="cu-hero-title-gradient">Bonjour {fullName}</span>{' '}
+                <span className="cu-hero-title-wave" aria-hidden="true">
+                  👋
+                </span>
+              </>
+            )}
+          </h1>
+          <p className="cu-hero-date">{heroDateLabel}</p>
+          {!isSuperAdmin && (
+            <p className="cu-hero-sub">
+              Actions rapides, priorités et équipe — tout ce dont vous avez besoin pour avancer.
+            </p>
+          )}
+        </div>
+
+        <HeroTimeWidget />
+      </section>
+
+      {showTaskAnalytics ? (
+        <div className="cu-kpi-row cu-member-kpi-row">
+          <MemberStatsCard
+            label="Projets"
+            value={stats.projectsCount}
+            icon={<Briefcase size={20} />}
+            tint="projects"
+            onClick={() => navigate('/projects')}
+            loading={loading}
+          />
+          <MemberStatsCard
+            label="Tâches"
+            value={stats.tasksCount}
+            icon={<CheckSquare size={20} />}
+            tint="tasks"
+            loading={loading}
+          />
+          <MemberStatsCard
+            label="Risques"
+            value={memberRisksCount}
+            icon={<AlertTriangle size={20} />}
+            tint="risks"
+            loading={loading}
+          />
+        </div>
+      ) : (
+        <div className="cu-kpi-row">
+          {statCards.map((stat) => (
+            <button
+              key={stat.label}
+              type="button"
+              className={`cu-kpi-card${'featured' in stat && stat.featured ? ' cu-kpi-card--featured' : ''}`}
+              onClick={() => navigate(stat.path)}
+            >
+              <div className="cu-kpi-top">
+                <span className="cu-kpi-icon">{stat.icon}</span>
+                <span className={`cu-kpi-trend ${stat.up ? 'up' : 'down'}`}>
+                  {stat.up ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+                  {typeof stat.trend === 'number' && stat.label !== 'Complétion'
+                    ? `${stat.up ? '+' : '-'}${stat.trend}%`
+                    : stat.label === 'Complétion'
+                      ? `${stat.trend}%`
+                      : stat.trend}
+                </span>
+              </div>
+              <div className="cu-kpi-body">
+                <span className="cu-kpi-value">{stat.value}</span>
+                <span className="cu-kpi-label">{stat.label}</span>
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+
+      <motion.div className="cu-main-grid">
+        {isSuperAdmin && (
+          <SuperAdminAdminsByEnterpriseChart
+            members={superAdminMembers}
+            loading={loading}
+          />
+        )}
+
+        {isSuperAdmin && (
+          <SuperAdminProjectsByCompanyChart
+            projects={superAdminProjects}
+            loading={loading}
+          />
+        )}
+
+        {isSuperAdmin && (
+          <SuperAdminCompanyGrowthChart
+            companies={superAdminCompanies}
+            loading={loading}
+          />
+        )}
+
+        {showTaskAnalytics && taskAnalytics && (
+          <section className="cu-panel cu-panel--task-analytics" aria-label="Analytique des tâches">
+            <div className="cu-panel-head">
+              <h3 className="cu-title-gradient">Analytique des tâches</h3>
+            </div>
+
+            <div className="cu-task-analytics-layout">
+              <div className="cu-task-analytics-donut">
+                <motion.div className="cu-donut-stage">
+                  <ResponsiveContainer width="100%" height={220}>
+                    <PieChart>
+                      <Pie
+                        data={donutData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={58}
+                        outerRadius={82}
+                        paddingAngle={4}
+                        dataKey="value"
+                        stroke="none"
+                      >
+                        {donutData.map((_, index) => (
+                          <Cell key={index} fill={DONUT_COLORS[index % DONUT_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <RechartsTooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="cu-donut-center" aria-hidden>
+                    <span className="cu-donut-center-val">{taskAnalytics.total}</span>
+                    <span className="cu-donut-center-lbl">Tâches</span>
+                  </div>
+                </motion.div>
+                <div className="cu-donut-legend">
+                  {donutData.map((segment, index) => (
+                    <span key={segment.name} className="cu-donut-legend-item">
+                      <span
+                        className="cu-donut-legend-dot"
+                        style={{ background: DONUT_COLORS[index % DONUT_COLORS.length] }}
+                      />
+                      {segment.name}
+                      <strong>{segment.value}</strong>
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div className="cu-task-analytics-foot">
+                <div className="cu-analytics-stat cu-analytics-stat--todo cu-analytics-stat--static">
+                  <span className="cu-analytics-stat-label">À faire</span>
+                  <strong className="cu-analytics-stat-value">{taskAnalytics.todoCount}</strong>
+                </div>
+                <div className="cu-analytics-stat cu-analytics-stat--in-progress cu-analytics-stat--static">
+                  <span className="cu-analytics-stat-label">En cours</span>
+                  <strong className="cu-analytics-stat-value">{taskAnalytics.inProgressCount}</strong>
+                </div>
+                <div className="cu-analytics-stat cu-analytics-stat--done cu-analytics-stat--static">
+                  <span className="cu-analytics-stat-label">Terminées</span>
+                  <strong className="cu-analytics-stat-value">{taskAnalytics.doneCount}</strong>
+                </div>
+                <div
+                  className={`cu-analytics-stat cu-analytics-stat--late cu-analytics-stat--static${taskAnalytics.lateCount > 0 ? ' cu-analytics-stat--danger' : ''}`}
+                >
+                  <span className="cu-analytics-stat-label">En retard</span>
+                  <strong className="cu-analytics-stat-value">{taskAnalytics.lateCount}</strong>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {showProjectProgress && (
+          <section className="cu-panel cu-panel--chart">
+          <div className="cu-panel-head">
+            <h3 className="cu-title-gradient">Progression des projets</h3>
+            <button type="button" className="cu-link-btn" onClick={() => navigate('/projects')}>
+              Voir tout
             </button>
           </div>
-          <div className="project-strip-list">
-            {recentProjects.length > 0 ? recentProjects.map((project: any) => {
-              const prog = project.avancement || 0;
-              const hasTasks = project.totalTasks > 0;
-              let progColor = '#ef4444'; // rouge
-              if (prog >= 70) progColor = '#10b981'; // vert
-              else if (prog >= 30) progColor = '#f59e0b'; // orange
-
-              return (
-              <div key={project.id_projet} className="project-strip" onClick={() => navigate(`/projects/${project.id_projet}`)} style={{ cursor: 'pointer' }}>
-                <div className="project-info-main">
-                  <div className="project-avatar" style={{ background: `linear-gradient(135deg, var(--primary) 0%, #a855f7 100%)` }}>
-                    {project.nom_p[0]}
-                  </div>
-                  <div className="project-titles">
-                    <h4>{project.nom_p}</h4>
-                    <p>{isSuperAdmin ? project.entreprise?.nom : `${project.totalTasks || project._count?.tache || 0} tâches`}</p>
-                  </div>
-                </div>
-                
-                <div className="project-progress-wrapper" style={{ flex: 1, margin: '0 2rem', minWidth: '150px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginBottom: '0.35rem', fontWeight: 600, color: 'var(--text-muted)' }}>
-                    <span>{hasTasks ? `Progression (${project.completedTasks}/${project.totalTasks})` : 'Aucune tâche'}</span>
-                    <span style={{ color: hasTasks ? progColor : 'inherit' }}>{hasTasks ? `${prog}%` : '0%'}</span>
-                  </div>
-                  <div style={{ height: '6px', backgroundColor: 'var(--border)', borderRadius: '4px', overflow: 'hidden' }}>
-                    <motion.div 
+          <div className="cu-chart-bars">
+            {progressBars.length > 0 ? (
+              progressBars.map((bar) => (
+                <div key={bar.id} className="cu-chart-row">
+                  <span className="cu-chart-label" title={bar.name}>
+                    {bar.name}
+                  </span>
+                  <div className="cu-chart-track">
+                    <motion.div
+                      className="cu-chart-fill"
                       initial={{ width: 0 }}
-                      animate={{ width: `${hasTasks ? prog : 0}%` }}
-                      transition={{ duration: 1, ease: "easeOut" }}
-                      style={{ height: '100%', backgroundColor: hasTasks ? progColor : '#cbd5e1', borderRadius: '4px' }}
+                      animate={{ width: `${bar.percent}%` }}
+                      transition={{ duration: 0.8, ease: 'easeOut' }}
                     />
                   </div>
+                  <span className="cu-chart-val">{bar.label}</span>
                 </div>
+              ))
+            ) : (
+              <div className="cu-empty-inline">Aucun projet à afficher</div>
+            )}
+          </div>
+        </section>
+        )}
 
-                <div className="project-stat-group">
-                  <ExternalLink size={16} className="text-muted" />
-                </div>
+        {showProjectsPanel && (
+        <section
+          className={`cu-panel cu-panel--projects${isTenantAdmin ? ' cu-panel--projects-admin' : ''}`}
+        >
+          <div className="cu-panel-head cu-panel-head--projects">
+            <div>
+              <h3>Supervision des projets</h3>
+              {isTenantAdmin && (
+                <p className="cu-panel-sub">
+                  Vue complète — {adminProjects.length} projet{adminProjects.length !== 1 ? 's' : ''}{' '}
+                  entreprise
+                </p>
+              )}
+            </div>
+            <button type="button" className="cu-link-btn" onClick={() => navigate('/projects')}>
+              Voir tout <ChevronRight size={14} />
+            </button>
+          </div>
+
+          {isTenantAdmin ? (
+            <>
+              <label className="cu-admin-projects-search">
+                <Search size={16} aria-hidden />
+                <input
+                  type="search"
+                  value={adminProjectSearch}
+                  onChange={(e) => setAdminProjectSearch(e.target.value)}
+                  placeholder="Rechercher un projet, responsable, statut…"
+                  aria-label="Rechercher des projets"
+                />
+              </label>
+              <div className="cu-admin-projects-meta">
+                <span>
+                  {filteredAdminProjects.length} affiché
+                  {filteredAdminProjects.length !== adminProjects.length
+                    ? ` sur ${adminProjects.length}`
+                    : ''}
+                </span>
               </div>
-            )}) : (
-              <div className="empty-projects">
-                <Briefcase size={32} />
-                <p>Aucun projet actif en cours de supervision.</p>
-                {!isSuperAdmin && (
-                  <button className="text-btn" onClick={() => navigate('/projects')}>
-                    Créer un projet
-                  </button>
+              <div className="cu-project-list cu-project-list--scroll">
+                {filteredAdminProjects.length > 0 ? (
+                  filteredAdminProjects.map((project) => {
+                    const prog = project.avancement ?? 0;
+                    const totalTasks =
+                      (project as Projet & { totalTasks?: number }).totalTasks ??
+                      project._count?.tache ??
+                      (project as Projet & { tachesCount?: number }).tachesCount ??
+                      0;
+                    const hasTasks = totalTasks > 0;
+                    const status = project.statut_p || ProjectStatus.PLANNING;
+                    const statusColor = getProjectStatusColor(status);
+                    return (
+                      <button
+                        key={project.id_projet}
+                        type="button"
+                        className="cu-project-card cu-project-card--admin"
+                        onClick={() => navigate(`/projects/${project.id_projet}`)}
+                      >
+                        <span className="cu-project-avatar">{project.nom_p?.[0] || '?'}</span>
+                        <div className="cu-project-meta">
+                          <div className="cu-project-meta-top">
+                            <strong>{project.nom_p}</strong>
+                            <span
+                              className="cu-project-status-badge"
+                              style={{
+                                color: statusColor,
+                                backgroundColor: `${statusColor}15`,
+                                borderColor: `${statusColor}30`,
+                              }}
+                            >
+                              {formatProjectStatus(status)}
+                            </span>
+                          </div>
+                          <span className="cu-project-meta-sub">
+                            {project.responsable || 'Non assigné'}
+                            {' · '}
+                            {totalTasks} tâche{totalTasks !== 1 ? 's' : ''}
+                          </span>
+                          <div className="cu-project-bar">
+                            <motion.div
+                              className="cu-project-bar-fill"
+                              style={{ width: hasTasks ? `${prog}%` : '0%' }}
+                            />
+                          </div>
+                        </div>
+                        <span className="cu-project-pct">{hasTasks ? `${prog}%` : '0%'}</span>
+                      </button>
+                    );
+                  })
+                ) : (
+                  <div className="cu-empty-block cu-empty-block--compact">
+                    <Briefcase size={28} />
+                    <p>
+                      {adminProjects.length === 0
+                        ? 'Aucun projet dans votre entreprise'
+                        : 'Aucun projet ne correspond à votre recherche'}
+                    </p>
+                  </div>
                 )}
               </div>
-            )}
-          </div>
-        </motion.section>
+            </>
+          ) : null}
+        </section>
+        )}
 
-        {/* Recent Activity Timeline */}
-        <motion.section variants={itemVariants} className="dashboard-card activity-sec">
-          <div className="card-header">
-            <h3>{isSuperAdmin ? 'Activité plateforme' : 'Activité récente'}</h3>
-            {isSuperAdmin && (
-              <button className="text-btn mini" onClick={() => navigate('/activities')}>
-                Voir tout <ArrowRight size={14} />
-              </button>
-            )}
-          </div>
-          <div className="activity-timeline">
-            {isSuperAdmin ? (
-              recentActivities.length > 0 ? (
+        {showTaskAnalytics ? (
+          <MemberInsightsRow
+            activity={<MemberActivityFeed />}
+            tasksChart={
+              <MemberTasksByProjectChart
+                tasks={scopeTasks}
+                projects={memberProjects}
+                userId={user?.id_utilisateur ?? user?.id}
+                loading={loading}
+              />
+            }
+          />
+        ) : (
+          <section
+            className={`cu-panel cu-panel--activity${
+              isSuperAdmin ? ' cu-panel--activity-super' : ''
+            }`}
+          >
+            <div className="cu-panel-head">
+              <h3>{isSuperAdmin ? 'Activité plateforme' : 'Activité récente'}</h3>
+              {isSuperAdmin && (
+                <button type="button" className="cu-link-btn" onClick={() => navigate('/activities')}>
+                  Voir tout
+                </button>
+              )}
+            </div>
+            <div className="cu-activity-list">
+              {isSuperAdmin && recentActivities.length > 0 ? (
                 recentActivities.map((act, i) => (
-                  <div key={act.id} className={`activity-item ${i === 0 ? 'active' : ''}`}>
-                    <div className="activity-dot">
-                      {act.status === 'ACTIVE' ? <ShieldCheck size={14} /> : <Clock size={14} />}
-                    </div>
-                    <div className="activity-content">
+                  <div key={act.id} className={`cu-activity-item ${i === 0 ? 'is-first' : ''}`}>
+                    <span className="cu-activity-dot">
+                      {act.status === 'ACTIVE' ? <ShieldCheck size={12} /> : <Activity size={12} />}
+                    </span>
+                    <div>
                       <p>
-                        <strong>{act.user}</strong> - {act.action}
+                        <strong>{act.user}</strong> —{' '}
+                        {normalizeSuperAdminAction(act.action) ?? act.action}
                       </p>
-                      <span className="activity-time">{act.entreprise || act.enterprise || 'Plateforme'} • {new Date(act.date || Date.now()).toLocaleDateString()}</span>
+                      <span>
+                        {act.entreprise || act.enterprise || 'Plateforme'} ·{' '}
+                        {formatRelativeTime(act.date)}
+                      </span>
                     </div>
                   </div>
                 ))
               ) : (
-                <div className="empty-activity">
-                  <Activity size={32} />
-                  <p>Aucune activité récente à signaler.</p>
+                <div className="cu-empty-block">
+                  <Activity size={28} />
+                  <p>Aucune activité récente</p>
                 </div>
-              )
-            ) : (
-              <div className="empty-state-placeholder">
-                <Activity size={32} />
-                <p>Flux d’activité bientôt disponible.</p>
-              </div>
-            )}
-          </div>
-        </motion.section>
-      </div>
+              )}
+            </div>
+          </section>
+        )}
+
+        {!isTenantAdmin && (
+          <section className="cu-cta-banner">
+            <div className="cu-cta-content">
+              <span className="cu-cta-eyebrow">N&apos;oubliez pas</span>
+              <h3>
+                {isSuperAdmin
+                  ? 'Validez les demandes en attente et gardez la plateforme à jour.'
+                  : 'Passez en revue vos tâches et gardez vos projets sur la bonne voie.'}
+              </h3>
+              {showTaskAnalytics ? (
+                <span className="cu-cta-btn cu-cta-btn--static">Voir maintenant</span>
+              ) : (
+                <button
+                  type="button"
+                  className="cu-cta-btn"
+                  onClick={() => navigate(isSuperAdmin ? '/approvals' : '/tasks')}
+                >
+                  Voir maintenant
+                </button>
+              )}
+            </div>
+            <span className="cu-cta-illustration" aria-hidden>
+              📊
+            </span>
+          </section>
+        )}
+      </motion.div>
     </motion.div>
   );
 };

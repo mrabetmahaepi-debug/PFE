@@ -4,7 +4,7 @@ export const getRecommendedProjectManagers = async (projectId: number) => {
   const users = await prisma.utilisateur.findMany({
     include: {
       membre_projet: true,
-      tache: true,
+      taches_assignees: true,
     },
   });
 
@@ -40,7 +40,7 @@ export const getRecommendedProjectManagers = async (projectId: number) => {
       reasons.push(`${projectsCount} projets`);
     }
 
-    const completedTasks = user.tache.filter((t: any) => {
+    const completedTasks = (user.taches_assignees || []).filter((t: any) => {
       return t.statut_t?.toLowerCase() === "terminee";
     }).length;
 

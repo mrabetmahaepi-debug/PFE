@@ -54,7 +54,7 @@ export const markAsReadController = async (req: Request, res: Response) => {
       });
     }
 
-    const updatedNotification = await markAsRead(notificationId);
+    const updatedNotification = await markAsRead(notificationId, (req as any).user.id);
 
     return res.status(200).json(updatedNotification);
   } catch (error: any) {

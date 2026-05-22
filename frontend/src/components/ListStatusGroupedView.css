@@ -1,0 +1,551 @@
+.list-status-view {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  color: #292d34;
+  padding: 0 20px 24px;
+}
+
+.list-status-view--clickup {
+  padding: 12px 0 24px;
+}
+
+.list-status-table-panel--clickup .list-status-table {
+  font-size: 13px;
+}
+
+.list-status-task-circle {
+  display: inline-flex;
+  color: #c4c9d0;
+}
+
+.list-status-due-cell,
+.list-status-priority {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #646f79;
+}
+
+.list-status-due-cell svg,
+.list-status-priority svg {
+  flex-shrink: 0;
+  color: #87909e;
+}
+
+.list-status-view-title {
+  display: none;
+}
+
+.list-page--clickup .list-status-view-title {
+  display: block;
+}
+
+.list-status-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.list-status-group {
+  border: none;
+  border-radius: 0;
+  background: #fff;
+  overflow: visible;
+  margin-bottom: 4px;
+}
+
+.list-status-group.is-open {
+  box-shadow: none;
+}
+
+.list-status-group-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 8px 4px;
+  background: #fff;
+  border-bottom: 1px solid #f0f1f3;
+}
+
+.list-status-chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  color: #87909e;
+  cursor: pointer;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.list-status-chevron:hover {
+  background: #f0f1f3;
+}
+
+.list-status-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #292d34;
+  cursor: pointer;
+  padding: 0.25rem 0;
+  text-align: left;
+}
+
+.list-status-name::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #94a3b8;
+  flex-shrink: 0;
+}
+
+.list-status-group[data-tone='blue'] .list-status-name::before {
+  background: #3b82f6;
+}
+
+.list-status-group[data-tone='purple'] .list-status-name::before {
+  background: #7b61ff;
+}
+
+.list-status-group[data-tone='green'] .list-status-name::before {
+  background: #10b981;
+}
+
+.list-status-group[data-tone='gray'] .list-status-name::before {
+  background: #94a3b8;
+}
+
+.list-status-group[data-tone='red'] .list-status-name::before {
+  background: #ef4444;
+}
+
+.list-status-count {
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: #87909e;
+  flex-shrink: 0;
+}
+
+.list-status-count::before {
+  content: '(';
+}
+
+.list-status-count::after {
+  content: ')';
+}
+
+.list-status-header-spacer {
+  flex: 1;
+  min-width: 0.5rem;
+}
+
+.list-status-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.list-status-menu-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  color: #c4c9d0;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.list-status-menu-btn:hover,
+.list-status-menu-btn.is-open {
+  background: #f0f1f3;
+  color: #646f79;
+}
+
+.list-status-menu-popover {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 20;
+  min-width: 120px;
+  padding: 4px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  border: 1px solid #e8eaed;
+}
+
+.list-status-menu-popover button {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  background: transparent;
+  text-align: left;
+  font-size: 13px;
+  color: #292d34;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.list-status-menu-popover button:hover {
+  background: #f0f1f3;
+}
+
+.list-status-menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+}
+
+.list-status-add-task {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border: none;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 500;
+  color: #87909e;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.list-status-add-task:hover {
+  background: #f0f1f3;
+  color: #292d34;
+}
+
+.list-status-table-panel {
+  padding: 0 0 8px 32px;
+  border-top: none;
+  background: #fff;
+}
+
+.list-status-table-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px 10px 32px;
+  border-bottom: 1px solid #e6e8ef;
+}
+
+.list-status-table-wrap {
+  border: none;
+  border-radius: 0;
+  overflow: visible;
+  background: #fff;
+}
+
+.list-status-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.list-status-table thead {
+  background: #fff;
+  border-bottom: 1px solid #e8eaed;
+}
+
+.list-status-table th {
+  padding: 8px 12px;
+  text-align: left;
+  font-weight: 500;
+  font-size: 12px;
+  color: #87909e;
+  white-space: nowrap;
+  border-right: none;
+}
+
+.list-status-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid #f0f1f3;
+  border-right: none;
+  color: #292d34;
+  vertical-align: middle;
+}
+
+.list-status-tr {
+  cursor: pointer;
+  transition: background 0.1s ease;
+}
+
+.list-status-tr:hover {
+  background: #f7f8f9;
+}
+
+.list-status-tr.is-highlighted {
+  background: #f3f0ff;
+}
+
+.list-status-tr-add td {
+  padding: 6px 12px;
+  border-bottom: none;
+  background: #fff;
+}
+
+.list-status-table .col-checkbox {
+  width: 36px;
+  text-align: center;
+}
+
+.list-status-table .col-checkbox input {
+  width: 14px;
+  height: 14px;
+  accent-color: #7b61ff;
+  cursor: pointer;
+}
+
+.list-status-table .col-name {
+  min-width: 200px;
+}
+
+.list-status-task-name-cell {
+  font-weight: 500;
+  color: #292d34;
+}
+
+.list-status-cell-muted {
+  color: #87909e;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: block;
+  max-width: 200px;
+}
+
+.list-status-assignee-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #7b61ff;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+/* Status badges */
+.status-badge-select-wrap {
+  display: inline-flex;
+  max-width: 100%;
+}
+
+.status-badge-select,
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+  border: none;
+  cursor: pointer;
+  max-width: 160px;
+}
+
+.status-badge::before,
+.status-badge-select::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.status-badge-select {
+  appearance: none;
+  padding-right: 1.35rem;
+  background-repeat: no-repeat;
+  background-position: right 6px center;
+  background-size: 10px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%2387909e' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+}
+
+.status-badge--gray,
+.status-badge-select.status-badge--gray {
+  background: #f0f1f3;
+  color: #646f79;
+}
+
+.status-badge--gray::before,
+.status-badge-select.status-badge--gray::before {
+  background: #94a3b8;
+}
+
+.status-badge--blue,
+.status-badge-select.status-badge--blue {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.status-badge--blue::before,
+.status-badge-select.status-badge--blue::before {
+  background: #3b82f6;
+}
+
+.status-badge--green,
+.status-badge-select.status-badge--green {
+  background: #ecfdf5;
+  color: #059669;
+}
+
+.status-badge--green::before,
+.status-badge-select.status-badge--green::before {
+  background: #10b981;
+}
+
+.status-badge--purple,
+.status-badge-select.status-badge--purple {
+  background: #f3f0ff;
+  color: #7b61ff;
+}
+
+.status-badge--purple::before,
+.status-badge-select.status-badge--purple::before {
+  background: #7b61ff;
+}
+
+.status-badge--red,
+.status-badge-select.status-badge--red {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.status-badge--red::before,
+.status-badge-select.status-badge--red::before {
+  background: #ef4444;
+}
+
+.status-badge--orange,
+.status-badge-select.status-badge--orange {
+  background: #fff7ed;
+  color: #ea580c;
+}
+
+.status-badge--neutral,
+.status-badge-select.status-badge--neutral {
+  background: #f0f1f3;
+  color: #646f79;
+}
+
+.list-status-priority {
+  color: #87909e;
+  font-size: 12px;
+}
+
+.list-status-add-new-task {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 0;
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 500;
+  color: #87909e;
+  cursor: pointer;
+}
+
+.list-status-add-new-task:hover {
+  color: #7b61ff;
+}
+
+.list-status-add-new {
+  margin-top: 12px;
+  padding-top: 8px;
+}
+
+.list-status-add-new-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 500;
+  color: #87909e;
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.list-status-add-new-btn:hover {
+  background: #f0f1f3;
+  color: #292d34;
+}
+
+.list-status-add-new-form input {
+  border: 1px solid #e8eaed;
+  border-radius: 6px;
+}
+
+.list-status-add-new-save {
+  background: #7b61ff;
+  border-radius: 6px;
+}
+
+.list-status-inline-select,
+.list-status-inline-date {
+  max-width: 100%;
+  padding: 4px 8px;
+  font-size: 12px;
+  color: #292d34;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.list-status-inline-select:hover,
+.list-status-inline-date:hover {
+  border-color: #e6e8ef;
+  background: #f7f8f9;
+}
+
+.list-status-inline-select:focus,
+.list-status-inline-date:focus {
+  outline: none;
+  border-color: #7b61ff;
+  background: #fff;
+}
+
+@media (max-width: 900px) {
+  .list-status-table-panel {
+    padding-left: 8px;
+  }
+
+  .list-status-table-wrap {
+    overflow-x: auto;
+  }
+
+  .list-status-table {
+    min-width: 640px;
+  }
+}

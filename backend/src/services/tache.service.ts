@@ -1,20 +1,110 @@
+import { TaskPriority } from "@prisma/client";
 import prisma from "../prisma/prismaClient";
 
 
-const STATUTS_VALIDES = ["todo", "en_cours", "terminee"] as const;
-const PRIORITES_VALIDES = ["basse", "moyenne", "haute", "critique"] as const;
-
-const verifierStatut = (statut?: string) => {
-  if (statut && !STATUTS_VALIDES.includes(statut as any)) {
-    throw new Error("Statut invalide");
-  }
+const STATUTS_VALIDES = [
+  "todo",
+  "todo_open",
+  "en_cours",
+  "terminee",
+  "bloquee",
+  "en_revision",
+] as const;
+const STATUS_ALIASES: Record<string, (typeof STATUTS_VALIDES)[number]> = {
+  TODO: "todo",
+  TO_DO: "todo",
+  todo: "todo",
+  "À_FAIRE": "todo",
+  "À faire": "todo",
+  "à faire": "todo",
+  A_FAIRE: "todo",
+  TODO_OPEN: "todo_open",
+  todo_open: "todo_open",
+  EN_COURS: "en_cours",
+  IN_PROGRESS: "en_cours",
+  in_progress: "en_cours",
+  TERMINEE: "terminee",
+  DONE: "terminee",
+  done: "terminee",
+  TERMINE: "terminee",
+  BLOQUEE: "bloquee",
+  bloquee: "bloquee",
+  BLOCKED: "bloquee",
+  EN_REVISION: "en_revision",
+  en_revision: "en_revision",
+  REVIEW: "en_revision",
 };
 
-const verifierPriorite = (priorite?: string) => {
-  if (priorite && !PRIORITES_VALIDES.includes(priorite as any)) {
+const PRIORITY_ALIASES: Record<string, TaskPriority> = {
+  LOW: TaskPriority.LOW,
+  BASSE: TaskPriority.LOW,
+  MEDIUM: TaskPriority.MEDIUM,
+  MOYENNE: TaskPriority.MEDIUM,
+  HIGH: TaskPriority.HIGH,
+  HAUTE: TaskPriority.HIGH,
+  URGENT: TaskPriority.URGENT,
+  URGENTE: TaskPriority.URGENT,
+  CRITICAL: TaskPriority.URGENT,
+  CRITIQUE: TaskPriority.URGENT,
+};
+
+const normalizeStatus = (statut?: string | null) => {
+  if (!statut) return undefined;
+  const key = String(statut).trim();
+  const direct = STATUS_ALIASES[key];
+  if (direct) return direct;
+  if (STATUTS_VALIDES.includes(key as any)) {
+    return key as (typeof STATUTS_VALIDES)[number];
+  }
+  if (/^[a-z][a-z0-9_]{0,48}$/i.test(key)) {
+    return key;
+  }
+  throw new Error("Statut invalide");
+};
+
+const normalizePriority = (priorite?: string | null): TaskPriority | undefined => {
+  if (!priorite) return undefined;
+  const normalized = PRIORITY_ALIASES[String(priorite).trim().toUpperCase()];
+  if (!normalized) {
     throw new Error("Priorité invalide");
   }
+  return normalized;
 };
+
+export async function assertUserIsProjectMember(
+  id_projet: number,
+  userId: number
+): Promise<void> {
+  const m = await prisma.membre_projet.findFirst({
+    where: {
+      id_projet: Number(id_projet),
+      id_utilisateur: Number(userId),
+    },
+    select: { id_membre_projet: true },
+  });
+  if (!m) {
+    throw new Error("L'utilisateur assigné n'est pas membre de ce projet");
+  }
+}
+
+async function withAssigneeProjectRoles(id_projet: number, tasks: any[]) {
+  const members = await prisma.membre_projet.findMany({
+    where: { id_projet: Number(id_projet) },
+    select: { id_utilisateur: true, role_projet: true },
+  });
+  const map = new Map(
+    members.map((m) => [
+      m.id_utilisateur,
+      (m.role_projet ?? "").trim() || "Membre",
+    ])
+  );
+  return tasks.map((t) => ({
+    ...t,
+    assignee_project_role:
+      t.assigne_a != null ? map.get(Number(t.assigne_a)) ?? null : null,
+  }));
+}
+
 interface CreateTaskData {
   nom_t: string;
   description_t?: string;
@@ -22,19 +112,160 @@ interface CreateTaskData {
   priorite_t?: string;
   statut_t?: string;
   id_projet: number;
+  id_group?: number;
+  id_folder?: number;
   id_sprint?: number;
+  id_list?: number;
+  assigne_a?: number | null;
+  cree_par?: number | null;
 }
 
 interface UpdateTaskData {
   nom_t?: string;
   description_t?: string;
+  date_debut_t?: string | null;
   date_limite_t?: string;
   priorite_t?: string;
   statut_t?: string;
   id_projet?: number;
+  id_group?: number | null;
+  id_folder?: number | null;
   id_sprint?: number | null;
+  id_list?: number | null;
   assigne_a?: number | null;
 }
+
+const db = prisma as any;
+
+export const DEFAULT_LIST_NAME = "Liste par défaut";
+
+/** Ensures every sprint has a list; returns list id for task placement. */
+export async function ensureDefaultListForSprint(
+  id_projet: number,
+  id_sprint: number
+): Promise<number> {
+  const existingDefault = await db.list_pm.findFirst({
+    where: {
+      id_projet,
+      id_sprint,
+      nom: DEFAULT_LIST_NAME,
+    },
+    select: { id_list: true },
+  });
+  if (existingDefault) return existingDefault.id_list;
+
+  const anyInSprint = await db.list_pm.findFirst({
+    where: { id_projet, id_sprint },
+    orderBy: [{ position: "asc" }, { id_list: "asc" }],
+    select: { id_list: true },
+  });
+  if (anyInSprint) return anyInSprint.id_list;
+
+  const created = await db.list_pm.create({
+    data: {
+      nom: DEFAULT_LIST_NAME,
+      id_projet,
+      id_sprint,
+      position: 0,
+    },
+    select: { id_list: true },
+  });
+  return created.id_list;
+}
+
+/** Resolve sprint/list ids: sprint without list → default list; list without sprint → inherit from list. */
+export async function resolveTaskHierarchyIds(input: {
+  id_projet: number;
+  id_sprint?: number | null;
+  id_list?: number | null;
+}): Promise<{ id_sprint: number | null; id_list: number | null }> {
+  const projectId = Number(input.id_projet);
+  let sprintId =
+    input.id_sprint != null && Number(input.id_sprint) > 0
+      ? Number(input.id_sprint)
+      : null;
+  let listId =
+    input.id_list != null && Number(input.id_list) > 0
+      ? Number(input.id_list)
+      : null;
+
+  if (listId) {
+    const list = await db.list_pm.findUnique({
+      where: { id_list: listId },
+      select: { id_projet: true, id_sprint: true },
+    });
+    if (!list || list.id_projet !== projectId) {
+      throw new Error("La liste n'appartient pas à ce projet");
+    }
+    if (!sprintId && list.id_sprint) {
+      sprintId = list.id_sprint;
+    }
+  }
+
+  if (sprintId && !listId) {
+    listId = await ensureDefaultListForSprint(projectId, sprintId);
+  }
+
+  return { id_sprint: sprintId, id_list: listId };
+}
+
+const validateHierarchyAncestors = async (input: {
+  id_projet: number;
+  id_group?: number | null;
+  id_folder?: number | null;
+  id_sprint?: number | null;
+  id_list?: number | null;
+}) => {
+  const { id_projet, id_group, id_folder, id_sprint, id_list } = input;
+
+  if (id_group) {
+    const group = await db.group_pm.findUnique({ where: { id_group: Number(id_group) } });
+    if (!group || group.id_projet !== Number(id_projet)) {
+      throw new Error("Le groupe n'appartient pas à ce projet");
+    }
+  }
+
+  if (id_folder) {
+    const folder = await db.folder_pm.findUnique({ where: { id_folder: Number(id_folder) } });
+    if (!folder || folder.id_projet !== Number(id_projet)) {
+      throw new Error("Le dossier n'appartient pas à ce projet");
+    }
+    if (id_group && folder.id_group && folder.id_group !== Number(id_group)) {
+      throw new Error("Le dossier n'appartient pas à ce groupe");
+    }
+  }
+
+  if (id_sprint) {
+    const sprint = await prisma.sprint.findUnique({
+      where: { id_sprint: Number(id_sprint) }
+    });
+    if (!sprint || sprint.id_projet !== Number(id_projet)) {
+      throw new Error("Le sprint n'appartient pas à ce projet");
+    }
+    if (id_group && (sprint as any).id_group && (sprint as any).id_group !== Number(id_group)) {
+      throw new Error("Le sprint n'appartient pas à ce groupe");
+    }
+    if (id_folder && (sprint as any).id_folder && (sprint as any).id_folder !== Number(id_folder)) {
+      throw new Error("Le sprint n'appartient pas à ce dossier");
+    }
+  }
+
+  if (id_list) {
+    const list = await db.list_pm.findUnique({ where: { id_list: Number(id_list) } });
+    if (!list || list.id_projet !== Number(id_projet)) {
+      throw new Error("La liste n'appartient pas à ce projet");
+    }
+    if (id_group && list.id_group && list.id_group !== Number(id_group)) {
+      throw new Error("La liste n'appartient pas à ce groupe");
+    }
+    if (id_folder && list.id_folder && list.id_folder !== Number(id_folder)) {
+      throw new Error("La liste n'appartient pas à ce dossier");
+    }
+    if (id_sprint && list.id_sprint && list.id_sprint !== Number(id_sprint)) {
+      throw new Error("La liste n'appartient pas à ce sprint");
+    }
+  }
+};
 
 export const createTaskService = async (data: CreateTaskData) => {
   const {
@@ -44,46 +275,102 @@ export const createTaskService = async (data: CreateTaskData) => {
     priorite_t,
     id_projet,
     statut_t,
-    id_sprint
+    id_group,
+    id_folder,
+    id_sprint,
+    id_list,
+    assigne_a,
   } = data;
 
-  verifierPriorite(priorite_t);
-  verifierStatut(statut_t);
-  if (!nom_t || !id_projet) {
-    throw new Error("nom_t et id_projet sont obligatoires");
+  const normalizedPriority =
+    normalizePriority(priorite_t ?? (data as any).priorite) ?? TaskPriority.MEDIUM;
+  const normalizedStatus = normalizeStatus(statut_t) ?? "todo";
+  if (!nom_t) {
+    throw new Error("nom_t est obligatoire");
+  }
+
+  let projectId = Number(id_projet);
+  let listId =
+    id_list != null && Number(id_list) > 0 ? Number(id_list) : null;
+  let sprintId =
+    id_sprint != null && Number(id_sprint) > 0 ? Number(id_sprint) : null;
+
+  if (listId && (!Number.isFinite(projectId) || projectId < 1)) {
+    const listRow = await db.list_pm.findUnique({
+      where: { id_list: listId },
+      select: { id_projet: true, id_sprint: true },
+    });
+    if (!listRow) {
+      throw new Error("Liste introuvable");
+    }
+    projectId = Number(listRow.id_projet);
+    if (!sprintId && listRow.id_sprint) {
+      sprintId = Number(listRow.id_sprint);
+    }
+  }
+
+  if (!listId) {
+    throw new Error("listId est obligatoire");
+  }
+
+  if (!Number.isFinite(projectId) || projectId < 1) {
+    throw new Error("id_projet est obligatoire");
   }
 
   const projet = await prisma.projet.findUnique({
-    where: { id_projet: Number(id_projet) }
+    where: { id_projet: projectId },
   });
 
   if (!projet) {
     throw new Error("Projet inexistant");
   }
 
-  if (id_sprint) {
-    const sprint = await prisma.sprint.findUnique({
-      where: { id_sprint: Number(id_sprint) }
+  const resolved = await resolveTaskHierarchyIds({
+    id_projet: projectId,
+    id_sprint: sprintId,
+    id_list: listId,
+  });
+
+  await validateHierarchyAncestors({
+    id_projet: projectId,
+    id_group: id_group ? Number(id_group) : null,
+    id_folder: id_folder ? Number(id_folder) : null,
+    id_sprint: resolved.id_sprint,
+    id_list: resolved.id_list,
+  });
+
+  const assigneeId =
+    assigne_a === undefined || assigne_a === null ? null : Number(assigne_a);
+  if (assigneeId !== null) {
+    const assignee = await prisma.utilisateur.findUnique({
+      where: { id_utilisateur: assigneeId },
+      select: { id_utilisateur: true },
     });
-
-    if (!sprint) {
-      throw new Error("Sprint inexistant");
+    if (!assignee) {
+      throw new Error("Utilisateur inexistant");
     }
-
-    if (sprint.id_projet !== Number(id_projet)) {
-      throw new Error("Le sprint n'appartient pas à ce projet");
-    }
+    await assertUserIsProjectMember(projectId, assigneeId);
   }
+
+  const creatorId =
+    (data as any).cree_par === undefined || (data as any).cree_par === null
+      ? null
+      : Number((data as any).cree_par);
 
   const task = await prisma.tache.create({
     data: {
       nom_t,
       description_t,
       date_limite_t: date_limite_t ? new Date(date_limite_t) : null,
-      priorite_t: priorite_t || "moyenne",
-      statut_t: statut_t || "todo",
-      id_projet: Number(id_projet),
-      id_sprint: id_sprint ? Number(id_sprint) : null
+      priorite_t: normalizedPriority,
+      statut_t: normalizedStatus,
+      id_projet: projectId,
+      id_group: id_group ? Number(id_group) : null,
+      id_folder: id_folder ? Number(id_folder) : null,
+      id_sprint: resolved.id_sprint,
+      id_list: resolved.id_list,
+      assigne_a: assigneeId,
+      cree_par: creatorId && Number.isFinite(creatorId) ? creatorId : null,
     },
 
     include: {
@@ -96,12 +383,24 @@ export const createTaskService = async (data: CreateTaskData) => {
           poste: true
         }
       },
+      createur: {
+        select: {
+          id_utilisateur: true,
+          nom: true,
+          prenom: true,
+          email: true,
+        }
+      },
       projet: true,
-      sprint: true
+      sprint: true,
+      group_pm: true,
+      folder_pm: true,
+      list_pm: true
     }
   });
 
-  return task;
+  const [enriched] = await withAssigneeProjectRoles(Number(id_projet), [task]);
+  return enriched;
 };
 
 export const getAllTasksService = async () => {
@@ -135,24 +434,42 @@ export const getTaskByIdService = async (id: number) => {
           poste: true
         }
       },
+      createur: {
+        select: {
+          id_utilisateur: true,
+          nom: true,
+          prenom: true,
+          email: true,
+        }
+      },
       projet: true,
       sprint: true
     }
   });
 
-  if (!task) {
+  if (!task || !task.id_projet) {
     throw new Error("Tâche inexistante");
   }
 
-  return task;
+  const [enriched] = await withAssigneeProjectRoles(Number(task.id_projet), [task]);
+  return enriched;
 };
 
 export const updateTaskService = async (id: number, data: UpdateTaskData) => {
   const existingTask = await prisma.tache.findUnique({
     where: { id_tache: id }
   });
-  verifierStatut(data.statut_t);
-  verifierPriorite(data.priorite_t);
+  const statutInput =
+    data.statut_t !== undefined
+      ? data.statut_t
+      : (data as { status?: string }).status;
+  const normalizedStatus =
+    statutInput !== undefined ? normalizeStatus(statutInput) : undefined;
+  const normalizedPriorityInput = data.priorite_t ?? (data as any).priorite;
+  const normalizedPriority =
+    normalizedPriorityInput !== undefined
+      ? normalizePriority(normalizedPriorityInput)
+      : undefined;
 
   if (!existingTask) {
     throw new Error("Tâche inexistante");
@@ -168,33 +485,82 @@ export const updateTaskService = async (id: number, data: UpdateTaskData) => {
     }
   }
 
-  if (data.id_sprint) {
-    const sprint = await prisma.sprint.findUnique({
-      where: { id_sprint: Number(data.id_sprint) }
-    });
-
-    if (!sprint) {
-      throw new Error("Sprint inexistant");
-    }
-
-    const projetId = data.id_projet ?? existingTask.id_projet;
-
-    if (sprint.id_projet !== projetId) {
-      throw new Error("Le sprint n'appartient pas à ce projet");
-    }
+  const projetId = Number(data.id_projet ?? existingTask.id_projet);
+  if (data.assigne_a !== undefined && data.assigne_a !== null) {
+    await assertUserIsProjectMember(projetId, Number(data.assigne_a));
   }
+
+  await validateHierarchyAncestors({
+    id_projet: projetId,
+    id_group:
+      data.id_group === null
+        ? null
+        : data.id_group !== undefined
+          ? Number(data.id_group)
+          : (existingTask as any).id_group,
+    id_folder:
+      data.id_folder === null
+        ? null
+        : data.id_folder !== undefined
+          ? Number(data.id_folder)
+          : (existingTask as any).id_folder,
+    id_sprint:
+      data.id_sprint === null
+        ? null
+        : data.id_sprint !== undefined
+          ? Number(data.id_sprint)
+          : existingTask.id_sprint,
+    id_list:
+      data.id_list === null
+        ? null
+        : data.id_list !== undefined
+          ? Number(data.id_list)
+          : (existingTask as any).id_list,
+  });
 
   const task = await prisma.tache.update({
     where: { id_tache: id },
     data: {
-      ...data,
-      date_limite_t: data.date_limite_t ? new Date(data.date_limite_t) : undefined,
+      nom_t: data.nom_t,
+      description_t: data.description_t,
+      date_debut_t:
+        data.date_debut_t === null
+          ? null
+          : data.date_debut_t
+            ? new Date(data.date_debut_t)
+            : undefined,
+      date_limite_t:
+        data.date_limite_t === null
+          ? null
+          : data.date_limite_t
+            ? new Date(data.date_limite_t)
+            : undefined,
+      priorite_t: normalizedPriority,
+      statut_t: normalizedStatus,
       id_projet: data.id_projet ? Number(data.id_projet) : undefined,
+      id_group:
+        data.id_group === null
+          ? null
+          : data.id_group
+            ? Number(data.id_group)
+            : undefined,
+      id_folder:
+        data.id_folder === null
+          ? null
+          : data.id_folder
+            ? Number(data.id_folder)
+            : undefined,
       id_sprint:
         data.id_sprint === null
           ? null
           : data.id_sprint
             ? Number(data.id_sprint)
+            : undefined,
+      id_list:
+        data.id_list === null
+          ? null
+          : data.id_list
+            ? Number(data.id_list)
             : undefined,
       assigne_a:
         data.assigne_a === null
@@ -213,12 +579,27 @@ export const updateTaskService = async (id: number, data: UpdateTaskData) => {
           poste: true
         }
       },
+      createur: {
+        select: {
+          id_utilisateur: true,
+          nom: true,
+          prenom: true,
+          email: true,
+        }
+      },
       projet: true,
-      sprint: true
+      sprint: true,
+      group_pm: true,
+      folder_pm: true,
+      list_pm: true
     }
   });
 
-  return task;
+  const [enriched] = await withAssigneeProjectRoles(
+    Number(task.id_projet ?? projetId),
+    [task]
+  );
+  return enriched;
 };
 
 export const deleteTaskService = async (id: number) => {
@@ -270,11 +651,10 @@ export const assignTaskService = async (id_tache: number, id_utilisateur: number
     throw new Error("Utilisateur inexistant");
   }
 
-  const membreProjet = await prisma.affectation.findFirst({
+  const membreProjet = await prisma.membre_projet.findFirst({
     where: {
       id_projet: task.id_projet,
       id_utilisateur: Number(id_utilisateur),
-      role_affectation: { in: ["membre", "chef"] },
     },
   });
 
@@ -289,6 +669,14 @@ export const assignTaskService = async (id_tache: number, id_utilisateur: number
     },
     include: {
       utilisateur: true,
+      createur: {
+        select: {
+          id_utilisateur: true,
+          nom: true,
+          prenom: true,
+          email: true,
+        }
+      },
       projet: true,
       sprint: true
     }
@@ -303,9 +691,16 @@ export const assignTaskService = async (id_tache: number, id_utilisateur: number
     }
   });
 
-  return taskUpdated;
+  const [enriched] = await withAssigneeProjectRoles(
+    Number(task.id_projet),
+    [taskUpdated]
+  );
+  return enriched;
 };
-export const getTasksByProjectService = async (id_projet: number) => {
+export const getTasksByProjectService = async (
+  id_projet: number,
+  opts?: { restrictToAssigneeId?: number }
+) => {
   const projet = await prisma.projet.findUnique({
     where: { id_projet }
   });
@@ -314,8 +709,13 @@ export const getTasksByProjectService = async (id_projet: number) => {
     throw new Error("Projet inexistant");
   }
 
-  return await prisma.tache.findMany({
-    where: { id_projet },
+  const where: { id_projet: number; assigne_a?: number } = { id_projet };
+  if (opts?.restrictToAssigneeId != null) {
+    where.assigne_a = opts.restrictToAssigneeId;
+  }
+
+  const tasks = await prisma.tache.findMany({
+    where,
     include: {
       utilisateur: {
         select: {
@@ -326,6 +726,14 @@ export const getTasksByProjectService = async (id_projet: number) => {
           poste: true
         }
       },
+      createur: {
+        select: {
+          id_utilisateur: true,
+          nom: true,
+          prenom: true,
+          email: true,
+        }
+      },
       projet: true,
       sprint: true
     },
@@ -333,18 +741,29 @@ export const getTasksByProjectService = async (id_projet: number) => {
       id_tache: "desc"
     }
   });
+
+  return withAssigneeProjectRoles(id_projet, tasks);
 };
-export const getTasksBySprintService = async (id_sprint: number) => {
+export const getTasksBySprintService = async (
+  id_sprint: number,
+  opts?: { restrictToAssigneeId?: number }
+) => {
   const sprint = await prisma.sprint.findUnique({
     where: { id_sprint }
   });
 
-  if (!sprint) {
+  if (!sprint || sprint.id_projet == null) {
     throw new Error("Sprint inexistant");
   }
 
-  return await prisma.tache.findMany({
-    where: { id_sprint },
+  const pid = Number(sprint.id_projet);
+  const where: { id_sprint: number; assigne_a?: number } = { id_sprint };
+  if (opts?.restrictToAssigneeId != null) {
+    where.assigne_a = opts.restrictToAssigneeId;
+  }
+
+  const tasks = await prisma.tache.findMany({
+    where,
     include: {
       utilisateur: {
         select: {
@@ -355,6 +774,14 @@ export const getTasksBySprintService = async (id_sprint: number) => {
           poste: true
         }
       },
+      createur: {
+        select: {
+          id_utilisateur: true,
+          nom: true,
+          prenom: true,
+          email: true,
+        }
+      },
       projet: true,
       sprint: true
     },
@@ -362,6 +789,8 @@ export const getTasksBySprintService = async (id_sprint: number) => {
       id_tache: "desc"
     }
   });
+
+  return withAssigneeProjectRoles(pid, tasks);
 };
 export const getMyTasksService = async (userId: number) => {
   return await prisma.tache.findMany({
@@ -391,11 +820,7 @@ export const updateMyTaskStatusService = async (
   userId: number,
   statut_t: string
 ) => {
-  const statutsValides = ["todo", "en_cours", "terminee"];
-
-  if (!statutsValides.includes(statut_t)) {
-    throw new Error("Statut invalide");
-  }
+  const normalizedStatus = normalizeStatus(statut_t);
 
   const task = await prisma.tache.findUnique({
     where: { id_tache }
@@ -412,8 +837,8 @@ export const updateMyTaskStatusService = async (
   const updatedTask = await prisma.tache.update({
     where: { id_tache },
     data: {
-      statut_t,
-      date_fin_t: statut_t === "terminee" ? new Date() : null
+      statut_t: normalizedStatus,
+      date_fin_t: normalizedStatus === "terminee" ? new Date() : null
     },
     include: {
       utilisateur: {

@@ -26,14 +26,15 @@ router.get("/progress/project/:projectId", authMiddleware, getProjectProgressCon
 router.get("/progress/user/:userId", authMiddleware, getUserProgressController);
 router.get("/progress/sprint/:sprintId", authMiddleware, getSprintProgressController);
 
-router.get("/projet/:id_projet", authMiddleware, authorize("TASK_VIEW_ALL"), getTasksByProject);
-router.get("/sprint/:id_sprint", authMiddleware, authorize("TASK_VIEW_ALL"), getTasksBySprint);
+router.get("/projet/:id_projet", authMiddleware, getTasksByProject);
+router.get("/sprint/:id_sprint", authMiddleware, getTasksBySprint);
 
-router.post("/", authMiddleware, authorize("TASK_CREATE"), createTask);
+router.post("/", authMiddleware, createTask);
 router.get("/", authMiddleware, authorize("TASK_VIEW_ALL"), getAllTasks);
 router.get("/:id", authMiddleware, getTaskById); 
-router.put("/:id", authMiddleware, authorize("TASK_EDIT"), updateTask);
-router.delete("/:id", authMiddleware, authorize("TASK_DELETE"), deleteTask);
-router.patch("/:id/assigner", authMiddleware, authorize("TASK_EDIT"), assignTask);
+router.put("/:id", authMiddleware, updateTask);
+router.patch("/:id", authMiddleware, updateTask);
+router.delete("/:id", authMiddleware, deleteTask);
+router.patch("/:id/assigner", authMiddleware, assignTask);
 
 export default router;

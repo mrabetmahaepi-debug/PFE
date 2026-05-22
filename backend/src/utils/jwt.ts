@@ -1,9 +1,14 @@
 import jwt from "jsonwebtoken";
-import dotenv from "dotenv";
+import { trimEnvValue } from "../config/env";
 
-dotenv.config();
+const JWT_DEFAULT_DEV = "mysecretkey";
+const rawSecret = trimEnvValue(process.env.JWT_SECRET);
+const SECRET = rawSecret.length > 0 ? rawSecret : JWT_DEFAULT_DEV;
 
-const SECRET = process.env.JWT_SECRET || "mysecretkey";
+/** True when running with the insecure dev fallback secret. */
+export function isUsingDefaultJwtSecret(): boolean {
+  return SECRET === JWT_DEFAULT_DEV;
+}
 
 /**
  * Generate a JWT token.
@@ -12,7 +17,7 @@ const SECRET = process.env.JWT_SECRET || "mysecretkey";
 export const generateToken = (user: any): string => {
   return jwt.sign(
     {
-      id: user.id_utilisateur,
+      id: Number(user.id_utilisateur),
       email: user.email,
       role: user.role?.nom || "membre",
       id_role: user.id_role,

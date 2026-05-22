@@ -5,11 +5,16 @@ import { superAdminService, type Invitation } from '../services/superadmin.servi
 import { entrepriseService, type Entreprise } from '../services/entreprise.service';
 import type { User as UserType } from '../types/auth.types';
 import BackButton from '../components/BackButton';
+import ApprovalEnterpriseSelect from '../components/ApprovalEnterpriseSelect';
 import './Approvals.css';
 
 type PendingUser = UserType & {
   id_utilisateur?: number;
+  entreprise?: { id_entreprise: number; nom: string | null };
 };
+
+const getUserId = (user: PendingUser) =>
+  parseInt(String(user.id ?? user.id_utilisateur ?? '0'), 10);
 
 const Approvals: React.FC = () => {
   const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([]);
@@ -24,6 +29,21 @@ const Approvals: React.FC = () => {
     fetchApprovals();
     fetchEntreprises();
   }, []);
+
+  useEffect(() => {
+    setSelectedEntreprises((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      for (const u of pendingUsers) {
+        const uid = getUserId(u);
+        if (u.id_entreprise && next[uid] == null) {
+          next[uid] = u.id_entreprise;
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [pendingUsers]);
 
   const fetchEntreprises = async () => {
     try {
@@ -47,12 +67,9 @@ const Approvals: React.FC = () => {
     }
   };
 
-  const getUserId = (user: PendingUser) => {
-    return parseInt(String(user.id ?? user.id_utilisateur ?? '0'));
-  };
-
   const handleApprove = async (id: number) => {
-    const entrepriseId = selectedEntreprises[id];
+    const u = pendingUsers.find((x) => getUserId(x) === id);
+    const entrepriseId = selectedEntreprises[id] ?? u?.id_entreprise;
     if (!entrepriseId) {
       setError("Veuillez sélectionner une entreprise avant d'approuver.");
       return;
@@ -113,7 +130,7 @@ const Approvals: React.FC = () => {
     return (
       <div className="approvals-loading">
         <Loader2 className="animate-spin" size={40} />
-        <p>Chargement des demandes...</p>
+        <p>Chargement des invitations administrateur…</p>
       </div>
     );
   }
@@ -121,11 +138,8 @@ const Approvals: React.FC = () => {
   return (
     <div className="approvals-page">
       <BackButton />
-      <header className="page-header">
-        <div>
-          <h1>Boîte de réception</h1>
-          <p className="subtitle">Gérez les demandes d'inscription et les invitations.</p>
-        </div>
+      <header className="approvals-page-header">
+        <h1 className="approvals-page-title">Boîte de réception</h1>
       </header>
 
       {error && (
@@ -138,8 +152,11 @@ const Approvals: React.FC = () => {
         {pendingUsers.length === 0 && pendingInvitations.length === 0 ? (
           <div className="empty-state premium-card">
             <Check size={48} className="success-icon" />
-            <h3>Tout est à jour !</h3>
-            <p>Aucune nouvelle demande d'inscription ou invitation en attente.</p>
+            <h3>Aucune invitation admin trouvée.</h3>
+            <p>
+              Les demandes d&apos;inscription et les invitations pour des administrateurs
+              d&apos;entreprise apparaîtront ici lorsqu&apos;elles seront en attente.
+            </p>
           </div>
         ) : (
           <div className="approvals-list">
@@ -152,46 +169,50 @@ const Approvals: React.FC = () => {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, x: -100 }}
-                    className="approval-card premium-card"
+                    className="approval-card"
                   >
                     <div className="user-main-info">
                       <div className="user-avatar-large">
                         {u.prenom?.[0]}{u.nom?.[0]}
                       </div>
                       <div className="user-details">
-                        <p style={{ fontSize: '0.8rem', color: '#888', marginBottom: '2px', textTransform: 'uppercase', fontWeight: 600 }}>
-                          Demande d'inscription
+                        <p className="approval-card__badge">
+                          Demande d&apos;inscription Admin
                         </p>
                         <h3>Demande de : {u.email}</h3>
-                        <div className="detail-row">
-                          <Mail size={14} />
-                          <span>{u.email}</span>
-                        </div>
-                        <div className="detail-row">
-                          <Briefcase size={14} />
-                          <span>{typeof u.role === 'object' ? u.role.nom : (u.role || 'Admin')}</span>
-                        </div>
-                        <div className="enterprise-selection" style={{ marginTop: '1rem' }}>
-                          <label style={{ display: 'block', fontSize: '0.75rem', color: '#666', marginBottom: '5px' }}>Assigner à une entreprise :</label>
-                          <select 
-                            value={selectedEntreprises[userId] || ''} 
-                            onChange={(e) => setSelectedEntreprises(prev => ({ ...prev, [userId]: parseInt(e.target.value) }))}
-                            style={{ 
-                              width: '100%', 
-                              padding: '8px', 
-                              borderRadius: '6px', 
-                              border: '1px solid #ddd',
-                              fontSize: '0.9rem'
-                            }}
-                          >
-                            <option value="">Sélectionner une entreprise...</option>
-                            {entreprises.map(ent => (
-                              <option key={ent.id_entreprise} value={ent.id_entreprise}>
-                                {ent.nom}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
+                        <motion.div className="user-details__meta">
+                          <motion.div className="detail-row">
+                            <Mail size={14} />
+                            <span>{u.email}</span>
+                          </motion.div>
+                          <motion.div className="detail-row">
+                            <Briefcase size={14} />
+                            <span>{typeof u.role === 'object' ? u.role?.nom : (u.role || 'Admin')}</span>
+                          </motion.div>
+                          {u.entreprise?.nom && (
+                            <motion.div className="detail-row">
+                              <Briefcase size={14} />
+                              <span>
+                                Entreprise liée : <strong>{u.entreprise.nom}</strong>
+                              </span>
+                            </motion.div>
+                          )}
+                        </motion.div>
+                        <motion.div className="enterprise-selection">
+                          <label className="enterprise-selection__label">
+                            Entreprise à associer au compte (préremplie si créée à l&apos;inscription) :
+                          </label>
+                          <ApprovalEnterpriseSelect
+                            value={selectedEntreprises[userId] || ''}
+                            entreprises={entreprises}
+                            onChange={(entrepriseId) =>
+                              setSelectedEntreprises((prev) => ({
+                                ...prev,
+                                [userId]: entrepriseId,
+                              }))
+                            }
+                          />
+                        </motion.div>
                       </div>
                     </div>
 
@@ -223,24 +244,32 @@ const Approvals: React.FC = () => {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, x: -100 }}
-                  className="approval-card premium-card"
+                  className="approval-card"
                 >
                   <div className="user-main-info">
                     <div className="user-avatar-large">
                       {inv.email?.[0]?.toUpperCase() || '?'}
                     </div>
                     <div className="user-details">
-                      <p style={{ fontSize: '0.8rem', color: '#888', marginBottom: '2px', textTransform: 'uppercase', fontWeight: 600 }}>
-                        Invitation
-                      </p>
+                      <p className="approval-card__badge">Invitation Admin</p>
                       <h3>Invitation pour : {inv.email}</h3>
-                      <div className="detail-row">
-                        <Mail size={14} />
-                        <span>{inv.email}</span>
-                      </div>
-                      <div className="detail-row">
-                        <Briefcase size={14} />
-                        <span>Rôle ID : {inv.id_role || 'N/A'}</span>
+                      <div className="user-details__meta">
+                        <div className="detail-row">
+                          <Mail size={14} />
+                          <span>{inv.email}</span>
+                        </div>
+                        <div className="detail-row">
+                          <Briefcase size={14} />
+                          <span>Rôle : {inv.role_nom ?? 'Admin'}</span>
+                        </div>
+                        {inv.entreprise?.nom && (
+                          <div className="detail-row">
+                            <Briefcase size={14} />
+                            <span>
+                              Entreprise : <strong>{inv.entreprise.nom}</strong>
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>

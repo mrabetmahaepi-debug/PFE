@@ -1,9 +1,50 @@
 import { Request, Response } from "express";
 import prisma from "../prisma/prismaClient";
+import {
+  assertProjectPermission,
+  getProjectPermissionContext,
+} from "../services/projectPermission.service";
+
+const CHEF_ROLE_LABEL = "Chef de Projet";
+
+async function upsertMembreProjetStandalone(
+  projetId: number,
+  userId: number,
+  roleProjet: string | null
+) {
+  const existing = await prisma.membre_projet.findFirst({
+    where: { id_projet: projetId, id_utilisateur: userId },
+  });
+  if (existing) {
+    await prisma.membre_projet.update({
+      where: { id_membre_projet: existing.id_membre_projet },
+      data: { role_projet: roleProjet },
+    });
+  } else {
+    await prisma.membre_projet.create({
+      data: {
+        id_projet: projetId,
+        id_utilisateur: userId,
+        role_projet: roleProjet,
+      },
+    });
+  }
+}
 
 export const assignChefProjet = async (req: Request, res: Response) => {
   try {
     const idProjet = parseInt(req.params.id as string);
+    const authUser = (req as any).user;
+    const permCtx = await getProjectPermissionContext(authUser, idProjet);
+    try {
+      assertProjectPermission(permCtx, "manage_project_members");
+    } catch (e: any) {
+      return res.status(e?.status ?? 403).json({
+        message: e?.message || "Permission refusée",
+        code: e?.code ?? "PROJECT_PERMISSION_DENIED",
+        requiredPermission: e?.requiredPermission,
+      });
+    }
     const { id_utilisateur } = req.body;
 
     const projet = await prisma.projet.findUnique({
@@ -27,11 +68,11 @@ export const assignChefProjet = async (req: Request, res: Response) => {
       });
     }
 
-    const user = await prisma.utilisateur.findUnique({
+    const assignee = await prisma.utilisateur.findUnique({
       where: { id_utilisateur }
     });
 
-    if (!user) {
+    if (!assignee) {
       return res.status(404).json({ message: "Utilisateur inexistant" });
     }
 
@@ -42,6 +83,13 @@ export const assignChefProjet = async (req: Request, res: Response) => {
         role_affectation: "chef"
       }
     });
+
+    await prisma.projet.update({
+      where: { id_projet: idProjet },
+      data: { chef_de_projet_id: id_utilisateur },
+    });
+
+    await upsertMembreProjetStandalone(idProjet, id_utilisateur, CHEF_ROLE_LABEL);
 
     res.json({
       message: "Chef de projet assigné",
@@ -54,9 +102,107 @@ export const assignChefProjet = async (req: Request, res: Response) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+export const updateChefProjet = async (req: Request, res: Response) => {
+  try {
+    const idProjet = parseInt(req.params.id as string);
+    const authUser = (req as any).user;
+    const permCtx = await getProjectPermissionContext(authUser, idProjet);
+    try {
+      assertProjectPermission(permCtx, "manage_project_members");
+    } catch (e: any) {
+      return res.status(e?.status ?? 403).json({
+        message: e?.message || "Permission refusée",
+        code: e?.code ?? "PROJECT_PERMISSION_DENIED",
+        requiredPermission: e?.requiredPermission,
+      });
+    }
+    const { id_utilisateur } = req.body;
+
+    const projet = await prisma.projet.findUnique({
+      where: { id_projet: idProjet },
+      select: { chef_de_projet_id: true },
+    });
+
+    if (!projet) {
+      return res.status(404).json({ message: "Projet inexistant" });
+    }
+
+    const previousChefId = projet.chef_de_projet_id ?? null;
+
+    const assignee = await prisma.utilisateur.findUnique({
+      where: { id_utilisateur }
+    });
+
+    if (!assignee) {
+      return res.status(404).json({ message: "Utilisateur inexistant" });
+    }
+
+    const existingChef = await prisma.affectation.findFirst({
+      where: {
+        id_projet: idProjet,
+        role_affectation: "chef"
+      }
+    });
+
+    let affectation;
+    if (existingChef) {
+      affectation = await prisma.affectation.update({
+        where: { id_affectation: existingChef.id_affectation },
+        data: { id_utilisateur }
+      });
+    } else {
+      affectation = await prisma.affectation.create({
+        data: {
+          id_projet: idProjet,
+          id_utilisateur,
+          role_affectation: "chef"
+        }
+      });
+    }
+
+    await prisma.projet.update({
+      where: { id_projet: idProjet },
+      data: { chef_de_projet_id: id_utilisateur },
+    });
+
+    await upsertMembreProjetStandalone(idProjet, id_utilisateur, CHEF_ROLE_LABEL);
+    if (previousChefId && previousChefId !== id_utilisateur) {
+      const oldRow = await prisma.membre_projet.findFirst({
+        where: { id_projet: idProjet, id_utilisateur: previousChefId },
+      });
+      if (oldRow) {
+        await prisma.membre_projet.update({
+          where: { id_membre_projet: oldRow.id_membre_projet },
+          data: { role_projet: "Membre" },
+        });
+      }
+    }
+
+    res.json({
+      message: "Chef de projet mis à jour",
+      affectation
+    });
+  } catch (error: any) {
+    console.error(error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
 export const assignMembersToProjet = async (req: Request, res: Response) => {
   try {
     const idProjet = parseInt(req.params.id as string);
+    const authUser = (req as any).user;
+    const permCtx = await getProjectPermissionContext(authUser, idProjet);
+    try {
+      assertProjectPermission(permCtx, "manage_project_members");
+    } catch (e: any) {
+      return res.status(e?.status ?? 403).json({
+        message: e?.message || "Permission refusée",
+        code: e?.code ?? "PROJECT_PERMISSION_DENIED",
+        requiredPermission: e?.requiredPermission,
+      });
+    }
     const { usersIds }: { usersIds: number[] } = req.body;
 
     const projet = await prisma.projet.findUnique({
@@ -99,6 +245,21 @@ export const assignMembersToProjet = async (req: Request, res: Response) => {
         role_affectation: "membre"
       }))
     });
+
+    for (const uid of newUsers) {
+      const ex = await prisma.membre_projet.findFirst({
+        where: { id_projet: idProjet, id_utilisateur: uid },
+      });
+      if (!ex) {
+        await prisma.membre_projet.create({
+          data: {
+            id_projet: idProjet,
+            id_utilisateur: uid,
+            role_projet: "Membre",
+          },
+        });
+      }
+    }
 
     res.json({
       message: "Membres assignés",

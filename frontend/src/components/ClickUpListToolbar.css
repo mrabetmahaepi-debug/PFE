@@ -1,0 +1,144 @@
+.cu-list-toolbar {
+  flex-shrink: 0;
+  border-bottom: 1px solid #e8eaed;
+  background: #fff;
+}
+
+.cu-list-toolbar-top {
+  padding: 16px 20px 0;
+}
+
+.cu-list-toolbar-top-wrap {
+  background: #fff;
+}
+
+.cu-list-toolbar-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: #292d34;
+  letter-spacing: -0.02em;
+}
+
+.cu-list-toolbar-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 20px 12px;
+}
+
+.cu-list-toolbar-left {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.cu-list-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cu-list-toolbar-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #646f79;
+  background: #fff;
+  border: 1px solid #e8eaed;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.cu-list-toolbar-chip:hover {
+  background: #f4f4f6;
+}
+
+.cu-list-toolbar-chip--active {
+  color: #7b68ee;
+  background: #f3f0ff;
+  border-color: rgba(123, 97, 255, 0.28);
+}
+
+.cu-list-toolbar-view-btn {
+  font-weight: 600;
+  position: relative;
+  z-index: 5;
+  pointer-events: auto;
+}
+
+.cu-list-toolbar-row {
+  position: relative;
+  z-index: 4;
+}
+
+.cu-list-toolbar-chip-muted {
+  color: #87909e;
+  font-weight: 400;
+}
+
+.cu-list-toolbar-search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid #e8eaed;
+  border-radius: 6px;
+  background: #fff;
+  color: #87909e;
+}
+
+.cu-list-toolbar-search input {
+  border: none;
+  outline: none;
+  font-size: 13px;
+  width: 140px;
+  color: #292d34;
+  background: transparent;
+}
+
+.cu-list-toolbar-search input::placeholder {
+  color: #b0b7c3;
+}
+
+.cu-list-toolbar-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid #e8eaed;
+  border-radius: 6px;
+  background: #fff;
+  color: #646f79;
+  cursor: pointer;
+}
+
+.cu-list-toolbar-icon-btn:hover {
+  background: #f4f4f6;
+}
+
+.cu-list-toolbar-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  background: #7b68ee;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.cu-list-toolbar-add-btn:hover {
+  background: #6a52e8;
+}

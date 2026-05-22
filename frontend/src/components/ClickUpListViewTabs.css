@@ -1,0 +1,54 @@
+.cu-view-tabs {
+  flex-shrink: 0;
+  border-bottom: 1px solid #e8eaed;
+  background: #fff;
+  padding: 0 20px;
+}
+
+.cu-view-tabs-inner {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.cu-view-tabs-inner::-webkit-scrollbar {
+  display: none;
+}
+
+.cu-view-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px 9px;
+  border: none;
+  background: none;
+  font-size: 13px;
+  font-weight: 500;
+  color: #87909e;
+  cursor: pointer;
+  white-space: nowrap;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.cu-view-tab:hover:not(:disabled) {
+  color: #292d34;
+}
+
+.cu-view-tab--active {
+  color: #7b68ee;
+  font-weight: 600;
+  border-bottom-color: #7b68ee;
+}
+
+.cu-view-tab-icon {
+  display: inline-flex;
+  opacity: 0.85;
+}
+
+.cu-view-tab--active .cu-view-tab-icon {
+  color: #7b68ee;
+}
