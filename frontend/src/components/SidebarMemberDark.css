@@ -1,0 +1,383 @@
+/**
+ * ClickUp dark sidebar — global Membre role only.
+ * Scoped via `.cu-sidebar--member-dark` on the aside element.
+ */
+
+.cu-sidebar--member-dark {
+  --msb-bg: #1e1f25;
+  --msb-bg-elevated: #262830;
+  --msb-border: #2a2d36;
+  --msb-text: #c7cad1;
+  --msb-text-muted: #8b909a;
+  --msb-text-soft: #a3a8b3;
+  --msb-hover: rgba(123, 104, 238, 0.12);
+  --msb-active-bg: rgba(123, 104, 238, 0.28);
+  --msb-accent: #7b68ee;
+  --msb-badge-bg: #3a3d47;
+  --msb-badge-text: #e8eaed;
+
+  background: var(--msb-bg) !important;
+  border-right-color: var(--msb-border) !important;
+  color: var(--msb-text);
+}
+
+.cu-sidebar--member-dark .text-cu-text,
+.cu-sidebar--member-dark .text-cu-text-secondary {
+  color: var(--msb-text);
+}
+
+.cu-sidebar--member-dark .text-cu-text-muted {
+  color: var(--msb-text-muted);
+}
+
+/* Header */
+.cu-sidebar--member-dark .cu-sidebar-member-header {
+  border-bottom: 1px solid var(--msb-border);
+}
+
+/* Divider */
+.cu-sidebar--member-dark .cu-sidebar-member-divider {
+  background: var(--msb-border) !important;
+}
+
+/* SPACES label */
+.cu-sidebar--member-dark .cu-sidebar-spaces-label {
+  color: var(--msb-text-muted) !important;
+}
+
+/* Primary nav + flat more links */
+.cu-sidebar--member-dark nav a {
+  color: var(--msb-text) !important;
+}
+
+.cu-sidebar--member-dark nav a:hover {
+  background: var(--msb-hover) !important;
+  color: #fff !important;
+}
+
+.cu-sidebar--member-dark nav a[aria-current='page']:not(.member-tasks-sidebar-link) {
+  background: var(--msb-active-bg) !important;
+  color: #fff !important;
+  font-weight: 500 !important;
+  border-radius: 8px !important;
+  box-shadow: inset 3px 0 0 var(--msb-accent);
+}
+
+.cu-sidebar--member-dark nav a[aria-current='page']:not(.member-tasks-sidebar-link) svg,
+.cu-sidebar--member-dark nav a[aria-current='page']:not(.member-tasks-sidebar-link) .lucide {
+  color: var(--msb-accent) !important;
+}
+
+.cu-sidebar--member-dark nav a svg,
+.cu-sidebar--member-dark nav a .lucide,
+.cu-sidebar--member-dark nav button svg {
+  color: var(--msb-text-muted);
+}
+
+.cu-sidebar--member-dark nav a:hover svg,
+.cu-sidebar--member-dark nav a[aria-current='page']:not(.member-tasks-sidebar-link) svg {
+  color: inherit;
+}
+
+/* Override light active utility classes from Tailwind */
+.cu-sidebar--member-dark nav a.bg-cu-primary-soft {
+  background: var(--msb-active-bg) !important;
+  color: #fff !important;
+  box-shadow: inset 3px 0 0 var(--msb-accent);
+}
+
+.cu-sidebar--member-dark nav a.text-cu-primary {
+  color: #fff !important;
+}
+
+.cu-sidebar--member-dark nav a.text-cu-primary svg {
+  color: var(--msb-accent) !important;
+}
+
+/* Mes tâches block */
+.cu-sidebar--member-dark .member-tasks-sidebar-parent {
+  color: var(--msb-text) !important;
+}
+
+.cu-sidebar--member-dark .member-tasks-sidebar-parent:hover {
+  background: var(--msb-hover) !important;
+  color: #fff !important;
+}
+
+.cu-sidebar--member-dark .member-tasks-sidebar-icon {
+  color: var(--msb-accent) !important;
+}
+
+.cu-sidebar--member-dark .member-tasks-sidebar-chevron {
+  color: var(--msb-text-muted) !important;
+}
+
+.cu-sidebar--member-dark .member-tasks-sidebar-link {
+  color: var(--msb-text-soft) !important;
+}
+
+.cu-sidebar--member-dark .member-tasks-sidebar-link:hover {
+  background: var(--msb-hover) !important;
+  color: #fff !important;
+}
+
+.cu-sidebar--member-dark .member-tasks-sidebar-link.is-active {
+  background: var(--msb-active-bg) !important;
+  color: #fff !important;
+  box-shadow: inset 3px 0 0 var(--msb-accent);
+  border-radius: 8px;
+}
+
+.cu-sidebar--member-dark .member-tasks-sidebar-link.is-active .member-tasks-sidebar-link-icon {
+  color: var(--msb-accent) !important;
+}
+
+.cu-sidebar--member-dark .member-tasks-sidebar-badge {
+  background: var(--msb-badge-bg) !important;
+  color: var(--msb-badge-text) !important;
+}
+
+.cu-sidebar--member-dark .member-tasks-sidebar-link.is-active .member-tasks-sidebar-badge {
+  background: #4a4e5c !important;
+  color: #fff !important;
+}
+
+/* Spaces tree — dark ClickUp hover (no white flash on inner controls) */
+.cu-sidebar--member-dark .cu-spaces-tree-row {
+  color: var(--msb-text) !important;
+  background: transparent !important;
+}
+
+.cu-sidebar--member-dark .cu-spaces-tree-row:hover {
+  background: var(--msb-hover) !important;
+  color: #fff !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.cu-sidebar--member-dark .cu-spaces-tree-row:hover .cu-spaces-tree-label,
+.cu-sidebar--member-dark .cu-spaces-tree-row:hover .cu-spaces-tree-label--space,
+.cu-sidebar--member-dark .cu-spaces-tree-row:hover .cu-spaces-tree-label--project,
+.cu-sidebar--member-dark .cu-spaces-tree-row:hover .cu-spaces-tree-label--sprint,
+.cu-sidebar--member-dark .cu-spaces-tree-row:hover .cu-spaces-tree-label--list,
+.cu-sidebar--member-dark .cu-spaces-tree-row:hover .cu-spaces-tree-label--task,
+.cu-sidebar--member-dark .cu-spaces-tree-row:hover .cu-spaces-tree-label--subtask {
+  color: #fff !important;
+}
+
+.cu-sidebar--member-dark .cu-spaces-tree-row.is-active {
+  background: var(--msb-active-bg) !important;
+  color: #fff !important;
+  box-shadow: inset 3px 0 0 var(--msb-accent) !important;
+  transform: none !important;
+}
+
+.cu-sidebar--member-dark .cu-spaces-tree-row.is-active .cu-spaces-tree-label,
+.cu-sidebar--member-dark .cu-spaces-tree-row.is-active .cu-spaces-tree-label--space,
+.cu-sidebar--member-dark .cu-spaces-tree-row.is-active .cu-spaces-tree-label--project,
+.cu-sidebar--member-dark .cu-spaces-tree-row.is-active .cu-spaces-tree-label--sprint,
+.cu-sidebar--member-dark .cu-spaces-tree-row.is-active .cu-spaces-tree-label--list,
+.cu-sidebar--member-dark .cu-spaces-tree-row.is-active .cu-spaces-tree-label--task,
+.cu-sidebar--member-dark .cu-spaces-tree-row.is-active .cu-spaces-tree-label--subtask {
+  color: #fff !important;
+}
+
+.cu-sidebar--member-dark .cu-spaces-tree-row.is-active .cu-spaces-tree-icon {
+  color: var(--msb-accent) !important;
+}
+
+/* Inner tree controls stay transparent — row provides hover */
+.cu-sidebar--member-dark .cu-spaces-tree-main,
+.cu-sidebar--member-dark .cu-spaces-tree-main--subtask-edit {
+  background: transparent !important;
+}
+
+.cu-sidebar--member-dark .cu-spaces-tree-main:hover,
+.cu-sidebar--member-dark .cu-spaces-tree-main--subtask-edit:hover,
+.cu-sidebar--member-dark .cu-spaces-tree-row.is-active .cu-spaces-tree-main:hover {
+  background: transparent !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.cu-sidebar--member-dark .cu-spaces-tree-icon {
+  color: var(--msb-text-muted) !important;
+}
+
+.cu-sidebar--member-dark .cu-spaces-tree-label--space {
+  color: #e8eaed !important;
+  font-weight: 600;
+}
+
+.cu-sidebar--member-dark .cu-spaces-tree-label--project {
+  color: var(--msb-text) !important;
+}
+
+.cu-sidebar--member-dark .cu-spaces-tree-label--sprint,
+.cu-sidebar--member-dark .cu-spaces-tree-label--list,
+.cu-sidebar--member-dark .cu-spaces-tree-label--task,
+.cu-sidebar--member-dark .cu-spaces-tree-label--subtask {
+  color: var(--msb-text) !important;
+}
+
+.cu-sidebar--member-dark .cu-spaces-tree-row.is-active .cu-spaces-tree-task-dot {
+  border-color: var(--msb-accent) !important;
+  background: var(--msb-accent) !important;
+}
+
+.cu-sidebar--member-dark .cu-spaces-tree-chevron {
+  color: var(--msb-text-muted) !important;
+}
+
+.cu-sidebar--member-dark .cu-spaces-tree-chevron:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+.cu-sidebar--member-dark .cu-spaces-tree-count {
+  color: var(--msb-badge-text) !important;
+  background: var(--msb-badge-bg);
+  border-radius: 10px;
+  padding: 0 6px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 16px;
+}
+
+.cu-sidebar--member-dark .cu-spaces-tree-menu-btn,
+.cu-sidebar--member-dark .cu-spaces-tree-add-btn {
+  color: var(--msb-text-muted) !important;
+}
+
+.cu-sidebar--member-dark .cu-spaces-tree-row:hover .cu-spaces-tree-menu-btn,
+.cu-sidebar--member-dark .cu-spaces-tree-row:hover .cu-spaces-tree-add-btn,
+.cu-sidebar--member-dark .cu-spaces-tree-menu-btn:hover,
+.cu-sidebar--member-dark .cu-spaces-tree-add-btn:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #fff !important;
+}
+
+.cu-sidebar--member-dark .cu-spaces-tree-task-dot {
+  border-color: var(--msb-text-muted);
+}
+
+.cu-sidebar--member-dark .cu-spaces-tree-empty {
+  color: var(--msb-text-muted) !important;
+}
+
+/* Corbeille */
+.cu-sidebar--member-dark .cu-corbeille-toggle {
+  color: var(--msb-text-soft) !important;
+}
+
+.cu-sidebar--member-dark .cu-corbeille-toggle:hover {
+  background: var(--msb-hover) !important;
+  color: #fff !important;
+}
+
+.cu-sidebar--member-dark .cu-corbeille-toggle[aria-expanded='true'] {
+  background: var(--msb-active-bg) !important;
+  color: #fff !important;
+}
+
+.cu-sidebar--member-dark .cu-corbeille-toggle[aria-expanded='true'] .cu-corbeille-toggle-icon {
+  color: var(--msb-accent) !important;
+}
+
+.cu-sidebar--member-dark .cu-corbeille-toggle-icon,
+.cu-sidebar--member-dark .cu-corbeille-chevron {
+  color: var(--msb-text-muted) !important;
+}
+
+.cu-sidebar--member-dark .cu-corbeille-count {
+  background: var(--msb-badge-bg) !important;
+  color: var(--msb-badge-text) !important;
+}
+
+.cu-sidebar--member-dark .cu-corbeille-list {
+  border-top-color: var(--msb-border);
+}
+
+.cu-sidebar--member-dark .cu-corbeille-row {
+  border-radius: 6px;
+}
+
+.cu-sidebar--member-dark .cu-corbeille-row:hover {
+  background: var(--msb-hover);
+}
+
+.cu-sidebar--member-dark .cu-corbeille-row-type {
+  color: var(--msb-text-muted) !important;
+}
+
+.cu-sidebar--member-dark .cu-corbeille-row-name {
+  color: var(--msb-text) !important;
+}
+
+.cu-sidebar--member-dark .cu-corbeille-empty {
+  color: var(--msb-text-muted) !important;
+}
+
+.cu-sidebar--member-dark .cu-corbeille-action {
+  color: var(--msb-text-muted) !important;
+}
+
+.cu-sidebar--member-dark .cu-corbeille-action:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #fff !important;
+}
+
+.cu-sidebar--member-dark .cu-corbeille-action--danger:hover {
+  color: #f87171 !important;
+}
+
+/* Footer / profile */
+.cu-sidebar--member-dark .cu-sidebar-member-footer {
+  background: var(--msb-bg) !important;
+  border-top-color: var(--msb-border) !important;
+}
+
+.cu-sidebar--member-dark .cu-sidebar-member-footer > div:hover {
+  background: var(--msb-hover) !important;
+}
+
+.cu-sidebar--member-dark .cu-sidebar-member-footer button:hover {
+  background: rgba(239, 68, 68, 0.15) !important;
+  color: #f87171 !important;
+}
+
+/* More dropdown (if visible) */
+.cu-sidebar--member-dark nav button.cu-nav-item,
+.cu-sidebar--member-dark nav .cu-nav-item {
+  color: var(--msb-text) !important;
+}
+
+.cu-sidebar--member-dark .mt-px.pl-2 a {
+  color: var(--msb-text-soft) !important;
+}
+
+.cu-sidebar--member-dark .mt-px.pl-2 a:hover {
+  background: var(--msb-hover) !important;
+  color: #fff !important;
+}
+
+/* Block global light press/hover utilities inside dark sidebar */
+.cu-sidebar--member-dark .cu-pressable:hover,
+.cu-sidebar--member-dark .cu-spaces-tree-chevron:hover,
+.cu-sidebar--member-dark .cu-spaces-tree-menu-btn:hover,
+.cu-sidebar--member-dark .cu-spaces-tree-add-btn:hover,
+.cu-sidebar--member-dark .member-tasks-sidebar-parent:hover,
+.cu-sidebar--member-dark .member-tasks-sidebar-link:hover {
+  transform: none !important;
+}
+
+.cu-sidebar--member-dark .cu-spaces-tree-chevron:hover,
+.cu-sidebar--member-dark .cu-spaces-tree-menu-btn:hover,
+.cu-sidebar--member-dark .cu-spaces-tree-add-btn:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #fff !important;
+}
+
+.cu-sidebar--member-dark .cu-spaces-tree-row:hover .cu-spaces-tree-menu-btn,
+.cu-sidebar--member-dark .cu-spaces-tree-row:hover .cu-spaces-tree-add-btn {
+  opacity: 1 !important;
+}

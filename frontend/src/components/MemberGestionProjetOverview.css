@@ -1,0 +1,260 @@
+/* Member — Gestion de projet overview (Mon espace) */
+.mgpo {
+  background: #f7f8fc;
+  min-height: 100%;
+  padding: 20px 24px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-sizing: border-box;
+}
+
+.mgpo--loading {
+  align-items: center;
+  justify-content: center;
+  min-height: 280px;
+  gap: 12px;
+  color: #646464;
+  font-size: 14px;
+}
+
+.mgpo-header--navbar-title {
+  margin-bottom: 0;
+}
+
+.mgpo--navbar-title {
+  padding-top: 12px;
+}
+
+.mgpo-access-empty {
+  margin: 0;
+  padding: 1rem 1.15rem;
+  border-radius: 12px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  color: #64748b;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  text-align: center;
+}
+
+.mgpo-header--navbar-title .mgpo-subtitle {
+  margin-top: 0;
+}
+
+.mgpo-header {
+  margin-bottom: 4px;
+}
+
+.mgpo-title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  color: #292d34;
+  letter-spacing: -0.02em;
+}
+
+.mgpo-subtitle {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: #7c828d;
+}
+
+.mgpo-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mgpo-stats-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.mgpo-stat-card {
+  background: #fff;
+  border: 1px solid #e8eaed;
+  border-radius: 14px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.mgpo-stat-icon {
+  font-size: 18px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.mgpo-stat-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.mgpo-stat-label {
+  font-size: 12px;
+  color: #7c828d;
+  font-weight: 500;
+}
+
+.mgpo-stat-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: #292d34;
+  line-height: 1.1;
+}
+
+.mgpo-card {
+  background: #fff;
+  border: 1px solid #e8eaed;
+  border-radius: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  padding: 16px 18px 18px;
+}
+
+.mgpo-card-title {
+  margin: 0 0 12px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #292d34;
+}
+
+.mgpo-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.mgpo-card-head .mgpo-card-title {
+  margin: 0;
+}
+
+.mgpo-add-sprint-btn,
+.mgpo-empty-sprint-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  border-radius: 8px;
+  background: #7b68ee;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 6px 12px;
+  transition: background 0.15s ease;
+}
+
+.mgpo-add-sprint-btn:hover,
+.mgpo-empty-sprint-btn:hover {
+  background: #6a58dc;
+}
+
+.mgpo-table-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 18px 12px !important;
+}
+
+.mgpo-table-wrap {
+  overflow-x: auto;
+  border: 1px solid #e9ecf2;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.mgpo-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.mgpo-table th,
+.mgpo-table td {
+  text-align: left;
+}
+
+.mgpo-table thead th {
+  background: #f8f7ff;
+  color: #8b82f6;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.3px;
+  text-transform: none;
+  padding: 12px 16px;
+  border-bottom: 1px solid #eceafd;
+  white-space: nowrap;
+}
+
+.mgpo-table thead tr:first-child th:first-child {
+  border-top-left-radius: 9px;
+}
+
+.mgpo-table thead tr:first-child th:last-child {
+  border-top-right-radius: 9px;
+}
+
+.mgpo-table td {
+  padding: 12px 16px;
+  color: #3d4551;
+  background: #fff;
+  border-bottom: 1px solid #eef0f3;
+}
+
+.mgpo-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.mgpo-table tbody tr:last-child td:first-child {
+  border-bottom-left-radius: 9px;
+}
+
+.mgpo-table tbody tr:last-child td:last-child {
+  border-bottom-right-radius: 9px;
+}
+
+.mgpo-table tbody tr:hover td {
+  background: #fafbfc;
+}
+
+.mgpo-table-empty {
+  text-align: center;
+  color: #8b909a;
+  padding: 20px 12px !important;
+}
+
+.mgpo-cell-task {
+  font-weight: 500;
+  color: #292d34;
+}
+
+.mgpo-cell-badge {
+  vertical-align: middle;
+}
+
+/* Gestion de projet tables — uses shared memberStatusPill.css palette */
+
+@media (max-width: 1100px) {
+  .mgpo-stats-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .mgpo {
+    padding: 16px;
+  }
+
+  .mgpo-stats-row {
+    grid-template-columns: 1fr;
+  }
+}

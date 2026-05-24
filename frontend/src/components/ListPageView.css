@@ -18,6 +18,18 @@
   flex-shrink: 0;
 }
 
+.list-page--member-navbar-title .cu-list-toolbar-top-wrap {
+  display: none;
+}
+
+.list-page--member-navbar-title .cu-view-tabs {
+  padding-top: 0;
+}
+
+.list-page--member-navbar-title .cu-view-tab {
+  padding-top: 8px;
+}
+
 .cu-list-toolbar-top-wrap .cu-list-toolbar-title {
   margin: 0;
 }
@@ -44,6 +56,11 @@
 
 .list-page-body--clickup.list-page-body--tableur {
   overflow: hidden;
+}
+
+.list-page-body--clickup.list-page-body--gantt,
+.list-page-body--clickup.list-page-body--canal {
+  overflow: auto;
 }
 
 .list-page--clickup .list-status-view {

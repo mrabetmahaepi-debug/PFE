@@ -1,5 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 @import 'tailwindcss';
+@import './styles/clickup-interactions.css';
+@import './components/SidebarMemberDark.css';
 
 /* ── ClickUp design tokens ───────────────────────────────────── */
 @theme {
@@ -148,7 +150,8 @@
   }
 
   button {
-    @apply cursor-pointer border-0 bg-transparent font-[inherit] text-[inherit] transition-colors duration-200;
+    @apply cursor-pointer border-0 bg-transparent font-[inherit] text-[inherit];
+    transition: all 0.15s ease;
   }
 
   button:disabled {
@@ -245,7 +248,6 @@
   .premium-card:hover,
   .virtide-card:hover {
     @apply border-cu-border shadow-cu-md;
-    transform: none;
   }
 
   /* Buttons */
@@ -286,7 +288,6 @@
   .invite-submit,
   .list-page-toolbar .primary-btn {
     @apply border border-cu-primary bg-cu-primary text-white shadow-none hover:border-cu-primary-hover hover:bg-cu-primary-hover;
-    transform: none !important;
   }
 
   .virtide-btn--primary:hover:not(:disabled),
@@ -295,7 +296,6 @@
   .messaging-light-btn-primary:hover:not(:disabled),
   .invite-submit:hover:not(:disabled) {
     @apply shadow-cu-md;
-    transform: none !important;
   }
 
   .navbar-icon-btn,

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
+  ArrowLeft,
   User,
   LogOut,
   Settings,
@@ -24,15 +25,99 @@ import {
   notificationInitials,
   resolveNotificationHref,
 } from '../lib/notificationUi';
+import {
+  NOTIFICATIONS_REFRESH_EVENT,
+  dispatchNotificationsRefresh,
+} from '../lib/workspaceEvents';
+import { dedupeNotificationsById } from '../lib/dedupeNotifications';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '../lib/cn';
 import { cu } from '../lib/cu-styles';
+import { isGlobalMember, isEnterpriseAdmin } from '../lib/permissions';
+import { parseMemberTasksView } from '../lib/memberTasksViews';
+import {
+  adminDashboardDisplayName,
+  formatAdminNavbarDate,
+  formatMemberNavbarDate,
+  memberDisplayName,
+} from '../lib/memberNavbarGreeting';
+import { MON_ESPACE_NAME, isMemberMonEspaceNavbarPath } from '../lib/monEspaceRoute';
+import { useMemberTopbarTitle } from '../context/MemberTopbarTitleContext';
 import './Navbar.css';
 
 const Navbar: React.FC = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const memberTasksView = parseMemberTasksView(
+    new URLSearchParams(location.search).get('view')
+  );
+  const globalMember = isGlobalMember(user);
+  const enterpriseAdmin = isEnterpriseAdmin(user);
+  const showMemberAssignedTitle =
+    globalMember &&
+    location.pathname === '/tasks' &&
+    memberTasksView === 'assigned';
+  const showMemberTodayTitle =
+    globalMember &&
+    location.pathname === '/tasks' &&
+    memberTasksView === 'today';
+  const showMemberInboxTitle =
+    globalMember && location.pathname === '/inbox';
+  const showAdminInboxTitle =
+    enterpriseAdmin && location.pathname === '/inbox';
+  const isAdminDashboardHome =
+    enterpriseAdmin &&
+    (location.pathname === '/' ||
+      location.pathname === '/dashboard' ||
+      location.pathname === '/home');
+  const showAdminDashboardGreeting = isAdminDashboardHome && !showAdminInboxTitle;
+  const showAdminRecommendationsTitle =
+    enterpriseAdmin && location.pathname === '/recommendations';
+  const showMemberSettingsTitle =
+    globalMember && location.pathname === '/settings';
+  const showMemberTaskDetailBack =
+    globalMember && /^\/tasks\/\d+\/?$/.test(location.pathname);
+  const isMemberDashboardHome =
+    globalMember &&
+    (location.pathname === '/' ||
+      location.pathname === '/dashboard' ||
+      location.pathname === '/home');
+  const showMemberDashboardGreeting =
+    isMemberDashboardHome &&
+    !showMemberAssignedTitle &&
+    !showMemberTodayTitle &&
+    !showMemberInboxTitle &&
+    !showMemberSettingsTitle &&
+    !showMemberTaskDetailBack;
+  const { title: memberWorkspaceTitle } = useMemberTopbarTitle();
+  const showMemberMonEspaceNavbar =
+    globalMember &&
+    (memberWorkspaceTitle === MON_ESPACE_NAME ||
+      isMemberMonEspaceNavbarPath(location.pathname)) &&
+    !showMemberAssignedTitle &&
+    !showMemberTodayTitle &&
+    !showMemberInboxTitle &&
+    !showMemberSettingsTitle &&
+    !showMemberTaskDetailBack &&
+    !isMemberDashboardHome;
+  const showMemberGreeting = showMemberDashboardGreeting;
+  const showMemberWorkspaceTitle =
+    globalMember &&
+    !!memberWorkspaceTitle &&
+    memberWorkspaceTitle !== MON_ESPACE_NAME &&
+    !showMemberAssignedTitle &&
+    !showMemberTodayTitle &&
+    !showMemberInboxTitle &&
+    !showMemberSettingsTitle &&
+    !showMemberTaskDetailBack &&
+    !isMemberDashboardHome;
+  const showMemberTopbarTitle =
+    showMemberInboxTitle ||
+    showMemberSettingsTitle ||
+    showMemberWorkspaceTitle ||
+    showMemberMonEspaceNavbar;
 
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -42,16 +127,17 @@ const Navbar: React.FC = () => {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [notifLoading, setNotifLoading] = useState(false);
 
-  const displayName =
-    `${user?.prenom || ''} ${user?.nom || ''}`.trim() ||
-    user?.email?.split('@')[0] ||
-    'Utilisateur';
+  const displayName = memberDisplayName(user);
+  const adminGreetingName = adminDashboardDisplayName(user);
+  const adminGreetingDate = formatAdminNavbarDate();
+
+  const memberGreetingDate = formatMemberNavbarDate();
 
   const loadNotifications = useCallback(async () => {
     setNotifLoading(true);
     try {
       const list = await fetchMyNotifications();
-      setNotifications(list);
+      setNotifications(dedupeNotificationsById(list));
     } catch (e) {
       console.error('Notifications load failed:', e);
     } finally {
@@ -62,6 +148,23 @@ const Navbar: React.FC = () => {
   useEffect(() => {
     loadNotifications();
   }, [loadNotifications]);
+
+  useEffect(() => {
+    const onRefresh = () => void loadNotifications();
+    window.addEventListener(NOTIFICATIONS_REFRESH_EVENT, onRefresh);
+    return () =>
+      window.removeEventListener(NOTIFICATIONS_REFRESH_EVENT, onRefresh);
+  }, [loadNotifications]);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => void loadNotifications(), 30_000);
+    return () => window.clearInterval(intervalId);
+  }, [loadNotifications]);
+
+  useEffect(() => {
+    if (!notifOpen) return;
+    void loadNotifications();
+  }, [notifOpen, loadNotifications]);
 
   const unreadCount = notifications.filter((n) => !n.is_read).length;
 
@@ -91,13 +194,19 @@ const Navbar: React.FC = () => {
     try {
       await markAllNotificationsRead();
       setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+      dispatchNotificationsRefresh();
     } catch (e) {
       console.error(e);
     }
   };
 
-  const handleNotificationActivate = async (n: AppNotification) => {
-    const href = resolveNotificationHref(n);
+  const handleNotificationActivate = async (
+    e: React.MouseEvent,
+    n: AppNotification
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
+
     if (!n.is_read) {
       try {
         await markNotificationRead(n.num_notification);
@@ -106,16 +215,111 @@ const Navbar: React.FC = () => {
             x.num_notification === n.num_notification ? { ...x, is_read: true } : x
           )
         );
-      } catch (e) {
-        console.error(e);
+        dispatchNotificationsRefresh();
+      } catch (err) {
+        console.error(err);
       }
     }
+
+    if (globalMember) {
+      return;
+    }
+
     setNotifOpen(false);
-    navigate(href);
+    navigate(resolveNotificationHref(n));
   };
 
   return (
-    <header className={cn(cu.navbar, 'navbar')}>
+    <header
+      className={cn(
+        cu.navbar,
+        'navbar',
+        showMemberGreeting && 'navbar--member-greeting',
+        showMemberTopbarTitle && 'navbar--member-topbar',
+        (showMemberWorkspaceTitle || showMemberMonEspaceNavbar) &&
+          'navbar--member-workspace',
+        showMemberMonEspaceNavbar && 'navbar--member-mon-espace',
+        showMemberInboxTitle && 'navbar--member-inbox',
+        showAdminInboxTitle && 'navbar--admin-inbox',
+        showAdminDashboardGreeting && 'navbar--admin-greeting',
+        showAdminRecommendationsTitle && 'navbar--admin-recommendations',
+        showMemberSettingsTitle && 'navbar--member-settings',
+        showMemberTaskDetailBack && 'navbar--member-task-detail'
+      )}
+    >
+      {showMemberTaskDetailBack && (
+        <div className="navbar-left navbar-member-back-wrap">
+          <button
+            type="button"
+            className="navbar-member-back"
+            onClick={() => navigate(-1)}
+          >
+            <ArrowLeft size={16} strokeWidth={2} aria-hidden />
+            Retour
+          </button>
+        </div>
+      )}
+      {showMemberGreeting && (
+        <div className="navbar-member-greeting">
+          <h1 className="navbar-member-greeting-title">
+            Bonjour {displayName}{' '}
+            <span className="navbar-member-greeting-wave" aria-hidden>
+              👋
+            </span>
+          </h1>
+          <p className="navbar-member-greeting-date">{memberGreetingDate}</p>
+        </div>
+      )}
+      {showAdminDashboardGreeting && (
+        <div className="navbar-admin-greeting">
+          <h1 className="navbar-admin-greeting-title">
+            Bonjour {adminGreetingName}{' '}
+            <span className="navbar-admin-greeting-wave" aria-hidden>
+              👋
+            </span>
+          </h1>
+          <p className="navbar-admin-greeting-sub">
+            Vue globale de votre administration aujourd&apos;hui.
+          </p>
+          <p className="navbar-admin-greeting-date">{adminGreetingDate}</p>
+        </div>
+      )}
+      {showAdminRecommendationsTitle && (
+        <div className="navbar-page-title navbar-page-title--stacked">
+          <h1 className="navbar-page-heading">Recommandations</h1>
+          <p className="navbar-page-sub">
+            Suggestions intelligentes générées par l&apos;IA pour optimiser vos projets et votre
+            équipe.
+          </p>
+        </div>
+      )}
+      {showMemberInboxTitle && (
+        <div className="navbar-page-title navbar-page-title--stacked">
+          <h1 className="navbar-page-heading">Boîte de réception</h1>
+          <p className="navbar-page-sub">Toutes vos notifications</p>
+        </div>
+      )}
+      {showAdminInboxTitle && (
+        <div className="navbar-page-title navbar-page-title--stacked">
+          <h1 className="navbar-page-heading">Boîte de réception</h1>
+          <p className="navbar-page-sub">Toutes vos notifications</p>
+        </div>
+      )}
+      {showMemberSettingsTitle && (
+        <div className="navbar-page-title">
+          <h1 className="navbar-page-heading">Paramètres</h1>
+        </div>
+      )}
+      {showMemberMonEspaceNavbar && (
+        <div className="navbar-page-title navbar-page-title--workspace">
+          <h1 className="navbar-member-workspace-title">{MON_ESPACE_NAME}</h1>
+        </div>
+      )}
+      {showMemberWorkspaceTitle && (
+        <div className="navbar-page-title navbar-page-title--workspace">
+          <h1 className="navbar-member-workspace-title">{memberWorkspaceTitle}</h1>
+        </div>
+      )}
       <div className="header-right">
         <div className="navbar-notif-wrap" ref={notifRef}>
           <button
@@ -193,7 +397,7 @@ const Navbar: React.FC = () => {
                             <button
                               type="button"
                               className={`navbar-notif-item ${n.is_read ? 'is-read' : 'is-unread'} is-clickable`}
-                              onClick={() => handleNotificationActivate(n)}
+                              onClick={(e) => void handleNotificationActivate(e, n)}
                             >
                               {!n.is_read && (
                                 <span className="navbar-notif-unread-dot" aria-hidden />

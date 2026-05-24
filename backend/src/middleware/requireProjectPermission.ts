@@ -2,6 +2,7 @@ import type { Request, RequestHandler } from "express";
 import {
   getProjectPermissionContext,
   hasProjectPermission,
+  PERMISSION_DENIED_MESSAGE,
 } from "../services/projectPermission.service";
 
 export type ProjectIdResolver = (req: Request) => Promise<number | null | undefined>;
@@ -29,7 +30,7 @@ export function requireProjectPermission(
       (req as any).projectPermissionContext = ctx;
       if (!hasProjectPermission(ctx, permission)) {
         return res.status(403).json({
-          message: "Permission projet insuffisante",
+          message: PERMISSION_DENIED_MESSAGE,
           code: "PROJECT_PERMISSION_DENIED",
           requiredPermission: permission,
         });
@@ -64,7 +65,7 @@ export function requireAnyProjectPermission(
       const ok = permissions.some((p) => hasProjectPermission(ctx, p));
       if (!ok) {
         return res.status(403).json({
-          message: "Permission projet insuffisante",
+          message: PERMISSION_DENIED_MESSAGE,
           code: "PROJECT_PERMISSION_DENIED",
           requiredPermission: permissions,
         });

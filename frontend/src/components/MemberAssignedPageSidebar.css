@@ -1,0 +1,113 @@
+.member-assigned-page-sidebar {
+  width: 220px;
+  flex-shrink: 0;
+  background: #fafbfc;
+  border-right: 1px solid #e8eaef;
+  padding: 14px 10px 20px;
+  min-height: calc(100vh - 64px);
+}
+
+.member-assigned-page-sidebar-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px 12px;
+}
+
+.member-assigned-page-sidebar-icon {
+  color: #7b68ee;
+  flex-shrink: 0;
+}
+
+.member-assigned-page-sidebar-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #292d34;
+  letter-spacing: -0.01em;
+}
+
+.member-assigned-page-sidebar-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.member-assigned-page-sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #646f79;
+  text-decoration: none;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.member-assigned-page-sidebar-link:hover {
+  background: #f0f1f3;
+  color: #292d34;
+}
+
+.member-assigned-page-sidebar-link.is-active {
+  background: #eceef2;
+  color: #111827;
+  font-weight: 600;
+}
+
+.member-assigned-page-sidebar-avatar {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #111827;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.member-assigned-page-sidebar-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.member-assigned-page-sidebar-badge {
+  flex-shrink: 0;
+  min-width: 20px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 9px;
+  background: #eef0f3;
+  font-size: 11px;
+  font-weight: 600;
+  color: #87909e;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.member-assigned-page-sidebar-link.is-active .member-assigned-page-sidebar-badge {
+  background: #e2e5ea;
+  color: #646f79;
+}
+
+@media (max-width: 900px) {
+  .member-assigned-page-sidebar {
+    width: 100%;
+    min-height: 0;
+    border-right: none;
+    border-bottom: 1px solid #e8eaef;
+  }
+}

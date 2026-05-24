@@ -17,6 +17,7 @@ import { usePermission } from '../hooks/usePermission';
 import type { User } from '../types/auth.types';
 import BackButton from '../components/BackButton';
 import { getUserInitials, resolveProfilePhotoUrl } from '../lib/profilePhoto';
+import { displayGlobalAccountRole } from '../lib/accountRoleDisplay';
 import './Dashboard.css';
 import './Team.css';
 
@@ -55,16 +56,6 @@ function isAdminTableRow(member: User): boolean {
 /** Everyone who is not a global admin (members, chefs de projet, etc.). */
 function isMembreTableRow(member: User): boolean {
   return !isAdminTableRow(member);
-}
-
-function displayGlobalAccountRole(member: User): string {
-  const raw = rawGlobalRoleNom(member);
-  if (!raw) return 'Membre';
-  const key = normalizeRoleKey(raw);
-  if (key === 'SUPERADMIN') return 'Super Admin';
-  if (key === 'ADMIN' || key === 'ADMINISTRATEUR' || key === 'ADMINENTREPRISE') return 'Admin';
-  if (key === 'MEMBRE' || key === 'MEMBER') return 'Membre';
-  return raw;
 }
 
 function roleBadgeClass(roleLabel: string, isAdminSection: boolean): string {

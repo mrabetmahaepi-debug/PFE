@@ -1,11 +1,21 @@
 import { TaskPriority } from "@prisma/client";
 import prisma from "../prisma/prismaClient";
-
+import {
+  normalizeStatutKey,
+  resolveWorkflowStatut,
+  syncOverdueForTasks,
+} from "../lib/taskStatutWorkflow";
+import {
+  computeProjectTaskStats,
+  buildProjectTasksWhere,
+  loadProjectHierarchyIndex,
+} from "../lib/projectTaskStats";
 
 const STATUTS_VALIDES = [
   "todo",
   "todo_open",
   "en_cours",
+  "en_retard",
   "terminee",
   "bloquee",
   "en_revision",
@@ -23,7 +33,12 @@ const STATUS_ALIASES: Record<string, (typeof STATUTS_VALIDES)[number]> = {
   EN_COURS: "en_cours",
   IN_PROGRESS: "en_cours",
   in_progress: "en_cours",
+  EN_RETARD: "en_retard",
+  en_retard: "en_retard",
+  OVERDUE: "en_retard",
   TERMINEE: "terminee",
+  ACHEVE: "terminee",
+  ACHEVÉ: "terminee",
   DONE: "terminee",
   done: "terminee",
   TERMINE: "terminee",
@@ -51,16 +66,40 @@ const PRIORITY_ALIASES: Record<string, TaskPriority> = {
 const normalizeStatus = (statut?: string | null) => {
   if (!statut) return undefined;
   const key = String(statut).trim();
-  const direct = STATUS_ALIASES[key];
+  const direct = STATUS_ALIASES[key] ?? STATUS_ALIASES[key.toUpperCase()];
   if (direct) return direct;
-  if (STATUTS_VALIDES.includes(key as any)) {
-    return key as (typeof STATUTS_VALIDES)[number];
+  const slug = normalizeStatutKey(key);
+  if (STATUTS_VALIDES.includes(slug as (typeof STATUTS_VALIDES)[number])) {
+    return slug as (typeof STATUTS_VALIDES)[number];
   }
-  if (/^[a-z][a-z0-9_]{0,48}$/i.test(key)) {
-    return key;
+  if (/^[a-z][a-z0-9_]{0,48}$/i.test(slug)) {
+    return slug;
   }
   throw new Error("Statut invalide");
 };
+
+function applyWorkflowToUpdate(
+  existing: { statut_t: string | null; date_limite_t: Date | null },
+  patch: { statut_t?: string; date_limite_t?: string | null },
+  userExplicitStatut: boolean
+): string | undefined {
+  const nextDate =
+    patch.date_limite_t !== undefined
+      ? patch.date_limite_t === null || patch.date_limite_t === ""
+        ? null
+        : new Date(patch.date_limite_t)
+      : existing.date_limite_t;
+
+  const requested =
+    patch.statut_t !== undefined ? normalizeStatus(patch.statut_t) : undefined;
+
+  return resolveWorkflowStatut(
+    existing.statut_t,
+    nextDate,
+    requested,
+    { userExplicitStatut }
+  );
+}
 
 const normalizePriority = (priorite?: string | null): TaskPriority | undefined => {
   if (!priorite) return undefined;
@@ -108,6 +147,7 @@ async function withAssigneeProjectRoles(id_projet: number, tasks: any[]) {
 interface CreateTaskData {
   nom_t: string;
   description_t?: string;
+  date_debut_t?: string;
   date_limite_t?: string;
   priorite_t?: string;
   statut_t?: string;
@@ -118,6 +158,7 @@ interface CreateTaskData {
   id_list?: number;
   assigne_a?: number | null;
   cree_par?: number | null;
+  id_parent_tache?: number | null;
 }
 
 interface UpdateTaskData {
@@ -271,6 +312,7 @@ export const createTaskService = async (data: CreateTaskData) => {
   const {
     nom_t,
     description_t,
+    date_debut_t,
     date_limite_t,
     priorite_t,
     id_projet,
@@ -285,15 +327,55 @@ export const createTaskService = async (data: CreateTaskData) => {
   const normalizedPriority =
     normalizePriority(priorite_t ?? (data as any).priorite) ?? TaskPriority.MEDIUM;
   const normalizedStatus = normalizeStatus(statut_t) ?? "todo";
+  const dueForWorkflow = date_limite_t ? new Date(date_limite_t) : null;
+  const workflowStatus = resolveWorkflowStatut(
+    null,
+    dueForWorkflow,
+    normalizedStatus,
+    { userExplicitStatut: statut_t != null && String(statut_t).trim() !== "" }
+  );
   if (!nom_t) {
     throw new Error("nom_t est obligatoire");
   }
+
+  const parentId =
+    data.id_parent_tache != null && Number(data.id_parent_tache) > 0
+      ? Number(data.id_parent_tache)
+      : null;
 
   let projectId = Number(id_projet);
   let listId =
     id_list != null && Number(id_list) > 0 ? Number(id_list) : null;
   let sprintId =
     id_sprint != null && Number(id_sprint) > 0 ? Number(id_sprint) : null;
+  let groupId = id_group ? Number(id_group) : null;
+  let folderId = id_folder ? Number(id_folder) : null;
+
+  if (parentId) {
+    const parent = await prisma.tache.findUnique({
+      where: { id_tache: parentId },
+      select: {
+        id_tache: true,
+        id_projet: true,
+        id_list: true,
+        id_sprint: true,
+        id_group: true,
+        id_folder: true,
+        assigne_a: true,
+        priorite_t: true,
+        date_limite_t: true,
+      },
+    });
+    if (!parent?.id_projet) {
+      throw new Error("Tâche parente introuvable");
+    }
+    projectId = Number(parent.id_projet);
+    listId = parent.id_list != null ? Number(parent.id_list) : listId;
+    sprintId =
+      parent.id_sprint != null ? Number(parent.id_sprint) : sprintId;
+    groupId = parent.id_group != null ? Number(parent.id_group) : groupId;
+    folderId = parent.id_folder != null ? Number(parent.id_folder) : folderId;
+  }
 
   if (listId && (!Number.isFinite(projectId) || projectId < 1)) {
     const listRow = await db.list_pm.findUnique({
@@ -311,6 +393,10 @@ export const createTaskService = async (data: CreateTaskData) => {
 
   if (!listId) {
     throw new Error("listId est obligatoire");
+  }
+
+  if (parentId && parentId === Number((data as any).id_tache)) {
+    throw new Error("Une tâche ne peut pas être sa propre sous-tâche");
   }
 
   if (!Number.isFinite(projectId) || projectId < 1) {
@@ -333,8 +419,8 @@ export const createTaskService = async (data: CreateTaskData) => {
 
   await validateHierarchyAncestors({
     id_projet: projectId,
-    id_group: id_group ? Number(id_group) : null,
-    id_folder: id_folder ? Number(id_folder) : null,
+    id_group: groupId,
+    id_folder: folderId,
     id_sprint: resolved.id_sprint,
     id_list: resolved.id_list,
   });
@@ -361,14 +447,16 @@ export const createTaskService = async (data: CreateTaskData) => {
     data: {
       nom_t,
       description_t,
+      date_debut_t: date_debut_t ? new Date(date_debut_t) : null,
       date_limite_t: date_limite_t ? new Date(date_limite_t) : null,
       priorite_t: normalizedPriority,
-      statut_t: normalizedStatus,
+      statut_t: workflowStatus,
       id_projet: projectId,
-      id_group: id_group ? Number(id_group) : null,
-      id_folder: id_folder ? Number(id_folder) : null,
+      id_group: groupId,
+      id_folder: folderId,
       id_sprint: resolved.id_sprint,
       id_list: resolved.id_list,
+      id_parent_tache: parentId,
       assigne_a: assigneeId,
       cree_par: creatorId && Number.isFinite(creatorId) ? creatorId : null,
     },
@@ -402,6 +490,54 @@ export const createTaskService = async (data: CreateTaskData) => {
   const [enriched] = await withAssigneeProjectRoles(Number(id_projet), [task]);
   return enriched;
 };
+
+export async function createSubtasksForParent(
+  parentTaskId: number,
+  titles: string[],
+  options?: { cree_par?: number | null; assigne_a?: number | null }
+): Promise<any[]> {
+  const parent = await prisma.tache.findUnique({
+    where: { id_tache: parentTaskId },
+  });
+  if (!parent?.id_projet || !parent.id_list) {
+    throw new Error("Tâche parente introuvable ou sans liste");
+  }
+
+  const cleaned = titles
+    .map((t) => String(t ?? "").trim())
+    .filter((t) => t.length > 0)
+    .slice(0, 12);
+
+  if (cleaned.length === 0) {
+    throw new Error("Aucune sous-tâche valide");
+  }
+
+  const created: any[] = [];
+  for (const nom_t of cleaned) {
+    const row = await createTaskService({
+      nom_t,
+      description_t: "",
+      statut_t: "todo",
+      priorite_t: parent.priorite_t ?? undefined,
+      date_limite_t: parent.date_limite_t
+        ? new Date(parent.date_limite_t).toISOString().slice(0, 10)
+        : undefined,
+      id_projet: Number(parent.id_projet),
+      id_sprint: parent.id_sprint ?? undefined,
+      id_list: Number(parent.id_list),
+      id_group: parent.id_group ?? undefined,
+      id_folder: parent.id_folder ?? undefined,
+      id_parent_tache: parentTaskId,
+      assigne_a:
+        options?.assigne_a !== undefined
+          ? options.assigne_a
+          : parent.assigne_a ?? null,
+      cree_par: options?.cree_par ?? null,
+    });
+    created.push(row);
+  }
+  return created;
+}
 
 export const getAllTasksService = async () => {
   return await prisma.tache.findMany({
@@ -443,37 +579,75 @@ export const getTaskByIdService = async (id: number) => {
         }
       },
       projet: true,
-      sprint: true
+      sprint: true,
+      subtasks: {
+        where: { deleted_at: null },
+        orderBy: { id_tache: "asc" },
+        include: {
+          utilisateur: {
+            select: {
+              id_utilisateur: true,
+              nom: true,
+              prenom: true,
+              email: true,
+            },
+          },
+        },
+      },
     }
   });
 
-  if (!task || !task.id_projet) {
+  if (!task || !task.id_projet || task.deleted_at) {
     throw new Error("Tâche inexistante");
   }
 
-  const [enriched] = await withAssigneeProjectRoles(Number(task.id_projet), [task]);
-  return enriched;
+  const allRows = [task, ...(task.subtasks ?? [])];
+  const synced = await syncOverdueForTasks(allRows);
+  const syncedParent =
+    synced.find((t) => t.id_tache === task.id_tache) ?? synced[0];
+  const syncedSubs = synced.filter((t) => t.id_tache !== task.id_tache);
+  const [enrichedParent] = await withAssigneeProjectRoles(
+    Number(task.id_projet),
+    [syncedParent]
+  );
+  const enrichedSubs = await withAssigneeProjectRoles(
+    Number(task.id_projet),
+    syncedSubs
+  );
+  return { ...enrichedParent, subtasks: enrichedSubs };
 };
 
 export const updateTaskService = async (id: number, data: UpdateTaskData) => {
   const existingTask = await prisma.tache.findUnique({
     where: { id_tache: id }
   });
+  if (!existingTask) {
+    throw new Error("Tâche inexistante");
+  }
   const statutInput =
     data.statut_t !== undefined
       ? data.statut_t
       : (data as { status?: string }).status;
-  const normalizedStatus =
-    statutInput !== undefined ? normalizeStatus(statutInput) : undefined;
+  const userExplicitStatut = statutInput !== undefined;
+  const workflowStatut =
+    statutInput !== undefined || data.date_limite_t !== undefined
+      ? applyWorkflowToUpdate(
+          {
+            statut_t: existingTask.statut_t,
+            date_limite_t: existingTask.date_limite_t,
+          },
+          {
+            statut_t: statutInput as string | undefined,
+            date_limite_t: data.date_limite_t,
+          },
+          userExplicitStatut
+        )
+      : undefined;
   const normalizedPriorityInput = data.priorite_t ?? (data as any).priorite;
   const normalizedPriority =
     normalizedPriorityInput !== undefined
       ? normalizePriority(normalizedPriorityInput)
       : undefined;
-
-  if (!existingTask) {
-    throw new Error("Tâche inexistante");
-  }
 
   if (data.id_projet) {
     const projet = await prisma.projet.findUnique({
@@ -536,7 +710,13 @@ export const updateTaskService = async (id: number, data: UpdateTaskData) => {
             ? new Date(data.date_limite_t)
             : undefined,
       priorite_t: normalizedPriority,
-      statut_t: normalizedStatus,
+      statut_t: workflowStatut,
+      date_fin_t:
+        workflowStatut === "terminee"
+          ? new Date()
+          : workflowStatut !== undefined && workflowStatut !== "terminee"
+            ? null
+            : undefined,
       id_projet: data.id_projet ? Number(data.id_projet) : undefined,
       id_group:
         data.id_group === null
@@ -602,17 +782,44 @@ export const updateTaskService = async (id: number, data: UpdateTaskData) => {
   return enriched;
 };
 
+export const softDeleteTaskService = async (
+  id: number,
+  deletedBy: number
+) => {
+  const existingTask = await prisma.tache.findUnique({
+    where: { id_tache: id },
+    select: { id_tache: true, deleted_at: true },
+  });
+
+  if (!existingTask || existingTask.deleted_at) {
+    throw new Error("Tâche inexistante");
+  }
+
+  const { moveTaskToTrash } = await import("../lib/memberTrash");
+  await moveTaskToTrash(id, deletedBy);
+  return true;
+};
+
 export const deleteTaskService = async (id: number) => {
   const existingTask = await prisma.tache.findUnique({
-    where: { id_tache: id }
+    where: { id_tache: id },
+    select: { id_tache: true, deleted_at: true },
   });
 
   if (!existingTask) {
     throw new Error("Tâche inexistante");
   }
 
+  if (existingTask.deleted_at) {
+    await prisma.tache.deleteMany({
+      where: { id_parent_tache: id },
+    });
+    await prisma.tache.delete({ where: { id_tache: id } });
+    return true;
+  }
+
   await prisma.tache.delete({
-    where: { id_tache: id }
+    where: { id_tache: id },
   });
 
   return true;
@@ -709,7 +916,10 @@ export const getTasksByProjectService = async (
     throw new Error("Projet inexistant");
   }
 
-  const where: { id_projet: number; assigne_a?: number } = { id_projet };
+  const where: { id_projet: number; assigne_a?: number; deleted_at: null } = {
+    id_projet,
+    deleted_at: null,
+  };
   if (opts?.restrictToAssigneeId != null) {
     where.assigne_a = opts.restrictToAssigneeId;
   }
@@ -742,7 +952,8 @@ export const getTasksByProjectService = async (
     }
   });
 
-  return withAssigneeProjectRoles(id_projet, tasks);
+  const synced = await syncOverdueForTasks(tasks);
+  return withAssigneeProjectRoles(id_projet, synced);
 };
 export const getTasksBySprintService = async (
   id_sprint: number,
@@ -752,12 +963,15 @@ export const getTasksBySprintService = async (
     where: { id_sprint }
   });
 
-  if (!sprint || sprint.id_projet == null) {
+  if (!sprint || sprint.id_projet == null || sprint.deleted_at) {
     throw new Error("Sprint inexistant");
   }
 
   const pid = Number(sprint.id_projet);
-  const where: { id_sprint: number; assigne_a?: number } = { id_sprint };
+  const where: { id_sprint: number; assigne_a?: number; deleted_at: null } = {
+    id_sprint,
+    deleted_at: null,
+  };
   if (opts?.restrictToAssigneeId != null) {
     where.assigne_a = opts.restrictToAssigneeId;
   }
@@ -790,12 +1004,14 @@ export const getTasksBySprintService = async (
     }
   });
 
-  return withAssigneeProjectRoles(pid, tasks);
+  const synced = await syncOverdueForTasks(tasks);
+  return withAssigneeProjectRoles(pid, synced);
 };
 export const getMyTasksService = async (userId: number) => {
-  return await prisma.tache.findMany({
+  const tasks = await prisma.tache.findMany({
     where: {
-      assigne_a: userId
+      assigne_a: userId,
+      deleted_at: null,
     },
     include: {
       utilisateur: {
@@ -807,6 +1023,14 @@ export const getMyTasksService = async (userId: number) => {
           poste: true
         }
       },
+      createur: {
+        select: {
+          id_utilisateur: true,
+          nom: true,
+          prenom: true,
+          email: true
+        }
+      },
       projet: true,
       sprint: true
     },
@@ -814,14 +1038,13 @@ export const getMyTasksService = async (userId: number) => {
       id_tache: "desc"
     }
   });
+  return syncOverdueForTasks(tasks);
 };
 export const updateMyTaskStatusService = async (
   id_tache: number,
   userId: number,
   statut_t: string
 ) => {
-  const normalizedStatus = normalizeStatus(statut_t);
-
   const task = await prisma.tache.findUnique({
     where: { id_tache }
   });
@@ -834,11 +1057,18 @@ export const updateMyTaskStatusService = async (
     throw new Error("Cette tâche ne vous est pas assignée");
   }
 
+  const workflowStatus = resolveWorkflowStatut(
+    task.statut_t,
+    task.date_limite_t,
+    normalizeStatus(statut_t),
+    { userExplicitStatut: true }
+  );
+
   const updatedTask = await prisma.tache.update({
     where: { id_tache },
     data: {
-      statut_t: normalizedStatus,
-      date_fin_t: normalizedStatus === "terminee" ? new Date() : null
+      statut_t: workflowStatus,
+      date_fin_t: workflowStatus === "terminee" ? new Date() : null
     },
     include: {
       utilisateur: {
@@ -863,19 +1093,36 @@ export const getProjectProgress = async (projectId: number) => {
   const projet = await prisma.projet.findUnique({ where: { id_projet: projectId } });
   if (!projet) throw new Error("Projet inexistant");
 
-  const total = await prisma.tache.count({ where: { id_projet: projectId } });
-  const done = await prisma.tache.count({ where: { id_projet: projectId, statut_t: "terminee" } });
-  const inProgress = await prisma.tache.count({ where: { id_projet: projectId, statut_t: "en_cours" } });
-  const todo = await prisma.tache.count({ where: { id_projet: projectId, statut_t: "todo" } });
+  const { totalTasks, completedTasks, avancement } =
+    await computeProjectTaskStats(projectId);
+
+  const index = await loadProjectHierarchyIndex([projectId]);
+  const where = buildProjectTasksWhere(
+    [projectId],
+    index.allSprintIds,
+    index.allListIds
+  );
+  const tasks = await prisma.tache.findMany({
+    where,
+    select: { statut_t: true },
+  });
+
+  let inProgress = 0;
+  let todo = 0;
+  for (const task of tasks) {
+    const key = normalizeStatutKey(task.statut_t);
+    if (key === "en_cours" || key === "en_retard") inProgress += 1;
+    else if (key === "todo") todo += 1;
+  }
 
   return {
     id_projet: projectId,
     nom_p: projet.nom_p,
-    total,
-    done,
+    total: totalTasks,
+    done: completedTasks,
     inProgress,
     todo,
-    progressPercent: total > 0 ? Math.round((done / total) * 100) : 0,
+    progressPercent: avancement,
   };
 };
 

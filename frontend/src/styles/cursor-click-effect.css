@@ -1,0 +1,36 @@
+/**
+ * Cursor press ring — follows pointer, does not style clicked elements.
+ */
+
+.cu-cursor-ripple {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 28px;
+  height: 28px;
+  margin: -14px 0 0 -14px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 2147483646;
+  opacity: 0;
+  transform: scale(0.85);
+  background: rgba(139, 130, 246, 0.35);
+  box-shadow:
+    0 0 0 1px rgba(139, 130, 246, 0.2),
+    0 0 16px rgba(139, 130, 246, 0.35),
+    0 0 28px rgba(139, 130, 246, 0.18);
+  transition:
+    opacity 200ms ease,
+    transform 200ms ease;
+  will-change: opacity, transform;
+}
+
+.cu-cursor-ripple.is-visible {
+  opacity: 0.5;
+  transform: scale(1.3);
+}
+
+.cu-cursor-ripple.is-fading {
+  opacity: 0;
+  transform: scale(1.45);
+}

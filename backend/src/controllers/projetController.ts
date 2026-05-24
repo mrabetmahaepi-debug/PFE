@@ -19,8 +19,56 @@ import {
   serializeWorkspaceProjectAuth,
 } from "../services/projectPermission.service";
 import { ensureMonEspace } from "../lib/spaceHierarchy";
+import {
+  isChefDeProjetMemberRole,
+  normalizeProjectLocalRole,
+  resolveProjectPosteLabel,
+} from "../lib/projectRoleLabels";
+import {
+  filterProjectTeamAddCandidates,
+  isGlobalAdminRoleName,
+  userCanBeProjectResponsible,
+} from "../lib/projectResponsibleCandidates";
+import {
+  clearAccessGrant,
+  removeMembreProjetAccess,
+} from "../lib/userAccessGrants";
+import {
+  mergeActiveProjectWhere,
+  PROJECT_ARCHIVED_STATUS,
+} from "../lib/projectArchive";
+import { filterProjectResponsibleCandidates } from "../lib/projectResponsibleCandidates";
+import { computeProjectTaskStatsBatch, computeProjectTaskStats } from "../lib/projectTaskStats";
+import { buildProjectNode, loadHierarchyEntities } from "../lib/spaceHierarchy";
 
-const CHEF_DE_PROJET_ROLE_LABEL = "Chef de Projet";
+const CHEF_DE_PROJET_ROLE_LABEL = "Chef de projet";
+
+type ProjetMembreRow = {
+  id_utilisateur: number;
+  role_projet: string | null;
+  utilisateur: {
+    id_utilisateur: number;
+    nom: string | null;
+    prenom: string | null;
+    email: string | null;
+  } | null;
+};
+
+function mapProjetMembreRows(rows: ProjetMembreRow[]) {
+  return rows
+    .filter((m) => m.id_utilisateur && m.utilisateur)
+    .map((m) => {
+      const u = m.utilisateur!;
+      return {
+        userId: m.id_utilisateur,
+        email: u.email ?? "",
+        prenom: u.prenom ?? "",
+        nom: u.nom ?? "",
+        roleProjet: m.role_projet?.trim() || "Membre",
+      };
+    })
+    .sort((a, b) => (a.nom || "").localeCompare(b.nom || "", "fr"));
+}
 
 function parseOptionalDate(input: unknown): Date | null {
   if (input === undefined || input === null || input === "") return null;
@@ -61,11 +109,16 @@ function parseProjectMembersPayload(body: any): { userId: number; projectRole: s
     if (uid == null) continue;
     if (seen.has(uid)) continue;
     seen.add(uid);
-    let role = String(
-      (m as any).roleProjet ?? (m as any).role_projet ?? (m as any).role ?? (m as any).projectRole ?? "Autre"
+    const rawRole = String(
+      (m as any).role_in_project ??
+        (m as any).roleInProject ??
+        (m as any).roleProjet ??
+        (m as any).role_projet ??
+        (m as any).role ??
+        (m as any).projectRole ??
+        ""
     ).trim();
-    if (!role) role = "Autre";
-    if (role.length > 120) role = role.slice(0, 120);
+    const role = normalizeProjectLocalRole(rawRole || "Développeur");
     out.push({ userId: uid, projectRole: role });
   }
   return out;
@@ -292,8 +345,11 @@ export const createProjet = async (req: Request, res: Response) => {
   }
 };
 
-/** Liste des utilisateurs de l'entreprise pour le picker « Équipe du projet » (chef de projet autorisé). */
-export const getProjectTeamCandidates = async (req: Request, res: Response) => {
+/** Utilisateurs éligibles comme responsable de projet (profil Chef de projet ou permissions clés). */
+export const getProjectResponsibleCandidates = async (
+  req: Request,
+  res: Response
+) => {
   try {
     const id = parseInt(req.params.id as string, 10);
     const user = (req as any).user;
@@ -302,20 +358,56 @@ export const getProjectTeamCandidates = async (req: Request, res: Response) => {
     }
 
     const permCtx = await getProjectPermissionContext(user, id);
-    const canManageTeam =
-      permCtx.fullAccess || hasProjectPermission(permCtx, "manage_project_members");
-    if (!canManageTeam) {
-      const projetChef = await prisma.projet.findUnique({
-        where: { id_projet: id },
-        select: { chef_de_projet_id: true },
+    const canPick =
+      permCtx.fullAccess ||
+      hasProjectPermission(permCtx, "edit_project") ||
+      hasProjectPermission(permCtx, "TEAM_MANAGE");
+    if (!canPick) {
+      return res.status(403).json({
+        message: "Permission refusée",
+        code: "PROJECT_PERMISSION_DENIED",
+        requiredPermission: "edit_project",
       });
-      if (projetChef?.chef_de_projet_id !== user?.id) {
-        return res.status(403).json({
-          message: "Permission refusée : gestion de l'équipe non autorisée",
-          code: "PROJECT_PERMISSION_DENIED",
-          requiredPermission: "manage_project_members",
-        });
-      }
+    }
+
+    const projet = await prisma.projet.findUnique({
+      where: { id_projet: id },
+      select: { id_entreprise: true, chef_de_projet_id: true },
+    });
+    if (!projet?.id_entreprise) {
+      return res.status(404).json({ message: "Projet inexistant" });
+    }
+
+    const utilisateurs = await prisma.utilisateur.findMany({
+      where: { id_entreprise: projet.id_entreprise },
+      select: utilisateurListCoreSelect,
+      orderBy: [{ prenom: "asc" }, { nom: "asc" }],
+    });
+
+    const eligible = await filterProjectResponsibleCandidates(
+      projet.id_entreprise,
+      utilisateurs
+    );
+
+    res.json(eligible);
+  } catch (error) {
+    console.error("[getProjectResponsibleCandidates] error:", error);
+    res.status(500).json({
+      message: "Erreur lors du chargement des responsables éligibles",
+    });
+  }
+};
+
+/**
+ * Tous les utilisateurs non-admin de l'entreprise (picker « Ajouter un membre »).
+ * N'exclut pas membre_projet côté serveur : le client filtre la liste affichée.
+ */
+export const getProjectTeamCandidates = async (req: Request, res: Response) => {
+  try {
+    const id = parseInt(req.params.id as string, 10);
+    const user = (req as any).user;
+    if (!Number.isFinite(id) || id < 1) {
+      return res.status(400).json({ message: "ID projet invalide." });
     }
 
     const projet = await prisma.projet.findUnique({
@@ -326,27 +418,102 @@ export const getProjectTeamCandidates = async (req: Request, res: Response) => {
       return res.status(404).json({ message: "Projet inexistant" });
     }
 
+    const tenantAdminOnProject =
+      isTenantAdminUser(user) && projet.id_entreprise === user?.id_entreprise;
+
+    if (!tenantAdminOnProject) {
+      const permCtx = await getProjectPermissionContext(user, id);
+      const canManageTeam =
+        permCtx.fullAccess ||
+        hasProjectPermission(permCtx, "TEAM_MANAGE") ||
+        hasProjectPermission(permCtx, "manage_project_members");
+      if (!canManageTeam) {
+        return res.status(403).json({
+          message: "Permission refusée : gestion de l'équipe non autorisée",
+          code: "PROJECT_PERMISSION_DENIED",
+          requiredPermission: "TEAM_MANAGE",
+        });
+      }
+    }
+
     const utilisateurs = await prisma.utilisateur.findMany({
-      where: {
-        id_entreprise: projet.id_entreprise,
-        OR: [
-          { role: null },
-          {
-            role: {
-              nom: { notIn: ["SuperAdmin", "SUPERADMIN", "superadmin"] },
-            },
-          },
-        ],
+      where: { id_entreprise: projet.id_entreprise },
+      select: {
+        ...utilisateurListCoreSelect,
+        adminOf: { select: { id_entreprise: true } },
       },
-      select: utilisateurListCoreSelect,
       orderBy: [{ prenom: "asc" }, { nom: "asc" }],
     });
 
-    res.json(utilisateurs);
+    const eligible = filterProjectTeamAddCandidates(utilisateurs, []);
+    res.json(eligible);
   } catch (error) {
     console.error("[getProjectTeamCandidates] error:", error);
     res.status(500).json({
       message: "Erreur lors du chargement des membres disponibles",
+    });
+  }
+};
+
+/** Membres actuels du projet (assignation tâches, pickers équipe). */
+export const getProjectMembers = async (req: Request, res: Response) => {
+  try {
+    const id = parseInt(req.params.id as string, 10);
+    const user = (req as any).user;
+    if (!Number.isFinite(id) || id < 1) {
+      return res.status(400).json({ message: "ID projet invalide." });
+    }
+
+    const projet = await prisma.projet.findUnique({
+      where: { id_projet: id },
+      select: {
+        id_entreprise: true,
+        deleted_at: true,
+        membre_projet: {
+          select: {
+            id_utilisateur: true,
+            role_projet: true,
+            utilisateur: {
+              select: {
+                id_utilisateur: true,
+                prenom: true,
+                nom: true,
+                email: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!projet || projet.deleted_at) {
+      return res.status(404).json({ message: "Projet inexistant" });
+    }
+
+    if (
+      !userCanReadProject(user, {
+        id_entreprise: projet.id_entreprise,
+        membre_projet: projet.membre_projet,
+      })
+    ) {
+      return res.status(403).json({ message: PROJECT_READ_FORBIDDEN_MESSAGE });
+    }
+
+    const permCtx = await getProjectPermissionContext(user, id);
+    const canListMembers =
+      permCtx.fullAccess ||
+      hasProjectPermission(permCtx, "PROJECT_VIEW") ||
+      hasProjectPermission(permCtx, "TASK_ASSIGN") ||
+      hasProjectPermission(permCtx, "TASK_EDIT_ALL");
+    if (!canListMembers) {
+      return res.status(403).json({ message: PROJECT_READ_FORBIDDEN_MESSAGE });
+    }
+
+    res.json({ members: mapProjetMembreRows(projet.membre_projet || []) });
+  } catch (error) {
+    console.error("[getProjectMembers] error:", error);
+    res.status(500).json({
+      message: "Erreur lors du chargement des membres du projet",
     });
   }
 };
@@ -406,7 +573,12 @@ export const replaceProjetTeam = async (req: Request, res: Response) => {
 
     const teamUsers = await prisma.utilisateur.findMany({
       where: { id_utilisateur: { in: uniqueIds } },
-      select: { id_utilisateur: true, id_entreprise: true },
+      select: {
+        id_utilisateur: true,
+        id_entreprise: true,
+        poste: true,
+        role: { select: { nom: true } },
+      },
     });
     if (teamUsers.length !== uniqueIds.length) {
       return res.status(400).json({
@@ -419,6 +591,23 @@ export const replaceProjetTeam = async (req: Request, res: Response) => {
           message: "Utilisateur non autorisé pour cette équipe.",
         });
       }
+      if (isGlobalAdminRoleName(u.role?.nom ?? null)) {
+        return res.status(400).json({
+          message:
+            "Les administrateurs ne peuvent pas être ajoutés comme membres du projet.",
+        });
+      }
+    }
+
+    const chefUser = teamUsers.find((u) => u.id_utilisateur === chefId);
+    if (
+      !chefUser ||
+      !(await userCanBeProjectResponsible(entId, chefUser))
+    ) {
+      return res.status(400).json({
+        message:
+          "Le responsable sélectionné n'est pas éligible (profil Chef de projet ou permissions de gestion requises).",
+      });
     }
 
     await prisma.$transaction(async (tx) => {
@@ -442,17 +631,159 @@ export const replaceProjetTeam = async (req: Request, res: Response) => {
       await upsertMembreProjetRow(tx, id, chefId, CHEF_DE_PROJET_ROLE_LABEL);
 
       for (const m of membersPayload) {
+        const localRole = normalizeProjectLocalRole(m.projectRole);
         await ensureProjectAffectationTx(tx, id, m.userId, "membre");
-        await upsertMembreProjetRow(tx, id, m.userId, m.projectRole);
+        await upsertMembreProjetRow(tx, id, m.userId, localRole);
       }
     });
 
-    res.json({ message: "Équipe du projet mise à jour", id_projet: id });
+    res.json({
+      message: "Équipe du projet mise à jour",
+      id_projet: id,
+      project_members: [
+        { user_id: chefId, project_id: id, role_in_project: CHEF_DE_PROJET_ROLE_LABEL },
+        ...membersPayload.map((m) => ({
+          user_id: m.userId,
+          project_id: id,
+          role_in_project: normalizeProjectLocalRole(m.projectRole),
+        })),
+      ],
+    });
   } catch (error) {
     console.error("replaceProjetTeam error:", error);
     res.status(500).json({
       message:
         error instanceof Error ? error.message : "Erreur mise à jour de l'équipe",
+    });
+  }
+};
+
+/**
+ * Retire un membre de l'équipe projet (`membre_projet` + affectations projet).
+ * Ne supprime pas le compte utilisateur.
+ */
+export const removeProjectTeamMember = async (req: Request, res: Response) => {
+  try {
+    const id = parseInt(req.params.id as string, 10);
+    const memberUserId = parseInt(req.params.userId as string, 10);
+    const user = (req as any).user;
+
+    if (!Number.isFinite(id) || id < 1 || !Number.isFinite(memberUserId) || memberUserId < 1) {
+      return res.status(400).json({ message: "Identifiants invalides." });
+    }
+
+    const permCtx = await getProjectPermissionContext(user, id);
+    const canManageTeam =
+      permCtx.fullAccess || hasProjectPermission(permCtx, "manage_project_members");
+    if (!canManageTeam) {
+      const projetChef = await prisma.projet.findUnique({
+        where: { id_projet: id },
+        select: { chef_de_projet_id: true },
+      });
+      if (projetChef?.chef_de_projet_id !== user?.id) {
+        return res.status(403).json({
+          message: "Permission refusée : gestion de l'équipe non autorisée",
+          code: "PROJECT_PERMISSION_DENIED",
+        });
+      }
+    }
+
+    const projet = await prisma.projet.findUnique({
+      where: { id_projet: id },
+      select: {
+        id_projet: true,
+        id_entreprise: true,
+        chef_de_projet_id: true,
+        deleted_at: true,
+        membre_projet: {
+          select: {
+            id_utilisateur: true,
+            role_projet: true,
+          },
+        },
+      },
+    });
+
+    if (!projet || projet.deleted_at) {
+      return res.status(404).json({ message: "Projet inexistant" });
+    }
+
+    const membership = projet.membre_projet.find(
+      (m) => m.id_utilisateur === memberUserId
+    );
+    if (!membership) {
+      return res.status(404).json({
+        message: "Ce membre ne fait pas partie de l'équipe du projet.",
+      });
+    }
+
+    if (projet.chef_de_projet_id === memberUserId) {
+      return res.status(400).json({
+        message:
+          "Ce membre est le responsable du projet. Assignez un autre Chef de projet avant de le retirer.",
+        code: "PROJECT_CHEF_ASSIGNED",
+      });
+    }
+
+    const otherChefCount = projet.membre_projet.filter(
+      (m) =>
+        m.id_utilisateur !== memberUserId &&
+        isChefDeProjetMemberRole(m.role_projet)
+    ).length;
+
+    if (
+      isChefDeProjetMemberRole(membership.role_projet) &&
+      otherChefCount === 0
+    ) {
+      return res.status(400).json({
+        message:
+          "Impossible de retirer le dernier Chef de projet. Assignez un autre responsable avant de continuer.",
+        code: "LAST_CHEF_DE_PROJET",
+      });
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await removeMembreProjetAccess(id, memberUserId, tx);
+      if (projet.id_entreprise) {
+        await clearAccessGrant({
+          userId: memberUserId,
+          resourceType: "PROJECT",
+          resourceId: id,
+          tx,
+        });
+      }
+    });
+
+    const updated = await prisma.projet.findUnique({
+      where: { id_projet: id },
+      include: {
+        membre_projet: {
+          include: {
+            utilisateur: {
+              select: utilisateurPublicChefSelect,
+            },
+          },
+        },
+        _count: { select: { membre_projet: true } },
+      },
+    });
+
+    const projectTeam = mapProjetMembreRows(updated?.membre_projet || []);
+
+    res.json({
+      message: "Membre retiré de l'équipe du projet.",
+      id_projet: id,
+      userId: memberUserId,
+      projectTeam,
+      memberCount: updated?._count.membre_projet ?? projectTeam.length,
+    });
+  } catch (error) {
+    console.error("removeProjectTeamMember error:", error);
+    res.status(500).json({
+      message:
+        error instanceof Error
+          ? error.message
+          : "Erreur lors du retrait du membre",
     });
   }
 };
@@ -490,8 +821,11 @@ export const getAllProjets = async (req: Request, res: Response) => {
       // Admin entreprise : filtre id_entreprise seul → tous les projets du tenant.
     }
 
+    const includeArchived = req.query.includeArchived === "true";
+    const where = mergeActiveProjectWhere(whereClause, includeArchived);
+
     const projets = await prisma.projet.findMany({
-      where: whereClause,
+      where,
       include: {
         entreprise: {
           select: {
@@ -518,24 +852,34 @@ export const getAllProjets = async (req: Request, res: Response) => {
           },
         },
         _count: {
-          select: { tache: true, membre_projet: true },
-        },
-        tache: {
-          select: { statut_t: true },
+          select: { membre_projet: true },
         },
       },
       orderBy: { id_projet: "desc" },
     });
 
+    const projectIds = projets.map((p) => p.id_projet);
+    const taskStatsByProject = await computeProjectTaskStatsBatch(projectIds);
+
     const projetsWithProgress = projets.map(p => {
-      const totalTasks = p.tache.length;
-      const completedTasks = p.tache.filter(t => {
-        const s = t.statut_t?.toLowerCase();
-        return s === 'done' || s === 'terminé' || s === 'terminée' || s === 'terminee';
-      }).length;
-      const avancement = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-      
-      const { tache, _count, entreprise, affectation, chef_de_projet, ...rest } = p;
+      const stats = taskStatsByProject.get(p.id_projet) ?? {
+        totalTasks: 0,
+        completedTasks: 0,
+        inProgressTasks: 0,
+        lateTasks: 0,
+        todoTasks: 0,
+        avancement: 0,
+      };
+      const {
+        totalTasks,
+        completedTasks,
+        inProgressTasks,
+        lateTasks,
+        todoTasks,
+        avancement,
+      } = stats;
+
+      const { _count, entreprise, affectation, chef_de_projet, ...rest } = p;
       const affProject = (affectation ?? []).filter(
         (a: { id_tache: number | null; role_affectation: string | null }) =>
           a.id_tache == null && (a.role_affectation === "chef" || a.role_affectation === "membre")
@@ -554,9 +898,13 @@ export const getAllProjets = async (req: Request, res: Response) => {
       return { 
         ...rest, 
         entreprise,
-        totalTasks, 
-        completedTasks, 
+        totalTasks,
+        completedTasks,
+        inProgressTasks,
+        lateTasks,
+        todoTasks,
         avancement,
+        progressPercent: avancement,
         responsable: finalResponsable,
         responsable_role: chef ? CHEF_DE_PROJET_ROLE_LABEL : admin ? "Admin" : null,
         chef_id: chef ? chef.id_utilisateur : null,
@@ -567,7 +915,11 @@ export const getAllProjets = async (req: Request, res: Response) => {
             (id): id is number => typeof id === "number" && id > 0
           )
         ).size,
-        tachesCount: _count?.tache || 0,
+        tachesCount: totalTasks,
+        _count: {
+          tache: totalTasks,
+          membre_projet: _count?.membre_projet ?? 0,
+        },
       };
     });
 
@@ -583,6 +935,50 @@ export const getAllProjets = async (req: Request, res: Response) => {
 };
 
 
+
+export const getProjetStats = async (req: Request, res: Response) => {
+  try {
+    const id = parseInt(req.params.id as string);
+    const user = (req as any).user;
+    if (!Number.isFinite(id) || id <= 0) {
+      return res.status(400).json({ message: "ID projet invalide" });
+    }
+
+    const projet = await prisma.projet.findUnique({
+      where: { id_projet: id },
+      select: {
+        id_projet: true,
+        id_entreprise: true,
+        membre_projet: { select: { id_utilisateur: true } },
+      },
+    });
+    if (!projet) {
+      return res.status(404).json({ message: "Projet inexistant" });
+    }
+    if (!userCanReadProject(user, projet)) {
+      return res.status(403).json({ message: PROJECT_READ_FORBIDDEN_MESSAGE });
+    }
+
+    const permCtx = await getProjectPermissionContext(user, id);
+    if (!permCtx.fullAccess && !hasProjectPermission(permCtx, "view_project")) {
+      return res.status(403).json({ message: PROJECT_READ_FORBIDDEN_MESSAGE });
+    }
+
+    const stats = await computeProjectTaskStats(id);
+    return res.json({
+      id_projet: id,
+      ...stats,
+      tachesCount: stats.totalTasks,
+      progressPercent: stats.avancement,
+    });
+  } catch (error) {
+    console.error("[getProjetStats] error:", error);
+    res.status(500).json({
+      error: "Erreur statistiques projet",
+      message: error instanceof Error ? error.message : String(error),
+    });
+  }
+};
 
 export const getProjetById = async (req: Request, res: Response) => {
   try {
@@ -627,15 +1023,15 @@ export const getProjetById = async (req: Request, res: Response) => {
       return res.status(403).json({ message: PROJECT_READ_FORBIDDEN_MESSAGE });
     }
 
-    // Compute stats
-    const totalTasks = await prisma.tache.count({ where: { id_projet: id } });
-    const completedTasks = await prisma.tache.count({
-      where: {
-        id_projet: id,
-        statut_t: { in: ['terminee', 'done', 'terminé', 'terminée'] }
-      }
-    });
-    const avancement = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+    const stats = await computeProjectTaskStats(id);
+    const {
+      totalTasks,
+      completedTasks,
+      inProgressTasks,
+      lateTasks,
+      todoTasks,
+      avancement,
+    } = stats;
     
     const chef =
       projet.chef_de_projet ??
@@ -661,19 +1057,7 @@ export const getProjetById = async (req: Request, res: Response) => {
       }
     }
 
-    const projectTeam = (projet.membre_projet || [])
-      .filter((m) => m.id_utilisateur && m.utilisateur)
-      .map((m) => {
-        const u = m.utilisateur!;
-        return {
-          userId: m.id_utilisateur,
-          email: u.email ?? "",
-          prenom: u.prenom ?? "",
-          nom: u.nom ?? "",
-          roleProjet: m.role_projet?.trim() || "Membre",
-        };
-      })
-      .sort((a, b) => (a.nom || "").localeCompare(b.nom || "", "fr"));
+    const projectTeam = mapProjetMembreRows(projet.membre_projet || []);
 
     const permCtx = await getProjectPermissionContext(user, id);
     if (!permCtx.fullAccess && !hasProjectPermission(permCtx, "view_project")) {
@@ -686,6 +1070,18 @@ export const getProjetById = async (req: Request, res: Response) => {
       avancement,
       totalTasks,
       completedTasks,
+      inProgressTasks,
+      lateTasks,
+      todoTasks,
+      tachesCount: totalTasks,
+      progressPercent: avancement,
+      _count: {
+        tache: totalTasks,
+        membres:
+          projectTeam.length > 0
+            ? projectTeam.length
+            : projet.membre_projet?.length ?? 0,
+      },
       responsable: finalResponsable,
       responsable_role: chef ? CHEF_DE_PROJET_ROLE_LABEL : "Non assigné",
       chef_id: chef ? chef.id_utilisateur : null,
@@ -787,28 +1183,88 @@ export const restoreProjet = async (req: Request, res: Response) => {
   }
 };
 
+export const archiveProjet = async (req: Request, res: Response) => {
+  try {
+    const id = parseInt(req.params.id as string);
+    if (!Number.isFinite(id) || id <= 0) {
+      return res.status(400).json({ message: "ID projet invalide" });
+    }
+    const user = (req as any).user;
+    const project = await prisma.projet.findUnique({
+      where: { id_projet: id },
+      select: { id_projet: true, id_entreprise: true, statut_p: true },
+    });
+    if (!project) {
+      return res.status(404).json({ message: "Projet introuvable" });
+    }
+
+    if (isTenantAdminUser(user)) {
+      const entId = user?.id_entreprise;
+      if (entId != null && project.id_entreprise !== entId) {
+        return res.status(403).json({ message: "Accès refusé" });
+      }
+    } else if (!isSuperAdmin(user)) {
+      const permCtx = await getProjectPermissionContext(user, id);
+      try {
+        assertProjectPermission(permCtx, "edit_project");
+      } catch (e: any) {
+        return res.status(e?.status ?? 403).json({
+          message: e?.message || "Permission refusée",
+          code: e?.code ?? "PROJECT_PERMISSION_DENIED",
+          requiredPermission: e?.requiredPermission,
+        });
+      }
+    }
+
+    await prisma.projet.update({
+      where: { id_projet: id },
+      data: { statut_p: PROJECT_ARCHIVED_STATUS },
+    });
+
+    res.json({ message: "Projet archivé", id_projet: id });
+  } catch (error) {
+    console.error("[archiveProjet]", error);
+    res.status(500).json({ error: "Erreur archivage projet" });
+  }
+};
+
 export const deleteProjet = async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id as string);
     const user = (req as any).user;
-    const permCtx = await getProjectPermissionContext(user, id);
-    try {
-      assertProjectPermission(permCtx, "delete_project");
-    } catch (e: any) {
-      return res.status(e?.status ?? 403).json({
-        message: e?.message || "Permission refusée",
-        code: e?.code ?? "PROJECT_PERMISSION_DENIED",
-        requiredPermission: e?.requiredPermission,
+
+    if (isTenantAdminUser(user)) {
+      const project = await prisma.projet.findUnique({
+        where: { id_projet: id },
+        select: { id_entreprise: true },
       });
+      if (!project) {
+        return res.status(404).json({ message: "Projet introuvable" });
+      }
+      const entId = user?.id_entreprise;
+      if (entId != null && project.id_entreprise !== entId) {
+        return res.status(403).json({ message: "Accès refusé" });
+      }
+    } else {
+      const permCtx = await getProjectPermissionContext(user, id);
+      try {
+        assertProjectPermission(permCtx, "delete_project");
+      } catch (e: any) {
+        return res.status(e?.status ?? 403).json({
+          message: e?.message || "Permission refusée",
+          code: e?.code ?? "PROJECT_PERMISSION_DENIED",
+          requiredPermission: e?.requiredPermission,
+        });
+      }
     }
 
     await prisma.projet.delete({
-      where: { id_projet: id }
+      where: { id_projet: id },
     });
 
     res.json({ message: "Projet supprimé" });
-
   } catch (error) {
+    console.error("[deleteProjet]", error);
     res.status(500).json({ error: "Erreur suppression projet" });
   }
 };
@@ -855,76 +1311,16 @@ export const getProjectTree = async (req: Request, res: Response) => {
 
     const treePermCtx = await getProjectPermissionContext(user, id);
 
-    const db = prisma as any;
-    const [sprintsFlat, listsFlat, tasks] = await Promise.all([
-      prisma.sprint.findMany({
-        where: { id_projet: id },
-        orderBy: [{ id_sprint: "asc" }],
-      }),
-      db.list_pm.findMany({
-        where: { id_projet: id },
-        orderBy: [{ position: "asc" }, { id_list: "asc" }],
-      }),
-      prisma.tache.findMany({
-        where: { id_projet: id },
-        include: {
-          utilisateur: {
-            select: {
-              id_utilisateur: true,
-              nom: true,
-              prenom: true,
-              email: true,
-            },
-          },
-        },
-        orderBy: [{ id_tache: "asc" }],
-      }),
-    ]);
+    const { sprintsFlat, listsFlat, tasks: hierarchyTasks } =
+      await loadHierarchyEntities([id]);
 
-    const countTasksFor = (filter: (t: any) => boolean) =>
-      (tasks as any[]).filter(filter).length;
-
-    const buildList = (l: any) => {
-      const listTasks = (tasks as any[]).filter(
-        (t) => Number(t.id_list) === Number(l.id_list)
-      );
-      return {
-        id_list: l.id_list,
-        nom: l.nom,
-        description: l.description ?? null,
-        position: l.position ?? 0,
-        id_projet: l.id_projet,
-        id_sprint: l.id_sprint ?? null,
-        task_count: listTasks.length,
-        tasks: listTasks.map((t: any) => ({
-          id_tache: t.id_tache,
-          nom_t: t.nom_t ?? "Tâche",
-          statut_t: t.statut_t ?? null,
-          id_list: t.id_list ?? l.id_list,
-          id_projet: t.id_projet ?? l.id_projet,
-          id_sprint: t.id_sprint ?? null,
-          priorite_t: t.priorite_t ?? null,
-          date_limite_t: t.date_limite_t ?? null,
-        })),
-      };
-    };
-
-    const buildSprint = (s: any) => {
-      const sprintLists = (listsFlat as any[]).filter(
-        (l) => l.id_sprint === s.id_sprint
-      );
-      return {
-        id_sprint: s.id_sprint,
-        nom_s: s.nom_s,
-        date_debut_s: s.date_debut_s,
-        date_fin_s: s.date_fin_s,
-        id_projet: s.id_projet,
-        lists: sprintLists.map(buildList),
-        task_count: countTasksFor((t) => t.id_sprint === s.id_sprint),
-      };
-    };
-
-    const projectSprints = (sprintsFlat as any[]).map(buildSprint);
+    const projectNode = await buildProjectNode(
+      project,
+      sprintsFlat,
+      listsFlat,
+      hierarchyTasks,
+      user
+    );
 
     const treeAuth = serializeWorkspaceProjectAuth(user, treePermCtx);
 
@@ -940,13 +1336,17 @@ export const getProjectTree = async (req: Request, res: Response) => {
       entreprise: (project as any).entreprise ?? null,
       groups: [],
       folders: [],
-      sprints: projectSprints,
+      sprints: projectNode.sprints,
       lists: [],
-      task_count: tasks.length,
-      currentUserProjectRole: treeAuth.currentUserProjectRole,
-      currentUserPermissions: treeAuth.currentUserPermissions,
+      task_count: projectNode.task_count,
+      hasAccessibleContent: projectNode.hasAccessibleContent,
+      currentUserProjectRole:
+        projectNode.currentUserProjectRole ?? treeAuth.currentUserProjectRole,
+      currentUserPermissions:
+        projectNode.currentUserPermissions?.length
+          ? projectNode.currentUserPermissions
+          : treeAuth.currentUserPermissions,
       project,
-      tasks,
     });
   } catch (error) {
     console.error("Erreur récupération arbre projet:", error);

@@ -3,16 +3,27 @@ import {
   createProjet,
   getAllProjets,
   getProjetById,
+  getProjetStats,
   getProjectTree,
   getProjectTeamCandidates,
+  getProjectResponsibleCandidates,
+  getProjectMembers,
   updateProjet,
+  archiveProjet,
   deleteProjet,
   restoreProjet,
   trashProjet,
   replaceProjetTeam,
+  removeProjectTeamMember,
 } from "../controllers/projetController";
 import { getSprintsByProject } from "../controllers/hierarchyController";
 import { assignChefProjet, updateChefProjet, assignMembersToProjet } from "../controllers/affectationController";
+import {
+  getMyManagedProjectsController,
+  getProjectEquipeController,
+  saveProjectMemberEquipeController,
+  addProjectMemberEquipeController,
+} from "../controllers/projectTeamAccess.controller";
 import { authMiddleware } from "../middleware/authMiddleware";
 import { authorize, requireAnyPermission } from "../middleware/authorize";
 
@@ -26,6 +37,7 @@ router.get(
   requireAnyPermission(["PROJECT_VIEW_ALL", "WORKSPACE_VIEW"]),
   getAllProjets
 );
+router.get("/managed/mine", getMyManagedProjectsController);
 router.get(
   "/:id/tree",
   requireAnyPermission(["PROJECT_VIEW_ALL", "WORKSPACE_VIEW"]),
@@ -36,10 +48,18 @@ router.get(
   requireAnyPermission(["PROJECT_VIEW_ALL", "WORKSPACE_VIEW"]),
   getSprintsByProject
 );
+router.get("/:id/equipe", getProjectEquipeController);
+router.post("/:id/equipe/members", addProjectMemberEquipeController);
+router.put("/:id/equipe/:userId", saveProjectMemberEquipeController);
+router.get("/:id/responsible-candidates", getProjectResponsibleCandidates);
 router.get("/:id/team-candidates", getProjectTeamCandidates);
+router.get("/:id/members", getProjectMembers);
+router.get("/:id/stats", getProjetStats);
 router.get("/:id", getProjetById); // Basic view might be allowed for assigned members
 router.put("/:id/team", replaceProjetTeam);
+router.delete("/:id/team/:userId", removeProjectTeamMember);
 router.put("/:id", updateProjet);
+router.post("/:id/archive", archiveProjet);
 router.post("/:id/trash", trashProjet);
 router.post("/:id/restore", restoreProjet);
 router.delete("/:id", deleteProjet);

@@ -15,7 +15,8 @@ import './TableurTaskView.css';
 const TABLEUR_STATUS_OPTIONS: { key: string; label: string; tone: StatusTone }[] = [
   { key: 'todo', label: 'À FAIRE', tone: 'gray' },
   { key: 'en_cours', label: 'EN COURS', tone: 'blue' },
-  { key: 'terminee', label: 'ACHEVÉ', tone: 'green' },
+  { key: 'en_retard', label: 'EN RETARD', tone: 'orange' },
+  { key: 'terminee', label: 'TERMINÉ', tone: 'green' },
   { key: 'bloquee', label: 'BLOQUÉ', tone: 'red' },
   { key: 'en_revision', label: 'EN REVISION', tone: 'purple' },
 ];

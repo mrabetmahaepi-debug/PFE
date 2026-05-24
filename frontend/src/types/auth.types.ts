@@ -18,6 +18,8 @@ export interface User {
   lastLogin?: string;
   /** From GET /utilisateurs (team list): projects the member is linked to. */
   projects?: { id: number; name: string; roleProjet: string }[];
+  /** Rôles par projet (GET /auth/me, login). */
+  projectRoles?: { id_projet: number; nom_p: string; role_projet: string }[];
   lastSeen?: string;
   id_role?: number;
   /** Présent quand le backend l’expose (GET /auth/me, /me/permissions). */

@@ -56,6 +56,8 @@ export function normalizeProjectStatus(status: unknown): ProjectStatus | null {
     ENRETARD: ProjectStatus.DELAYED,
     RETARD: ProjectStatus.DELAYED,
     LATE: ProjectStatus.DELAYED,
+    ARCHIVED: ProjectStatus.ARCHIVED,
+    ARCHIVE: ProjectStatus.ARCHIVED,
   };
 
   if (aliases[raw]) return aliases[raw];
@@ -76,11 +78,21 @@ export function formatProjectStatus(status: unknown): string {
       return 'En retard';
     case ProjectStatus.PLANNING:
       return 'Planning';
+    case ProjectStatus.ARCHIVED:
+      return 'Archivé';
     default: {
       const s = String(status ?? '').trim();
       return s ? s.replace(/_/g, ' ') : 'Planning';
     }
   }
+}
+
+export function isArchivedProject(project: {
+  statut_p?: unknown;
+  status?: unknown;
+  statut?: unknown;
+}): boolean {
+  return normalizeProjectStatus(getRawProjectStatus(project)) === ProjectStatus.ARCHIVED;
 }
 
 export function projectMatchesStatusFilter(

@@ -4,6 +4,9 @@ import {
   isEnterpriseAdmin,
   isSuperAdmin,
 } from './permissions';
+import { isChefDeProjetMemberRole } from './projectRoleLabels';
+import { projectCan } from './projectPermissions';
+import { localRoleCanManageTeam } from './projectLocalRolePermissions';
 
 export type ProjectManageContext = {
   id_projet?: number | null;
@@ -56,51 +59,15 @@ export function normalizeProjectManageContext(
   };
 }
 
-/** Chef de projet / responsable (compare tous les IDs leader au user connecté). */
-export function isProjectManager(
-  user?: User | null,
+/** Local project role « Chef de projet » for this project (membre_projet.role_projet). */
+export function isLocalProjectChef(
   project?: ProjectManageContext | Record<string, unknown> | null
 ): boolean {
-  const uid = resolveUserNumericId(user);
   const ctx = normalizeProjectManageContext(project);
-  if (!uid || !ctx) return false;
-
-  const leaderIds = [
-    ctx.managerId,
-    ctx.responsibleId,
-    ctx.ownerId,
-    ctx.chefProjetId,
-    ctx.projectManagerId,
-    ctx.chef_id,
-    ctx.chef_de_projet_id,
-  ]
-    .map((v) => Number(v))
-    .filter((n) => Number.isFinite(n) && n > 0);
-
-  if (leaderIds.some((id) => id === uid)) return true;
-
-  const role = String(ctx.currentUserProjectRole ?? '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase();
-  if (role.includes('chef') && role.includes('projet')) return true;
-
-  const pid = Number(ctx.id_projet);
-  if (Number.isFinite(pid) && pid > 0 && user?.projects?.length) {
-    const membership = user.projects.find((p) => Number(p.id) === pid);
-    if (membership?.roleProjet) {
-      const rp = membership.roleProjet
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .toLowerCase();
-      if (rp.includes('chef') && rp.includes('projet')) return true;
-    }
-  }
-
-  return false;
+  return isChefDeProjetMemberRole(ctx?.currentUserProjectRole);
 }
 
-/** ADMIN / SUPER_ADMIN / chef de projet du projet concerné. */
+/** ADMIN / SUPER_ADMIN / local « Chef de projet » on this project only. */
 export function canManageProject(
   user?: User | null,
   project?: ProjectManageContext | Record<string, unknown> | null
@@ -108,7 +75,7 @@ export function canManageProject(
   if (!user) return false;
   if (isSuperAdmin(user)) return true;
   if (isEnterpriseAdmin(user) || getRoleKey(user) === 'ADMIN') return true;
-  return isProjectManager(user, project);
+  return isLocalProjectChef(project);
 }
 
 export function canEditProject(
@@ -125,15 +92,17 @@ export function canDeleteProject(
   return canManageProject(user, project);
 }
 
-/** Gérer l'équipe (ajouter membres) — chef de projet, admin, ou permission projet. */
+/** Gérer l'équipe — local chef de projet, admin, or TEAM_MANAGE on this project. */
 export function canManageProjectTeam(
   user?: User | null,
   project?: ProjectManageContext | Record<string, unknown> | null
 ): boolean {
   if (canManageProject(user, project)) return true;
+  const ctx = normalizeProjectManageContext(project);
+  if (localRoleCanManageTeam(ctx?.currentUserProjectRole)) return true;
   return projectCan(
-    normalizeProjectManageContext(project)?.currentUserPermissions,
-    'manage_project_members'
+    ctx?.currentUserPermissions,
+    'TEAM_MANAGE'
   );
 }
 

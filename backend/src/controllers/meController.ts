@@ -6,6 +6,11 @@ import {
 } from "../modules/permissions/permissions.catalog";
 import { isEnterpriseAdmin, isSuperAdmin } from "../middleware/permissions";
 import { getTenantAdminRiskSummary } from "../services/tenantAdminRisk.service";
+import {
+  isAdminAccountType,
+  isUtilisateurAccountType,
+} from "../lib/permissionProfiles";
+import { resolvePermissionsForUserProfile } from "../services/permissionProfile.service";
 
 /**
  * GET /api/me/permissions
@@ -39,12 +44,26 @@ export const getMyPermissions = async (req: Request, res: Response) => {
     if (superAdmin) {
       permissionNames = PERMISSIONS.map((p) => p.name);
     } else {
-      // Include every permission name attached to the role (known + legacy
-      // DB-only names). Grouped UI only lists catalog entries whose codes
-      // appear in this set via `buildPermissionGroups(permissionSet)`.
       permissionNames = (((dbUser as any).role?.permission as any[]) || [])
         .map((p: any) => p.nom as string)
         .filter((n: string) => !!n && String(n).trim().length > 0);
+
+      const roleNom = (dbUser as any).role?.nom ?? "";
+      if (
+        isUtilisateurAccountType(roleNom) &&
+        !isAdminAccountType(roleNom) &&
+        dbUser.id_entreprise != null
+      ) {
+        try {
+          const profilePerms = await resolvePermissionsForUserProfile(
+            dbUser.id_entreprise,
+            dbUser.poste
+          );
+          permissionNames = [...new Set([...permissionNames, ...profilePerms])];
+        } catch (err) {
+          console.warn("[me] profile permissions merge failed:", err);
+        }
+      }
     }
 
     const permissionSet = new Set(permissionNames);

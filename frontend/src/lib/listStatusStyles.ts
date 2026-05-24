@@ -13,6 +13,7 @@ const TONE_BY_KEY: Record<string, StatusTone> = {
   todo: 'gray',
   todo_open: 'gray',
   en_cours: 'blue',
+  en_retard: 'orange',
   terminee: 'green',
   bloquee: 'red',
   en_revision: 'purple',
@@ -34,7 +35,8 @@ export function getStatusLabel(
   const fallbacks: Record<string, string> = {
     todo: 'À faire',
     en_cours: 'En cours',
-    terminee: 'Terminée',
+    en_retard: 'En retard',
+    terminee: 'Terminé',
     bloquee: 'Bloquée',
     en_revision: 'En révision',
   };

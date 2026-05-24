@@ -1,0 +1,1 @@
+-- Ensure list workflow includes EN RETARD between EN COURS and TERMINÉ (existing lists get row on next ensureListStatuses).

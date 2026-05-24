@@ -8,11 +8,31 @@ import { sprintService } from '../services/sprint.service';
 import { taskService } from '../services/task.service';
 import { projectService } from '../services/project.service';
 import { useAuth } from '../hooks/useAuth';
+import { isGlobalMember } from '../lib/permissions';
 import { TaskPriority, TaskStatus } from '../types/task';
 import type { HierarchyLevel } from '../types/hierarchy';
 import './CreateProjectModal.css';
+import './MemberTaskCreateModal.css';
 import ThemedDateField from './ThemedDateField';
 import ThemedMemberSelect from './ThemedMemberSelect';
+import {
+  isoFromDateInput,
+  validateTaskDateRange,
+} from '../lib/taskDateValidation';
+import {
+  mapTaskCreateErrorMessage,
+  resolveCreateTaskAssigneeId,
+  shouldPickTaskAssigneeOnCreate,
+} from '../lib/taskCreateAssignment';
+import {
+  normalizeProjectManageContext,
+  type ProjectManageContext,
+} from '../lib/projectManageAccess';
+import {
+  MEMBER_LIST_PRIORITY_OPTIONS,
+  memberListPriorityLabel,
+  taskPriorityToPillTone,
+} from '../lib/memberStatusPill';
 
 export interface HierarchyParentContext {
   id_projet: number;
@@ -93,6 +113,8 @@ const CreateHierarchyItemModal: React.FC<CreateHierarchyItemModalProps> = ({
   const [error, setError] = useState('');
   const [assigneeId, setAssigneeId] = useState('');
   const [projectTeam, setProjectTeam] = useState<ProjectTeamRow[]>([]);
+  const [projectManageCtx, setProjectManageCtx] =
+    useState<ProjectManageContext | null>(null);
   const [taskListId, setTaskListId] = useState<string>('__inherit');
   const [taskSprintId, setTaskSprintId] = useState<string>('__inherit');
 
@@ -110,6 +132,7 @@ const CreateHierarchyItemModal: React.FC<CreateHierarchyItemModalProps> = ({
     setPriority(TaskPriority.MEDIUM);
     setError('');
     setAssigneeId('');
+    setProjectManageCtx(null);
     setTaskListId(
       parent?.id_list != null ? String(parent.id_list) : '__inherit'
     );
@@ -120,6 +143,8 @@ const CreateHierarchyItemModal: React.FC<CreateHierarchyItemModalProps> = ({
       void projectService
         .getById(parent.id_projet)
         .then((p) => {
+          const ctx = normalizeProjectManageContext(p);
+          setProjectManageCtx(ctx);
           const team = Array.isArray(p.projectTeam) ? p.projectTeam : [];
           const rows = team
             .filter((m) => m.userId != null)
@@ -131,18 +156,38 @@ const CreateHierarchyItemModal: React.FC<CreateHierarchyItemModalProps> = ({
               roleProjet: m.roleProjet?.trim() || 'Membre',
             }));
           setProjectTeam(rows);
-          const uid = user?.id != null ? Number(user.id) : null;
-          if (uid && rows.some((m) => m.userId === uid)) {
+          const pickAssignee = shouldPickTaskAssigneeOnCreate(user, ctx);
+          const uid =
+            user?.id_utilisateur != null
+              ? Number(user.id_utilisateur)
+              : user?.id != null
+                ? Number(user.id)
+                : null;
+          if (!pickAssignee && uid) {
             setAssigneeId(String(uid));
-          } else if (rows[0]?.userId) {
-            setAssigneeId(String(rows[0].userId));
+          } else if (pickAssignee) {
+            setAssigneeId('');
           }
         })
-        .catch(() => setProjectTeam([]));
+        .catch(() => {
+          setProjectTeam([]);
+          setProjectManageCtx(null);
+        });
     } else {
       setProjectTeam([]);
+      setProjectManageCtx(null);
     }
-  }, [isOpen, level, parent, user?.id, defaultEndDate]);
+  }, [isOpen, level, parent, user, defaultEndDate]);
+
+  const showAssigneePicker =
+    level === 'task' &&
+    shouldPickTaskAssigneeOnCreate(user, projectManageCtx);
+
+  const isMemberTaskCreate =
+    level === 'task' && isGlobalMember(user);
+
+  const taskFieldGroupClass =
+    isMemberTaskCreate ? 'form-group' : 'form-group form-group--accent';
 
   const memberSelectOptions = useMemo(
     () =>
@@ -194,6 +239,16 @@ const CreateHierarchyItemModal: React.FC<CreateHierarchyItemModalProps> = ({
         onError?.(msg);
         return;
       }
+      const dateErr = validateTaskDateRange(startDate, endDate);
+      if (dateErr) {
+        setError(dateErr);
+        onError?.(dateErr);
+        return;
+      }
+    }
+    if (level === 'sprint' && endDate < startDate) {
+      setError('La date de fin ne peut pas être antérieure à la date de début.');
+      return;
     }
     setSubmitting(true);
     setError('');
@@ -235,23 +290,22 @@ const CreateHierarchyItemModal: React.FC<CreateHierarchyItemModalProps> = ({
           setSubmitting(false);
           return;
         }
-        let aid = Number(assigneeId);
-        if (!Number.isFinite(aid) || aid < 1) {
-          const uid = user?.id != null ? Number(user.id) : null;
-          if (uid && projectTeam.some((m) => m.userId === uid)) {
-            aid = uid;
-          } else if (projectTeam[0]?.userId) {
-            aid = Number(projectTeam[0].userId);
-          }
-        }
-        if (!Number.isFinite(aid) || aid < 1) {
-          const msg =
-            'Choisissez un membre du projet à qui assigner la tâche.';
-          setError(msg);
-          onError?.(msg);
+        const memberIds = projectTeam
+          .map((m) => Number(m.userId))
+          .filter((id) => Number.isFinite(id) && id > 0);
+        const assigneeResult = resolveCreateTaskAssigneeId(
+          user,
+          projectManageCtx,
+          assigneeId,
+          memberIds
+        );
+        if ('error' in assigneeResult) {
+          setError(assigneeResult.error);
+          onError?.(assigneeResult.error);
           setSubmitting(false);
           return;
         }
+        const aid = assigneeResult.assigneeId;
         const resolvedStatut = defaultStatutKey?.trim() || 'todo';
         entity = await taskService.create({
           nom_t: trimmedName,
@@ -270,20 +324,27 @@ const CreateHierarchyItemModal: React.FC<CreateHierarchyItemModalProps> = ({
           spaceId: ctx.id_space ?? null,
           assigne_a: aid,
           assigneeId: aid,
-          date_limite_t: endDate ? new Date(endDate).toISOString() : undefined,
-          dueDate: endDate ? new Date(endDate).toISOString() : undefined,
+          date_debut_t: isoFromDateInput(startDate),
+          startDate: startDate || undefined,
+          date_limite_t: isoFromDateInput(endDate),
+          dueDate: isoFromDateInput(endDate),
+          endDate: endDate || undefined,
         });
       }
       onSuccess({ level, entity, parent: ctx });
       onClose();
     } catch (err: any) {
-      const msg =
+      const raw =
         err?.response?.data?.message ||
         err?.response?.data?.error ||
         err?.message ||
         'Erreur lors de la création';
-      setError(typeof msg === 'string' ? msg : 'Erreur lors de la création');
-      onError?.(typeof msg === 'string' ? msg : 'Erreur lors de la création');
+      const msg =
+        typeof raw === 'string'
+          ? mapTaskCreateErrorMessage(raw)
+          : 'Erreur lors de la création';
+      setError(msg);
+      onError?.(msg);
     } finally {
       setSubmitting(false);
     }
@@ -308,7 +369,9 @@ const CreateHierarchyItemModal: React.FC<CreateHierarchyItemModalProps> = ({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.97, y: 12 }}
             transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-            className="modal-container compact-modal hierarchy-create-modal"
+            className={`modal-container compact-modal hierarchy-create-modal${
+              isMemberTaskCreate ? ' member-task-create-modal' : ''
+            }`}
             role="dialog"
             aria-modal="true"
             onMouseDown={(e) => e.stopPropagation()}
@@ -328,19 +391,23 @@ const CreateHierarchyItemModal: React.FC<CreateHierarchyItemModalProps> = ({
 
             <form onSubmit={handleSubmit} className="modal-form compact-modal-form">
               <div className="compact-modal-body">
-                <div className="form-group form-group--accent">
+                <div className={level === 'task' ? taskFieldGroupClass : 'form-group form-group--accent'}>
                   <label>
-                    {level === 'task' ? 'Titre de la tâche' : 'Nom'}
+                    {level === 'task' ? 'Nom de la tâche' : 'Nom'}
                   </label>
                   <div className="input-wrapper">
-                    <Type className="input-icon" size={16} />
+                    {!(level === 'task' && isMemberTaskCreate) ? (
+                      <Type className="input-icon" size={16} />
+                    ) : null}
                     <input
                       type="text"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       placeholder={
                         level === 'task'
-                          ? 'Ex. : Créer l’interface login'
+                          ? isMemberTaskCreate
+                            ? 'Saisir nom de tâche'
+                            : 'Ex. : Créer l’interface login'
                           : `Nom du ${LEVEL_TITLES[level].toLowerCase()}`
                       }
                       required
@@ -349,9 +416,61 @@ const CreateHierarchyItemModal: React.FC<CreateHierarchyItemModalProps> = ({
                   </div>
                 </div>
 
+                {level === 'task' && (
+                  <div className="form-row">
+                    <div className={taskFieldGroupClass}>
+                      <label>Date début</label>
+                      <ThemedDateField
+                        value={startDate}
+                        onChange={setStartDate}
+                        ariaLabel="Date de début de la tâche"
+                        allowManualInput
+                      />
+                    </div>
+                    <div className={taskFieldGroupClass}>
+                      <label>Date fin</label>
+                      <ThemedDateField
+                        value={endDate}
+                        onChange={setEndDate}
+                        ariaLabel="Date de fin de la tâche"
+                        allowManualInput
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {level === 'task' && isMemberTaskCreate && (
+                  <div className="cu-member-task-field">
+                    <label
+                      className="cu-member-task-label"
+                      htmlFor="hierarchy-member-task-priority"
+                    >
+                      Priorité
+                    </label>
+                    <div className="cu-member-task-select-wrap">
+                      <select
+                        id="hierarchy-member-task-priority"
+                        className={`cu-member-task-input cu-member-task-select cu-member-task-select--${taskPriorityToPillTone(priority)}`}
+                        value={priority}
+                        disabled={submitting}
+                        aria-label={`Priorité : ${memberListPriorityLabel(priority)}`}
+                        onChange={(e) =>
+                          setPriority(e.target.value as TaskPriority)
+                        }
+                      >
+                        {MEMBER_LIST_PRIORITY_OPTIONS.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                )}
+
                 {(level === 'space' ||
                   level === 'list' ||
-                  level === 'task') && (
+                  (level === 'task' && !isMemberTaskCreate)) && (
                   <div className="form-group form-group--accent">
                     <label>Description</label>
                     <div className="input-wrapper">
@@ -365,18 +484,18 @@ const CreateHierarchyItemModal: React.FC<CreateHierarchyItemModalProps> = ({
                   </div>
                 )}
 
-                {level === 'task' && (
-                  <>
-                    <div className="form-group form-group--accent">
-                      <label>Assigné à</label>
-                      <ThemedMemberSelect
-                        value={assigneeId}
-                        options={memberSelectOptions}
-                        onChange={setAssigneeId}
-                        ariaLabel="Membre du projet assigné"
-                      />
-                    </div>
-                  </>
+                {level === 'task' && showAssigneePicker && (
+                  <div className="form-group form-group--accent">
+                    <label>
+                      Assigné à <span className="required">*</span>
+                    </label>
+                    <ThemedMemberSelect
+                      value={assigneeId}
+                      options={memberSelectOptions}
+                      onChange={setAssigneeId}
+                      ariaLabel="Membre du projet assigné"
+                    />
+                  </div>
                 )}
 
                 {level === 'group' && (
@@ -416,18 +535,6 @@ const CreateHierarchyItemModal: React.FC<CreateHierarchyItemModalProps> = ({
                   </div>
                 )}
 
-                {level === 'task' && (
-                  <div className="form-group form-group--accent">
-                    <label>Date d&apos;échéance</label>
-                    <ThemedDateField
-                      value={endDate}
-                      onChange={setEndDate}
-                      ariaLabel="Date d'échéance de la tâche"
-                      allowManualInput
-                    />
-                  </div>
-                )}
-
                 {error && <p className="form-error">{error}</p>}
               </div>
 
@@ -446,6 +553,8 @@ const CreateHierarchyItemModal: React.FC<CreateHierarchyItemModalProps> = ({
                 >
                   {submitting ? (
                     <Loader2 className="animate-spin" size={16} />
+                  ) : level === 'task' ? (
+                    'Créer'
                   ) : (
                     `Créer ${LEVEL_TITLES[level].toLowerCase()}`
                   )}

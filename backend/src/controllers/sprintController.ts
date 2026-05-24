@@ -1,5 +1,12 @@
 import { Request, Response } from "express";
 import prisma from "../prisma/prismaClient";
+import { logMemberWorkspaceActivity } from "../services/enterpriseActivity.service";
+import { isGlobalMemberUser } from "../lib/isGlobalMember";
+import {
+  moveSprintToTrash,
+  permanentDeleteSprint,
+  restoreSprintFromTrash,
+} from "../lib/memberTrash";
 
 const db = prisma as any;
 
@@ -49,6 +56,24 @@ export const createSprint = async (req: Request, res: Response) => {
       },
     });
 
+    const user = (req as any).user;
+    const project = await prisma.projet.findUnique({
+      where: { id_projet: Number(id_projet) },
+      select: { nom_p: true },
+    });
+    const actor =
+      user?.prenom || user?.nom
+        ? `${user.prenom || ""} ${user.nom || ""}`.trim()
+        : user?.email || "Membre";
+    await logMemberWorkspaceActivity({
+      user: actor,
+      action: "Sprint créé",
+      type: "project",
+      projectId: Number(id_projet),
+      projectName: project?.nom_p?.trim() || "Projet",
+      taskTitle: String(nom_s ?? "Sprint"),
+    });
+
     res.status(201).json(sprint);
   } catch (error) {
     console.error("Erreur création sprint :", error);
@@ -62,7 +87,9 @@ export const getSprintsByProjet = async (req: Request, res: Response) => {
     if (Array.isArray(idParam)) idParam = idParam[0];
     const id_projet = parseInt(idParam);
 
-    const sprints = await prisma.sprint.findMany({ where: { id_projet } });
+    const sprints = await prisma.sprint.findMany({
+      where: { id_projet, deleted_at: null },
+    });
 
     res.json(sprints);
   } catch (error) {
@@ -139,12 +166,56 @@ export const deleteSprint = async (req: Request, res: Response) => {
     let idParam = req.params.id_sprint;
     if (Array.isArray(idParam)) idParam = idParam[0];
     const id_sprint = parseInt(idParam);
+    const user = (req as any).user;
+    const userId = Number(user?.id_utilisateur ?? user?.id);
+
+    if (isGlobalMemberUser(user)) {
+      await moveSprintToTrash(id_sprint, userId);
+      return res.json({ message: "Sprint déplacé vers la corbeille" });
+    }
 
     await prisma.sprint.delete({ where: { id_sprint } });
-
     res.json({ message: "Sprint supprimé" });
   } catch (error) {
     console.error("Erreur suppression sprint :", error);
     res.status(500).json({ error: "Erreur suppression sprint" });
+  }
+};
+
+export const restoreSprint = async (req: Request, res: Response) => {
+  try {
+    let idParam = req.params.id_sprint;
+    if (Array.isArray(idParam)) idParam = idParam[0];
+    const id_sprint = parseInt(idParam);
+    const existing = await prisma.sprint.findUnique({
+      where: { id_sprint },
+      select: { deleted_at: true },
+    });
+    if (!existing?.deleted_at) {
+      return res.status(404).json({ error: "Sprint introuvable dans la corbeille" });
+    }
+    await restoreSprintFromTrash(id_sprint);
+    res.json({ message: "Sprint restauré" });
+  } catch (error) {
+    console.error("Erreur restauration sprint :", error);
+    res.status(500).json({ error: "Erreur restauration sprint" });
+  }
+};
+
+export const permanentDeleteSprintController = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    let idParam = req.params.id_sprint;
+    if (Array.isArray(idParam)) idParam = idParam[0];
+    const id_sprint = parseInt(idParam);
+    await permanentDeleteSprint(id_sprint);
+    res.json({ message: "Sprint supprimé définitivement" });
+  } catch (error: any) {
+    console.error("Erreur suppression définitive sprint :", error);
+    res.status(500).json({
+      error: error?.message || "Erreur suppression définitive sprint",
+    });
   }
 };

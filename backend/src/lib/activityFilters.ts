@@ -123,5 +123,7 @@ export function isMemberScopedActivity(row: ActivityFeedRow): boolean {
   if (MEMBER_BLOCKED_ACTION_RE.test(action)) return false;
 
   if (["task", "project", "access", "member"].includes(type)) return true;
-  return /tâche|projet|accès projet|ajouté au projet|membre/i.test(action);
+  return /tâche|projet|accès projet|ajouté au projet|membre|commentaire|sous-tâche|liste créée|sprint créé/i.test(
+    action
+  );
 }

@@ -600,11 +600,7 @@
 }
 
 .cu-panel--sa-admins-enterprise .cu-activity-head-title h3 {
-  background: #292d34;
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  color: transparent;
+  color: #292d34;
 }
 
 .cu-panel--sa-admins-enterprise .cu-sa-admins-total {
@@ -631,11 +627,7 @@
 }
 
 .cu-dashboard--super-admin .cu-panel--activity-super .cu-panel-head h3 {
-  background: #ffffff;
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  color: transparent;
+  color: #292d34;
 }
 
 .cu-dashboard--super-admin .cu-panel--activity-super .cu-link-btn {
@@ -681,11 +673,7 @@
 }
 
 .cu-panel--sa-projects-company .cu-activity-head-title h3 {
-  background: #ffffff;
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  color: transparent;
+  color: #292d34;
 }
 
 .cu-panel--sa-projects-company .cu-sa-projects-total {
@@ -715,11 +703,7 @@
 }
 
 .cu-panel--sa-company-growth .cu-activity-head-title h3 {
-  background: #ffffff;
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  color: transparent;
+  color: #292d34;
 }
 
 .cu-panel--sa-company-growth .cu-sa-growth-total {
@@ -1694,7 +1678,7 @@
 }
 
 .cu-kpi-row .cu-kpi-card:nth-child(3) {
-  background: #ffffff 100%);
+  background: #ffffff;
 }
 
 .cu-kpi-card:nth-child(2) .cu-kpi-icon,
@@ -1707,7 +1691,7 @@
 }
 
 .cu-kpi-card--risk {
-  background: #ffffff 100%);
+  background: #ffffff;
   border-color: rgba(245, 158, 11, 0.2);
 }
 
@@ -1864,6 +1848,17 @@
   align-items: stretch;
 }
 
+.cu-dashboard--member .cu-member-dashboard-cards {
+  grid-column: 1 / -1;
+  width: 100%;
+}
+
+@media (max-width: 1024px) {
+  .cu-dashboard--member .cu-member-dashboard-cards.ms-dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .cu-dashboard--member .cu-panel--task-analytics {
   grid-column: 1;
   grid-row: 1;
@@ -1967,11 +1962,7 @@
 }
 
 .cu-panel--member-tasks-by-project .cu-activity-head-title h3 {
-  background: #292d34;
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  color: transparent;
+  color: #292d34;
 }
 
 .cu-panel-head--member-project {

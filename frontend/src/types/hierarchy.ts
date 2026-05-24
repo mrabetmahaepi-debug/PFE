@@ -39,8 +39,10 @@ export interface TreeTaskNode {
   id_list?: number | null;
   id_projet?: number;
   id_sprint?: number | null;
+  id_parent_tache?: number | null;
   priorite_t?: string | null;
   date_limite_t?: string | null;
+  subtasks?: TreeTaskNode[];
 }
 
 export interface TreeListNode extends ListPM {
@@ -65,6 +67,8 @@ export interface TreeProjectNode {
   id_space?: number | null;
   sprints: TreeSprintNode[];
   task_count?: number;
+  /** False when resource grants filter out all sprints/lists/tasks for this user. */
+  hasAccessibleContent?: boolean;
   currentUserProjectRole?: string | null;
   currentUserPermissions?: string[];
 }

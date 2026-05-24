@@ -11,6 +11,13 @@ import { normalizeRoleForSuperAdminCompare } from "../middleware/permissions";
 import { PERMISSIONS } from "../modules/permissions/permissions.catalog";
 import { formatFullPhone } from "../lib/phoneCountries";
 import { findEntrepriseByNormalizedName } from "../lib/entrepriseDedup";
+import { createNotification } from "./notification.service";
+import { resolveProjectPosteLabel } from "../lib/projectRoleLabels";
+import {
+  isAdminAccountType,
+  isUtilisateurAccountType,
+} from "../lib/permissionProfiles";
+import { resolvePermissionsForUserProfile } from "./permissionProfile.service";
 
 export type { RegisterInput };
 
@@ -84,17 +91,14 @@ export const registerUser = async (data: RegisterInput) => {
   });
 
   for (const admin of superAdmins) {
-    await prisma.notification.create({
-      data: {
-        sujet: "Nouvelle demande d'inscription",
-        message: `${prenom} ${nom} demande l'approbation pour l'entreprise « ${companyName} » (${email}).`,
-        type: "warning",
-        id_utilisateur: admin.id_utilisateur,
-        date_envoi: new Date(),
-        metadata: JSON.stringify({
-          action: "approve_user",
-          userId: user.id_utilisateur,
-        }),
+    await createNotification({
+      sujet: "Nouvelle demande d'inscription",
+      message: `${prenom} ${nom} demande l'approbation pour l'entreprise « ${companyName} » (${email}).`,
+      type: "warning",
+      id_utilisateur: admin.id_utilisateur,
+      metadata: {
+        action: "approve_user",
+        userId: user.id_utilisateur,
       },
     });
   }
@@ -228,7 +232,35 @@ export const markUserOffline = async (userId: number) => {
   }
 };
 
-function mapUtilisateurToMePayload(user: any): {
+export type UserProjectRoleRow = {
+  id_projet: number;
+  nom_p: string;
+  role_projet: string;
+};
+
+async function fetchUserProjectRoles(
+  userId: number
+): Promise<UserProjectRoleRow[]> {
+  const rows = await prisma.membre_projet.findMany({
+    where: { id_utilisateur: userId },
+    select: {
+      id_projet: true,
+      role_projet: true,
+      projet: { select: { nom_p: true } },
+    },
+    orderBy: { id_projet: "asc" },
+  });
+  return rows.map((r) => ({
+    id_projet: r.id_projet,
+    nom_p: r.projet?.nom_p?.trim() || `Projet #${r.id_projet}`,
+    role_projet: resolveProjectPosteLabel(r.role_projet),
+  }));
+}
+
+function mapUtilisateurToMePayload(
+  user: any,
+  extras?: { projectRoles?: UserProjectRoleRow[] }
+): {
   id: number;
   id_utilisateur: number;
   nom: string | null;
@@ -237,6 +269,8 @@ function mapUtilisateurToMePayload(user: any): {
   id_role: number | null;
   id_entreprise: number | null;
   photoUrl?: string;
+  poste?: string | null;
+  projectRoles?: UserProjectRoleRow[];
   role: string | undefined;
   /** Aligné sur le middleware JWT : le client peut s’y fier si le libellé de rôle varie. */
   isSuperAdmin: boolean;
@@ -252,6 +286,9 @@ function mapUtilisateurToMePayload(user: any): {
   const permissions = isSuperAdminUser
     ? PERMISSIONS.map((p) => p.name)
     : permsFromRole;
+  const posteRaw = user.poste != null ? String(user.poste).trim() : "";
+  const poste = posteRaw ? resolveProjectPosteLabel(posteRaw) : null;
+
   return {
     id: user.id_utilisateur,
     id_utilisateur: user.id_utilisateur,
@@ -261,6 +298,8 @@ function mapUtilisateurToMePayload(user: any): {
     id_role: user.id_role,
     id_entreprise: user.id_entreprise,
     photoUrl: user.photoUrl ?? undefined,
+    poste: poste ?? undefined,
+    projectRoles: extras?.projectRoles,
     role: roleNom || undefined,
     isSuperAdmin: isSuperAdminUser,
     permissions,
@@ -282,6 +321,7 @@ export const getMe = async (userId: number) => {
         email: true,
         id_role: true,
         id_entreprise: true,
+        poste: true,
         photoUrl: true,
         lastLogin: true,
         isOnline: true,
@@ -298,6 +338,7 @@ export const getMe = async (userId: number) => {
         email: true,
         id_role: true,
         id_entreprise: true,
+        poste: true,
         photoUrl: true,
         lastLogin: true,
         role: { select: roleMeSelect },
@@ -312,6 +353,7 @@ export const getMe = async (userId: number) => {
         email: true,
         id_role: true,
         id_entreprise: true,
+        poste: true,
         lastLogin: true,
         role: { select: roleMeSelect },
       },
@@ -325,6 +367,7 @@ export const getMe = async (userId: number) => {
         email: true,
         id_role: true,
         id_entreprise: true,
+        poste: true,
         role: { select: roleMeSelect },
       },
     },
@@ -337,6 +380,7 @@ export const getMe = async (userId: number) => {
         email: true,
         id_role: true,
         id_entreprise: true,
+        poste: true,
         role: { select: roleNomSelect },
       },
     },
@@ -365,5 +409,40 @@ export const getMe = async (userId: number) => {
     throw new Error("Utilisateur non trouvé");
   }
 
-  return mapUtilisateurToMePayload(user);
+  let projectRoles: UserProjectRoleRow[] = [];
+  try {
+    projectRoles = await fetchUserProjectRoles(userId);
+  } catch (err) {
+    console.warn("[auth] fetchUserProjectRoles failed (non-fatal):", err);
+  }
+
+  const payload = mapUtilisateurToMePayload(user, { projectRoles });
+  payload.permissions = await enrichMeFromProfile(user, payload.permissions);
+  return payload;
 };
+
+async function enrichMeFromProfile(
+  user: any,
+  permissions: string[]
+): Promise<string[]> {
+  const roleNom = user.role?.nom || "";
+  if (
+    isAdminAccountType(roleNom) ||
+    normalizeRoleForSuperAdminCompare(roleNom) === "SUPERADMIN"
+  ) {
+    return permissions;
+  }
+  if (!isUtilisateurAccountType(roleNom) || user.id_entreprise == null) {
+    return permissions;
+  }
+  try {
+    const profilePerms = await resolvePermissionsForUserProfile(
+      user.id_entreprise,
+      user.poste
+    );
+    return [...new Set([...permissions, ...profilePerms])];
+  } catch (err) {
+    console.warn("[auth] profile permissions merge failed (non-fatal):", err);
+    return permissions;
+  }
+}

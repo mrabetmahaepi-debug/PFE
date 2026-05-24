@@ -2,6 +2,31 @@
    Workspace — modern productivity layout (ClickUp / Linear / Notion inspired)
    ========================================================================== */
 
+/* Member → Mon espace scroll lock: see MemberMonEspace.css */
+
+.workspace-page--member-project-overview {
+  padding: 0;
+  gap: 0;
+  background: #f7f8fc;
+}
+
+.workspace-page--member-project-overview .workspace-main {
+  background: #f7f8fc;
+}
+
+.workspace-page--project-landing {
+  padding: 0;
+  gap: 0;
+  background: #f7f8fc;
+}
+
+.workspace-page--project-landing .workspace-main {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: #f7f8fc;
+}
+
 .workspace-page--clickup {
   --ws-panel-sidebar: #fff;
   --ws-panel-main: #fff;

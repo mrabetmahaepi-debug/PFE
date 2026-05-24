@@ -1,0 +1,73 @@
+.member-tasks-card-header {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 14px 16px 12px;
+  flex-shrink: 0;
+}
+
+.member-tasks-card-back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 10px;
+  margin: 0;
+  border: 1px solid #e8eaed;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  color: #646464;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.member-tasks-card-back:hover {
+  background: #fafbfc;
+  border-color: #d8dce3;
+  color: #292d34;
+}
+
+.member-tasks-card-breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  font-size: 12px;
+  line-height: 1.2;
+  color: #87909e;
+}
+
+.member-tasks-card-crumb-muted {
+  color: #87909e;
+  font-weight: 400;
+}
+
+.member-tasks-card-crumb-sep {
+  color: #c4c9d2;
+  font-weight: 400;
+  flex-shrink: 0;
+}
+
+.member-tasks-card-crumb-current {
+  color: #292d34;
+  font-weight: 600;
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.member-tasks-card-header-divider {
+  height: 0;
+  margin: 0;
+  border: none;
+  border-bottom: 1px solid #ececf3;
+  flex-shrink: 0;
+}

@@ -6,10 +6,12 @@ import CreateHierarchyItemModal, {
   type CreatedHierarchyItem,
 } from '../components/CreateHierarchyItemModal';
 import { hierarchyService } from '../services/hierarchy.service';
+import { projectService } from '../services/project.service';
 import { usePermission } from '../hooks/usePermission';
 import { useAuth } from '../hooks/useAuth';
 import { getRoleKey } from '../lib/permissions';
-import { dispatchWorkspaceRefresh, WORKSPACE_REFRESH_EVENT } from '../lib/workspaceEvents';
+import { canCreateTasksInProject } from '../lib/projectPermissions';
+import { dispatchWorkspaceRefresh, WORKSPACE_REFRESH_EVENT, PROJECT_PERMISSIONS_CHANGED_EVENT } from '../lib/workspaceEvents';
 import type { ListDetail } from '../types/hierarchy';
 import './ListViewPage.css';
 
@@ -17,12 +19,13 @@ const ListViewPage: React.FC = () => {
   const { listId: listIdParam } = useParams<{ listId: string }>();
   const location = useLocation();
   const { user } = useAuth();
-  const { can, isSuperAdmin } = usePermission();
+  const { isSuperAdmin } = usePermission();
 
   const listId = listIdParam ? Number(listIdParam) : NaN;
   const validListId = Number.isFinite(listId) && listId > 0 ? listId : null;
 
   const [listDetail, setListDetail] = useState<ListDetail | null>(null);
+  const [projectPermissions, setProjectPermissions] = useState<string[]>([]);
   const [pageRefreshKey, setPageRefreshKey] = useState(0);
   const [modalOpen, setModalOpen] = useState(false);
   const [modalParent, setModalParent] = useState<HierarchyParentContext | null>(null);
@@ -41,6 +44,22 @@ const ListViewPage: React.FC = () => {
       .catch(() => setListDetail(null));
   }, [validListId, pageRefreshKey]);
 
+  useEffect(() => {
+    const pid = listDetail?.id_projet;
+    if (!pid) {
+      setProjectPermissions([]);
+      return;
+    }
+    projectService
+      .getById(pid)
+      .then((p) =>
+        setProjectPermissions(
+          Array.isArray(p.currentUserPermissions) ? p.currentUserPermissions : []
+        )
+      )
+      .catch(() => setProjectPermissions([]));
+  }, [listDetail?.id_projet]);
+
   const parentCtx: HierarchyParentContext | null = useMemo(() => {
     if (!listDetail || !validListId) return null;
     return {
@@ -55,12 +74,20 @@ const ListViewPage: React.FC = () => {
     return (
       isSuperAdmin ||
       getRoleKey(user) === 'ADMIN' ||
-      can('TASK_CREATE')
+      canCreateTasksInProject(projectPermissions)
     );
-  }, [isSuperAdmin, user, can]);
+  }, [isSuperAdmin, user, projectPermissions]);
 
-  const canEditTask = can('TASK_EDIT') || isSuperAdmin;
-  const canDeleteTask = can('TASK_DELETE') || isSuperAdmin;
+  const canEditTask =
+    isSuperAdmin ||
+    getRoleKey(user) === 'ADMIN' ||
+    projectPermissions.includes('edit_all_tasks') ||
+    projectPermissions.includes('edit_assigned_tasks');
+
+  const canDeleteTask =
+    isSuperAdmin ||
+    getRoleKey(user) === 'ADMIN' ||
+    projectPermissions.includes('delete_tasks');
 
   const refreshPage = useCallback(() => {
     setPageRefreshKey((k) => k + 1);
@@ -70,7 +97,11 @@ const ListViewPage: React.FC = () => {
   useEffect(() => {
     const onRefresh = () => refreshPage();
     window.addEventListener(WORKSPACE_REFRESH_EVENT, onRefresh);
-    return () => window.removeEventListener(WORKSPACE_REFRESH_EVENT, onRefresh);
+    window.addEventListener(PROJECT_PERMISSIONS_CHANGED_EVENT, onRefresh);
+    return () => {
+      window.removeEventListener(WORKSPACE_REFRESH_EVENT, onRefresh);
+      window.removeEventListener(PROJECT_PERMISSIONS_CHANGED_EVENT, onRefresh);
+    };
   }, [refreshPage]);
 
   const openCreateTask = (

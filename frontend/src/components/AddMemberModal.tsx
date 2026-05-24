@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, User, Mail, Lock, Shield, Loader2, ChevronDown } from 'lucide-react';
 import { teamService } from '../services/team.service';
 import { useAuth } from '../hooks/useAuth';
+import { PROJECT_POSTE_OPTIONS } from '../lib/projectRoleLabels';
 import './AddMemberModal.css';
 
 interface AddMemberModalProps {
@@ -19,7 +20,7 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({ isOpen, onClose, onSucc
     prenom: '',
     email: '',
     motDePasse: '',
-    role: 'Membre',
+    poste: 'Membre',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -39,13 +40,16 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({ isOpen, onClose, onSucc
         prenom: formData.prenom,
         email: formData.email,
         password: formData.motDePasse,
-        id_role: formData.role === 'Admin' ? 2 : formData.role === 'PM' ? 3 : 4,
-        poste: formData.role === 'PM' ? 'Chef de Projet' : formData.role,
+        id_role: 4,
+        poste: formData.poste,
         id_entreprise: currentUser?.id_entreprise || 1,
+      });
+      console.info('[roleAssignment:addMemberModal]', {
+        selectedRole: formData.poste,
       });
       onSuccess();
       onClose();
-      setFormData({ nom: '', prenom: '', email: '', motDePasse: '', role: 'Membre' });
+      setFormData({ nom: '', prenom: '', email: '', motDePasse: '', poste: 'Membre' });
     } catch (err: any) {
       setError(err.response?.data?.message || "Erreur lors de l'ajout du membre");
     } finally {
@@ -155,18 +159,21 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({ isOpen, onClose, onSucc
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="invite-role">Rôle</label>
+                  <label htmlFor="invite-poste">Rôle / Poste</label>
                   <div className="input-wrapper">
                     <Shield className="input-icon" size={16} />
                     <select
-                      id="invite-role"
-                      name="role"
-                      value={formData.role}
+                      id="invite-poste"
+                      name="poste"
+                      value={formData.poste}
                       onChange={handleChange}
+                      required
                     >
-                      <option value="Membre">Membre de projet</option>
-                      <option value="PM">Chef de Projet</option>
-                      <option value="Admin">Administrateur</option>
+                      {PROJECT_POSTE_OPTIONS.map((opt) => (
+                        <option key={opt} value={opt}>
+                          {opt}
+                        </option>
+                      ))}
                     </select>
                     <ChevronDown size={14} className="select-chevron" />
                   </div>

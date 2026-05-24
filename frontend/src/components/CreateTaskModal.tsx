@@ -19,6 +19,20 @@ import { projectService } from '../services/project.service';
 import type { User as WorkspaceUser } from '../types/auth.types';
 import { TASK_PRIORITY_LABELS, TaskPriority, TaskStatus } from '../types/task';
 import type { Projet } from '../types/project';
+import {
+  isoFromDateInput,
+  validateTaskDateRange,
+} from '../lib/taskDateValidation';
+import {
+  mapTaskCreateErrorMessage,
+  resolveCreateTaskAssigneeId,
+  shouldPickTaskAssigneeOnCreate,
+} from '../lib/taskCreateAssignment';
+import {
+  normalizeProjectManageContext,
+  type ProjectManageContext,
+} from '../lib/projectManageAccess';
+import { useAuth } from '../hooks/useAuth';
 import './CreateTaskModal.css';
 
 interface CreateTaskModalProps {
@@ -39,12 +53,17 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
   onClose,
   onSuccess,
 }) => {
+  const { user } = useAuth();
+  const [projectManageCtx, setProjectManageCtx] =
+    useState<ProjectManageContext | null>(null);
+  const [projectMemberIds, setProjectMemberIds] = useState<number[]>([]);
   const [formData, setFormData] = useState({
     nom_t: '',
     description_t: '',
     priorite_t: TaskPriority.MEDIUM,
-    statut_t: TaskStatus.TODO as TaskStatus | 'OVERDUE',
+    statut_t: TaskStatus.TODO as TaskStatus | 'en_retard',
     assigne_a: '',
+    date_debut_t: '',
     date_limite_t: '',
   });
   const [projects, setProjects] = useState<Projet[]>([]);
@@ -68,6 +87,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
       priorite_t: TaskPriority.MEDIUM,
       statut_t: TaskStatus.TODO,
       assigne_a: '',
+      date_debut_t: '',
       date_limite_t: '',
     });
     setSelectedProjectId(projectId || '');
@@ -127,6 +147,8 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
       .getById(selectedProjectId)
       .then((p) => {
         if (cancelled) return;
+        const ctx = normalizeProjectManageContext(p);
+        setProjectManageCtx(ctx);
         const team = Array.isArray(p.projectTeam) ? p.projectTeam : [];
         const mapped: WorkspaceUser[] = team
           .filter((m) => m.userId != null)
@@ -138,14 +160,39 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
             role: m.roleProjet ?? 'Membre',
           }));
         setMembers(mapped);
+        const ids = team
+          .map((m) => Number(m.userId))
+          .filter((id) => Number.isFinite(id) && id > 0);
+        setProjectMemberIds(ids);
+        const pick = shouldPickTaskAssigneeOnCreate(user, ctx);
+        const uid =
+          user?.id_utilisateur != null
+            ? Number(user.id_utilisateur)
+            : user?.id != null
+              ? Number(user.id)
+              : null;
+        if (!pick && uid) {
+          setFormData((prev) => ({ ...prev, assigne_a: String(uid) }));
+        } else if (pick) {
+          setFormData((prev) => ({ ...prev, assigne_a: '' }));
+        }
       })
       .catch(() => {
-        if (!cancelled) setMembers([]);
+        if (!cancelled) {
+          setMembers([]);
+          setProjectManageCtx(null);
+          setProjectMemberIds([]);
+        }
       });
     return () => {
       cancelled = true;
     };
-  }, [isOpen, selectedProjectId]);
+  }, [isOpen, selectedProjectId, user]);
+
+  const showAssigneePicker = shouldPickTaskAssigneeOnCreate(
+    user,
+    projectManageCtx
+  );
 
   const filteredProjects = useMemo(() => {
     if (!projectQuery.trim()) return projects;
@@ -214,11 +261,20 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
       return;
     }
 
+    const dateErr = validateTaskDateRange(
+      formData.date_debut_t,
+      formData.date_limite_t
+    );
+    if (dateErr) {
+      setError(dateErr);
+      return;
+    }
+
     setIsSubmitting(true);
     setError('');
 
     try {
-      if (formData.statut_t === 'OVERDUE') {
+      if (formData.statut_t === 'en_retard') {
         if (!formData.date_limite_t) {
           setError('Pour "En retard", renseignez une échéance passée.');
           setIsSubmitting(false);
@@ -233,8 +289,14 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
           return;
         }
       }
-      if (!formData.assigne_a) {
-        setError('Veuillez assigner la tâche à un membre du projet.');
+      const assigneeResult = resolveCreateTaskAssigneeId(
+        user,
+        projectManageCtx,
+        formData.assigne_a,
+        projectMemberIds
+      );
+      if ('error' in assigneeResult) {
+        setError(assigneeResult.error);
         setIsSubmitting(false);
         return;
       }
@@ -243,22 +305,18 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
         description_t: formData.description_t,
         priorite_t: formData.priorite_t,
         id_projet: parseInt(selectedProjectId),
-        statut_t:
-          formData.statut_t === 'OVERDUE'
-            ? TaskStatus.TODO
-            : formData.statut_t,
-        assigne_a: parseInt(formData.assigne_a, 10),
-        date_limite_t: formData.date_limite_t
-          ? new Date(formData.date_limite_t).toISOString()
-          : undefined,
+        statut_t: formData.statut_t,
+        assigne_a: assigneeResult.assigneeId,
+        date_debut_t: isoFromDateInput(formData.date_debut_t),
+        date_limite_t: isoFromDateInput(formData.date_limite_t),
       });
       onSuccess();
       onClose();
-    } catch (err: any) {
-      setError(
-        err.response?.data?.message ||
-          'Erreur lors de la création de la tâche',
-      );
+    } catch (err: unknown) {
+      const ax = err as { response?: { data?: { message?: string } } };
+      const raw =
+        ax?.response?.data?.message || 'Erreur lors de la création de la tâche';
+      setError(mapTaskCreateErrorMessage(raw));
     } finally {
       setIsSubmitting(false);
     }
@@ -302,7 +360,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
               <div className="compact-modal-body">
               <div className="form-group">
                 <label htmlFor="task-title">
-                  Titre <span className="required">*</span>
+                  Nom de la tâche <span className="required">*</span>
                 </label>
                 <div className="input-wrapper">
                   <Type className="input-icon" size={16} />
@@ -316,6 +374,35 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                     required
                     autoFocus
                   />
+                </div>
+              </div>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="task-start">Date début</label>
+                  <div className="input-wrapper">
+                    <Calendar className="input-icon" size={16} />
+                    <input
+                      id="task-start"
+                      type="date"
+                      name="date_debut_t"
+                      value={formData.date_debut_t}
+                      onChange={handleChange}
+                    />
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label htmlFor="task-end">Date fin</label>
+                  <div className="input-wrapper">
+                    <Calendar className="input-icon" size={16} />
+                    <input
+                      id="task-end"
+                      type="date"
+                      name="date_limite_t"
+                      value={formData.date_limite_t}
+                      onChange={handleChange}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -449,13 +536,14 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                       <option value={TaskStatus.TODO}>À faire</option>
                       <option value={TaskStatus.IN_PROGRESS}>En cours</option>
                       <option value={TaskStatus.DONE}>Terminée</option>
-                      <option value="OVERDUE">En retard</option>
+                      <option value="en_retard">En retard</option>
                     </select>
                     <ChevronDown size={14} className="select-chevron" />
                   </div>
                 </div>
               </div>
 
+              {showAssigneePicker && (
               <div className="form-row">
                 <div className="form-group" ref={assigneeFieldRef}>
                   <label>
@@ -557,20 +645,8 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                     )}
                   </div>
                 </div>
-                <div className="form-group">
-                  <label htmlFor="task-due">Échéance</label>
-                  <div className="input-wrapper">
-                    <Calendar className="input-icon" size={16} />
-                    <input
-                      id="task-due"
-                      type="date"
-                      name="date_limite_t"
-                      value={formData.date_limite_t}
-                      onChange={handleChange}
-                    />
-                  </div>
-                </div>
               </div>
+              )}
 
               {error && <p className="form-error">{error}</p>}
               </div>
@@ -586,12 +662,16 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                 <button
                   type="submit"
                   className="primary-btn"
-                  disabled={isSubmitting || !selectedProjectId}
+                  disabled={
+                    isSubmitting ||
+                    !selectedProjectId ||
+                    (showAssigneePicker && !formData.assigne_a)
+                  }
                 >
                   {isSubmitting ? (
                     <Loader2 className="animate-spin" size={16} />
                   ) : (
-                    'Créer tâche'
+                    'Créer'
                   )}
                 </button>
               </div>

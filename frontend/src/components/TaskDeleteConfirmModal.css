@@ -20,6 +20,15 @@
   text-align: center;
 }
 
+.task-delete-modal.cu-task-name-modal {
+  max-width: 440px;
+  text-align: left;
+}
+
+.task-delete-modal.cu-task-name-modal .task-delete-modal-actions {
+  justify-content: flex-end;
+}
+
 .task-delete-modal-close {
   position: absolute;
   top: 0.75rem;
@@ -92,4 +101,34 @@
 .task-delete-modal-confirm:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.cu-task-modal-input {
+  border: 1px solid #e6e8ef;
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  color: #292d34;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.cu-task-modal-input:focus {
+  border-color: #7b68ee;
+  box-shadow: 0 0 0 1px #7b68ee;
+}
+
+.cu-task-modal-date-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  text-align: left;
+}
+
+.cu-task-modal-error {
+  margin: 0 0 0.75rem;
+  font-size: 0.75rem;
+  color: #dc2626;
+  text-align: left;
 }

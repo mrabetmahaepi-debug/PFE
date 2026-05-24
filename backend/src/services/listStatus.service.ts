@@ -5,9 +5,10 @@ const db = prisma as any;
 export const DEFAULT_LIST_STATUSES = [
   { label: "À faire", statut_key: "todo", position: 0 },
   { label: "En cours", statut_key: "en_cours", position: 1 },
-  { label: "Terminée", statut_key: "terminee", position: 2 },
-  { label: "Bloquée", statut_key: "bloquee", position: 3 },
-  { label: "En révision", statut_key: "en_revision", position: 4 },
+  { label: "En retard", statut_key: "en_retard", position: 2 },
+  { label: "Terminé", statut_key: "terminee", position: 3 },
+  { label: "Bloquée", statut_key: "bloquee", position: 4 },
+  { label: "En révision", statut_key: "en_revision", position: 5 },
 ] as const;
 
 export async function ensureListStatuses(id_list: number) {

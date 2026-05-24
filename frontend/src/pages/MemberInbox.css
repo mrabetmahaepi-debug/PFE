@@ -1,0 +1,357 @@
+/* Member Boîte de réception — ClickUp-style layout */
+.page-wrapper:has(.member-inbox-page) {
+  padding: 0;
+  box-sizing: border-box;
+  height: auto;
+  min-height: 0;
+  flex: 0 1 auto;
+  background: #f7f8fc;
+}
+
+.member-inbox-page {
+  width: 100%;
+  min-height: 0;
+  box-sizing: border-box;
+  background: #f7f8fc;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue',
+    Arial, sans-serif;
+}
+
+.member-inbox-card {
+  width: calc(100% - 32px);
+  margin: 16px;
+  min-height: calc(100vh - var(--navbar-height, 64px) - 32px);
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  border: 1px solid #ececf3;
+  border-radius: 18px;
+  box-shadow: 0 1px 4px rgba(16, 24, 40, 0.06);
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.member-inbox-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-shrink: 0;
+  padding: 12px 20px 12px 16px;
+  border-bottom: 1px solid #ececf3;
+  background: #ffffff;
+}
+
+.member-inbox-card-header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.member-inbox-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 8px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.member-inbox-btn--secondary {
+  border: 1px solid #e6e8ef;
+  background: #ffffff;
+  color: #292d34;
+}
+
+.member-inbox-btn--secondary:hover {
+  background: #f7f8fa;
+  border-color: #d1d5db;
+}
+
+.member-inbox-btn--danger {
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.member-inbox-btn--danger:hover {
+  background: #fee2e2;
+  border-color: #fca5a5;
+  color: #b91c1c;
+}
+
+.member-inbox-empty-link {
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: #7b68ee;
+  font-size: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.member-inbox-empty-link:hover {
+  color: #6d5ce8;
+}
+
+.member-inbox-panel {
+  flex: 1;
+  min-height: 280px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.member-inbox-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 4rem 2rem;
+  text-align: center;
+  color: #646f79;
+  font-size: 0.875rem;
+}
+
+.member-inbox-state--empty {
+  min-height: 360px;
+}
+
+.member-inbox-empty-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  background: #f3f1fd;
+  color: #7b68ee;
+  margin-bottom: 4px;
+}
+
+.member-inbox-empty-title {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #292d34;
+}
+
+.member-inbox-empty-hint {
+  max-width: 320px;
+  font-size: 0.8125rem;
+  color: #87909e;
+  line-height: 1.45;
+}
+
+.member-inbox-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.member-inbox-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  border-bottom: 1px solid #ececf3;
+}
+
+.member-inbox-row:last-child {
+  border-bottom: none;
+}
+
+.member-inbox-delete-btn {
+  flex-shrink: 0;
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  margin: 0 4px 0 12px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #dc2626;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.member-inbox-delete-btn:hover {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.member-inbox-delete-btn:focus-visible {
+  outline: 2px solid #fca5a5;
+  outline-offset: 2px;
+}
+
+.member-inbox-item {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  margin: 0;
+  padding: 12px 16px 12px 4px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.member-inbox-item.is-unread {
+  background: #faf9fe;
+}
+
+.member-inbox-item:hover {
+  background: #f7f8fa;
+}
+
+.member-inbox-item.is-unread:hover {
+  background: #f3f1fd;
+}
+
+.member-inbox-unread-dot {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #7b68ee;
+}
+
+.member-inbox-item.is-read .member-inbox-unread-dot {
+  display: none;
+}
+
+.member-inbox-leading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.member-inbox-icon-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.member-inbox-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #e2e8f0;
+  color: #475569;
+  font-size: 0.65rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.member-inbox-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.member-inbox-item-title {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #111827;
+  line-height: 1.3;
+}
+
+.member-inbox-item-desc {
+  font-size: 0.75rem;
+  color: #475569;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.member-inbox-item-time {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: #87909e;
+  margin-top: 2px;
+}
+
+.member-inbox-unread-label {
+  font-weight: 600;
+  color: #7b68ee;
+}
+
+.member-inbox-read-label {
+  font-weight: 500;
+  color: #87909e;
+}
+
+@media (max-width: 900px) {
+  .member-inbox-card {
+    width: calc(100% - 24px);
+    margin: 12px;
+    border-radius: 14px;
+    min-height: calc(100vh - var(--navbar-height, 64px) - 24px);
+  }
+
+  .member-inbox-card-header {
+    justify-content: flex-end;
+    padding: 12px 16px;
+  }
+
+  .member-inbox-card-header-actions {
+    justify-content: flex-end;
+  }
+
+  .member-inbox-btn {
+    flex: 1 1 auto;
+    min-width: 0;
+    white-space: normal;
+    text-align: center;
+    height: auto;
+    min-height: 32px;
+    padding: 6px 10px;
+  }
+
+  .member-inbox-item {
+    padding: 10px 12px 10px 2px;
+  }
+
+  .member-inbox-delete-btn {
+    margin-left: 8px;
+  }
+}

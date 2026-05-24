@@ -29,15 +29,28 @@ import ListTaskView from './ListTaskView';
 import KanbanBoardView from './KanbanBoardView';
 import CalendarTaskView from './CalendarTaskView';
 import TableurTaskView from './TableurTaskView';
+import CanalTaskView from './CanalTaskView';
+import GanttTaskView from './GanttTaskView';
 import ClickUpListViewTabs, {
   type ClickUpViewTabId,
 } from './ClickUpListViewTabs';
+import ClickUpListViewFilters from './ClickUpListViewFilters';
+import {
+  DEFAULT_CLICKUP_VISIBLE_COLUMNS,
+  type ListViewColumnKey,
+} from '../lib/listViewColumns';
 import type { ClickUpColumnId } from './ClickUpKanbanBoard';
 import { ListPageProvider, type ListPageContextValue } from './listPageContext';
 import './ClickUpListToolbar.css';
 import './ClickUpListViewTabs.css';
+import './ClickUpListViewFilters.css';
 import WorkspaceFilterDropdown from './WorkspaceFilterDropdown';
 import { taskStatusToStatutKey } from '../lib/listStatusGroups';
+import { useAuth } from '../hooks/useAuth';
+import { usePermission } from '../hooks/usePermission';
+import { getRoleKey, isGlobalMember } from '../lib/permissions';
+import { canChangeTaskStatusForTask, resolveEffectiveProjectPermissions } from '../lib/projectPermissions';
+import { useSetMemberTopbarTitle } from '../context/MemberTopbarTitleContext';
 import './ListPageView.css';
 
 export type ListPageTab = 'overview' | 'list' | 'board';
@@ -101,6 +114,8 @@ const ListPageView: React.FC<ListPageViewProps> = ({
   clickUpMode = false,
   refreshKey = 0,
 }) => {
+  const { user } = useAuth();
+  const { isSuperAdmin } = usePermission();
   const [listDetail, setListDetail] = useState<ListDetail | null>(null);
   const [projectDetail, setProjectDetail] = useState<Projet | null>(null);
   const [tasks, setTasks] = useState<Tache[]>([]);
@@ -115,9 +130,21 @@ const ListPageView: React.FC<ListPageViewProps> = ({
   const [assigneeFilter, setAssigneeFilter] = useState<AssigneeFilter>('all');
   const [dueFilter, setDueFilter] = useState<DueFilter>('all');
   const [statusSavingId, setStatusSavingId] = useState<number | null>(null);
-  const [viewMode, setViewMode] = useState<
-    'list' | 'board' | 'calendar' | 'tableur'
-  >('list');
+  const [viewMode, setViewMode] = useState<ClickUpViewTabId>('list');
+  const [showSubtasks, setShowSubtasks] = useState(true);
+  const [showClosed, setShowClosed] = useState(true);
+  const [listSearch, setListSearch] = useState('');
+  const [columnsOpen, setColumnsOpen] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [assigneeMenuOpen, setAssigneeMenuOpen] = useState(false);
+  const [visibleColumns, setVisibleColumns] = useState(
+    DEFAULT_CLICKUP_VISIBLE_COLUMNS
+  );
+
+  const toggleListColumn = (key: ListViewColumnKey) => {
+    if (key === 'name') return;
+    setVisibleColumns((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -147,6 +174,13 @@ const ListPageView: React.FC<ListPageViewProps> = ({
   useEffect(() => {
     void load();
   }, [load, refreshKey]);
+
+  useEffect(() => {
+    setListSearch('');
+    setFilterOpen(false);
+    setColumnsOpen(false);
+    setAssigneeMenuOpen(false);
+  }, [listId]);
 
   useEffect(() => {
     if (controlledTab !== undefined) setInternalTab(controlledTab);
@@ -190,6 +224,11 @@ const ListPageView: React.FC<ListPageViewProps> = ({
     return list;
   }, [tasks, assigneeFilter, dueFilter]);
 
+  const displayTasks = useMemo(() => {
+    if (showSubtasks) return filteredTasks;
+    return filteredTasks.filter((t) => !t.id_parent_tache);
+  }, [filteredTasks, showSubtasks]);
+
   const counts = useMemo(() => {
     let todo = 0;
     let inProgress = 0;
@@ -206,6 +245,31 @@ const ListPageView: React.FC<ListPageViewProps> = ({
     if (tasks.length === 0) return 0;
     return Math.round((counts.done / tasks.length) * 100);
   }, [tasks.length, counts.done]);
+
+  const projectPermissions = useMemo(
+    () => projectDetail?.currentUserPermissions ?? [],
+    [projectDetail?.currentUserPermissions]
+  );
+
+  const canEditTaskStatusFor = useCallback(
+    (task: Tache) => {
+      const localRole = projectDetail?.currentUserProjectRole ?? null;
+      const perms = resolveEffectiveProjectPermissions(
+        projectPermissions,
+        user?.permissions ?? []
+      );
+      const isAdmin =
+        isSuperAdmin ||
+        getRoleKey(user) === 'ADMIN';
+      return canChangeTaskStatusForTask(
+        perms,
+        task,
+        user?.id_utilisateur,
+        { localRole, isAdmin }
+      );
+    },
+    [user, projectPermissions, projectDetail?.currentUserProjectRole, isSuperAdmin]
+  );
 
   const projectMembers = useMemo(() => {
     const team = projectDetail?.projectTeam ?? [];
@@ -235,40 +299,29 @@ const ListPageView: React.FC<ListPageViewProps> = ({
     return Array.from(m.entries()).map(([id, label]) => ({ id, label }));
   }, [tasks, projectMembers]);
 
-  const handleBoardMove = async (taskId: number, target: BoardColumnId) => {
-    const task = tasks.find((t) => t.id_tache === taskId);
-    if (!task) return;
-    try {
-      if (target === TaskStatus.DONE) {
-        await taskService.updateStatus(String(taskId), TaskStatus.DONE);
-      } else {
-        await taskService.updateStatus(String(taskId), target);
-      }
-      await load();
-      await onRefreshHierarchy();
-    } catch (err: any) {
-      alert(err?.response?.data?.message || 'Impossible de déplacer la tâche');
-      await load();
-    }
-  };
+  const memberListNavbarTitle =
+    isGlobalMember(user) && clickUpMode && listDetail?.nom
+      ? listDetail.nom
+      : null;
+  useSetMemberTopbarTitle(memberListNavbarTitle);
 
-  const handleClickUpBoardMove = async (
-    taskId: number,
-    statutKey: ClickUpColumnId
-  ) => {
+  const handleBoardMove = async (taskId: number, target: BoardColumnId) => {
     if (!canEditTask) return;
-    setStatusSavingId(taskId);
+    const normalized = normalizeTaskStatutKey(target);
+    const previous = tasks;
+    setTasks((prev) =>
+      prev.map((t) =>
+        t.id_tache === taskId ? { ...t, statut_t: normalized } : t
+      )
+    );
     try {
-      await taskService.patchStatus(String(taskId), statutKey);
+      const updated = await taskService.patchStatus(String(taskId), target);
       setTasks((prev) =>
-        prev.map((t) =>
-          t.id_tache === taskId
-            ? { ...t, statut_t: normalizeTaskStatutKey(statutKey) }
-            : t
-        )
+        prev.map((t) => (t.id_tache === taskId ? updated : t))
       );
       await onRefreshHierarchy();
     } catch (err: unknown) {
+      setTasks(previous);
       const ax = err as {
         response?: { data?: { message?: string } };
         message?: string;
@@ -278,7 +331,41 @@ const ListPageView: React.FC<ListPageViewProps> = ({
           ax?.message ||
           'Impossible de déplacer la tâche'
       );
-      await load();
+      throw err;
+    }
+  };
+
+  const handleClickUpBoardMove = async (
+    taskId: number,
+    statutKey: ClickUpColumnId
+  ) => {
+    if (!canEditTask) return;
+    const normalized = normalizeTaskStatutKey(statutKey);
+    const previous = tasks;
+    setTasks((prev) =>
+      prev.map((t) =>
+        t.id_tache === taskId ? { ...t, statut_t: normalized } : t
+      )
+    );
+    setStatusSavingId(taskId);
+    try {
+      const updated = await taskService.patchStatus(String(taskId), statutKey);
+      setTasks((prev) =>
+        prev.map((t) => (t.id_tache === taskId ? updated : t))
+      );
+      await onRefreshHierarchy();
+    } catch (err: unknown) {
+      setTasks(previous);
+      const ax = err as {
+        response?: { data?: { message?: string } };
+        message?: string;
+      };
+      alert(
+        ax?.response?.data?.message ||
+          ax?.message ||
+          'Impossible de déplacer la tâche'
+      );
+      throw err;
     } finally {
       setStatusSavingId(null);
     }
@@ -290,7 +377,8 @@ const ListPageView: React.FC<ListPageViewProps> = ({
   };
 
   const handleTaskStatusChange = async (taskId: number, statutKey: string) => {
-    if (!canEditTask) return;
+    const task = tasks.find((t) => t.id_tache === taskId);
+    if (!task || !canEditTaskStatusFor(task)) return;
     setStatusSavingId(taskId);
     try {
       await taskService.patchStatus(String(taskId), statutKey);
@@ -347,9 +435,10 @@ const ListPageView: React.FC<ListPageViewProps> = ({
       listName: listDetail.nom,
       projectName: projectName,
       parentCtx,
-      tasks: filteredTasks,
+      tasks: displayTasks,
       canCreateTask,
       canEditTask,
+      canEditTaskStatusFor,
       highlightTaskId,
       onOpenCreateTask: (statutKey) => onOpenCreateTask(parentCtx, statutKey ?? 'todo'),
       onTaskClick,
@@ -364,75 +453,130 @@ const ListPageView: React.FC<ListPageViewProps> = ({
         if (patch.date_limite_t === null) {
           payload.date_limite_t = '';
         }
-        await taskService.update(String(taskId), payload);
-        await load();
-        await onRefreshHierarchy();
+        const tasksBefore = tasks;
+        if (patch.priorite_t !== undefined) {
+          setTasks((prev) =>
+            prev.map((t) =>
+              t.id_tache === taskId
+                ? { ...t, priorite_t: patch.priorite_t! }
+                : t
+            )
+          );
+        }
+        try {
+          await taskService.update(String(taskId), payload);
+          await load();
+          await onRefreshHierarchy();
+        } catch (err: unknown) {
+          if (patch.priorite_t !== undefined) {
+            setTasks(tasksBefore);
+          }
+          const ax = err as {
+            response?: { data?: { message?: string } };
+            message?: string;
+          };
+          alert(
+            ax?.response?.data?.message ||
+              ax?.message ||
+              'Impossible de mettre à jour la tâche'
+          );
+        }
       },
       onTaskStatusChange: handleTaskStatusChange,
       onBoardMove: handleClickUpBoardMove,
       savingStatusTaskId: statusSavingId,
     };
 
-    const activeViewTab: ClickUpViewTabId = viewMode;
-
     const handleViewTabChange = (tab: ClickUpViewTabId) => {
       setViewMode(tab);
     };
 
+    const bodyModeClass =
+      viewMode === 'board'
+        ? 'list-page-body--board'
+        : viewMode === 'calendar'
+          ? 'list-page-body--calendar'
+          : viewMode === 'tableur'
+            ? 'list-page-body--tableur'
+            : viewMode === 'gantt'
+              ? 'list-page-body--gantt'
+              : viewMode === 'canal'
+                ? 'list-page-body--canal'
+                : '';
+
     return (
       <ListPageProvider value={listPageContextValue}>
-        <div className="list-page list-page--clickup">
-          <div className="cu-list-toolbar-top-wrap">
-            <h1 className="cu-list-toolbar-title">{listDetail.nom}</h1>
-          </div>
+        <div
+          className={`list-page list-page--clickup${
+            memberListNavbarTitle ? ' list-page--member-navbar-title' : ''
+          }`}
+        >
+          {!memberListNavbarTitle && (
+            <div className="cu-list-toolbar-top-wrap">
+              <h1 className="cu-list-toolbar-title">{listDetail.nom}</h1>
+            </div>
+          )}
           <ClickUpListViewTabs
-            activeTab={activeViewTab}
+            activeTab={viewMode}
             onTabChange={handleViewTabChange}
           />
           {viewMode === 'list' && (
-            <div className="cu-list-toolbar-row cu-list-toolbar-row--secondary">
-              <div className="cu-list-toolbar-left">
-                <button
-                  type="button"
-                  className="cu-list-toolbar-chip cu-list-toolbar-chip--active"
-                >
-                  <span className="cu-list-toolbar-chip-muted">Groupe :</span>
-                  Statut
-                </button>
-              </div>
-              <div className="cu-list-toolbar-right">
-                {canCreateTask && (
-                  <button
-                    type="button"
-                    className="cu-list-toolbar-add-btn"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      onOpenCreateTask(parentCtx, 'todo');
-                    }}
-                  >
-                    <Plus size={14} strokeWidth={2.5} />
-                    Ajouter Tâche
-                  </button>
-                )}
-              </div>
-            </div>
+            <ClickUpListViewFilters
+              showSubtasks={showSubtasks}
+              onToggleSubtasks={() => setShowSubtasks((v) => !v)}
+              showClosed={showClosed}
+              onToggleClosed={() => setShowClosed((v) => !v)}
+              searchQuery={listSearch}
+              onSearchChange={setListSearch}
+              visibleColumns={visibleColumns}
+              onToggleColumn={toggleListColumn}
+              columnsOpen={columnsOpen}
+              onColumnsOpenChange={setColumnsOpen}
+              filterOpen={filterOpen}
+              onToggleFilter={() => setFilterOpen((v) => !v)}
+              assigneeFilter={assigneeFilter}
+              assigneeOptions={assigneeOptions}
+              onAssigneeFilterChange={(v) =>
+                setAssigneeFilter(v === 'all' ? 'all' : v)
+              }
+              assigneeMenuOpen={assigneeMenuOpen}
+              onAssigneeMenuOpenChange={setAssigneeMenuOpen}
+              canCreateTask={canCreateTask}
+              onAddTask={() => onOpenCreateTask(parentCtx, 'todo')}
+              filterExtras={
+                <>
+                  <WorkspaceFilterDropdown
+                    ariaLabel="Échéance"
+                    value={dueFilter}
+                    onChange={(v) => setDueFilter(v as DueFilter)}
+                    options={[
+                      { value: 'all', label: 'Toutes échéances' },
+                      { value: 'today', label: "Aujourd'hui" },
+                      { value: 'week', label: 'Cette semaine' },
+                      { value: 'overdue', label: 'En retard' },
+                      { value: 'none', label: 'Sans date' },
+                    ]}
+                  />
+                </>
+              }
+            />
           )}
           <div
-            className={`list-page-body list-page-body--clickup ${
-              viewMode === 'board'
-                ? 'list-page-body--board'
-                : viewMode === 'calendar'
-                  ? 'list-page-body--calendar'
-                  : viewMode === 'tableur'
-                    ? 'list-page-body--tableur'
-                    : ''
-            }`}
+            className={`list-page-body list-page-body--clickup ${bodyModeClass}`.trim()}
             data-view-mode={viewMode}
           >
-            {viewMode === 'list' && <ListTaskView listId={listId} />}
+            {viewMode === 'canal' && <CanalTaskView listId={listId} />}
+            {viewMode === 'list' && (
+              <ListTaskView
+                listId={listId}
+                searchQuery={listSearch}
+                showClosed={showClosed}
+                visibleColumns={visibleColumns}
+              />
+            )}
             {viewMode === 'board' && <KanbanBoardView listId={listId} />}
             {viewMode === 'calendar' && <CalendarTaskView listId={listId} />}
+            {viewMode === 'gantt' && <GanttTaskView listId={listId} />}
             {viewMode === 'tableur' && <TableurTaskView listId={listId} />}
           </div>
         </div>

@@ -1,0 +1,93 @@
+.member-personal-page {
+  min-height: calc(100vh - 64px);
+  background: #f7f8fa;
+  padding: 16px 20px 24px;
+}
+
+.member-personal-header {
+  margin-bottom: 14px;
+}
+
+.member-personal-breadcrumb {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #292d34;
+}
+
+.member-personal-breadcrumb-muted {
+  color: #646f79;
+  font-weight: 500;
+}
+
+.member-personal-breadcrumb-sep {
+  margin: 0 6px;
+  color: #c4c9d0;
+}
+
+.member-personal-card {
+  background: #fff;
+  border: 1px solid #e6e8ef;
+  border-radius: 10px;
+  padding: 12px 16px 16px;
+}
+
+.member-personal-toolbar {
+  margin-bottom: 12px;
+}
+
+.member-personal-search {
+  width: 100%;
+  max-width: 280px;
+  padding: 7px 10px;
+  border: 1px solid #e6e8ef;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.member-personal-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.member-personal-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  padding: 8px 4px;
+  font-size: 13px;
+  color: #292d34;
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.member-personal-item:hover {
+  background: #f7f8fa;
+}
+
+.member-personal-empty {
+  margin: 0;
+  padding: 1.5rem 0;
+  font-size: 13px;
+  color: #87909e;
+}
+
+.member-personal-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 500;
+  color: #87909e;
+  cursor: pointer;
+}
+
+.member-personal-add:hover {
+  color: #7b68ee;
+}

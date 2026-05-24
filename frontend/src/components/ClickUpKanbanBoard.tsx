@@ -33,41 +33,27 @@ import {
   normalizeTaskPriority,
   type Tache,
 } from '../types/task';
-import { normalizeTaskStatutKey } from '../lib/listStatusGroups';
+import {
+  KANBAN_WORKFLOW_COLUMNS,
+  KANBAN_WORKFLOW_COLUMN_IDS,
+  groupTasksByKanbanWorkflow,
+  emptyKanbanColumns,
+  type KanbanWorkflowColumnId,
+  type KanbanColumnsMap,
+  type KanbanBadgeTone,
+} from '../lib/kanbanWorkflowColumns';
 import { appPaths } from '../lib/workspaceRoutes';
 import './ClickUpKanbanBoard.css';
 
-export type ClickUpColumnId = 'todo' | 'en_cours' | 'terminee';
+export type ClickUpColumnId = KanbanWorkflowColumnId;
 
-const COLUMN_DEFS: {
-  id: ClickUpColumnId;
-  label: string;
-  badgeTone: 'gray' | 'purple' | 'green';
-}[] = [
-  { id: 'todo', label: 'À FAIRE', badgeTone: 'gray' },
-  { id: 'en_cours', label: 'EN COURS', badgeTone: 'purple' },
-  { id: 'terminee', label: 'ACHEVÉ', badgeTone: 'green' },
-];
+const COLUMN_DEFS = KANBAN_WORKFLOW_COLUMNS;
+const COLUMN_IDS = KANBAN_WORKFLOW_COLUMN_IDS;
 
-const COLUMN_IDS = COLUMN_DEFS.map((c) => c.id);
-
-type ColumnsMap = Record<ClickUpColumnId, Tache[]>;
-
-const emptyColumns = (): ColumnsMap => ({
-  todo: [],
-  en_cours: [],
-  terminee: [],
-});
+type ColumnsMap = KanbanColumnsMap;
 
 export function groupTasksByClickUpColumns(tasks: Tache[]): ColumnsMap {
-  const map = emptyColumns();
-  for (const t of tasks) {
-    const k = normalizeTaskStatutKey(t.statut_t);
-    if (k === 'en_cours') map.en_cours.push(t);
-    else if (k === 'terminee') map.terminee.push(t);
-    else map.todo.push(t);
-  }
-  return map;
+  return groupTasksByKanbanWorkflow(tasks);
 }
 
 const taskKey = (id: number) => `task:${id}`;
@@ -244,7 +230,7 @@ const SortableCard: React.FC<SortableCardProps> = ({
 interface ColumnProps {
   columnId: ClickUpColumnId;
   label: string;
-  badgeTone: 'gray' | 'purple' | 'green';
+  badgeTone: KanbanBadgeTone;
   tasks: Tache[];
   contextLabel: string;
   canCreateTask: boolean;
@@ -358,19 +344,21 @@ const ClickUpKanbanBoard: React.FC<ClickUpKanbanBoardProps> = ({
   );
 
   const [columns, setColumns] = useState<ColumnsMap>(() =>
-    groupTasksByClickUpColumns(tasks)
+    groupTasksByKanbanWorkflow(tasks)
   );
   const columnsRef = useRef(columns);
   columnsRef.current = columns;
 
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
   const draggingRef = useRef(false);
+  /** Prevents props sync from wiping optimistic column layout during PATCH */
+  const syncLockedRef = useRef(false);
   const sourceColumnRef = useRef<ClickUpColumnId | null>(null);
   const lastOverColumnRef = useRef<ClickUpColumnId | null>(null);
 
   useEffect(() => {
-    if (draggingRef.current) return;
-    setColumns(groupTasksByClickUpColumns(tasks));
+    if (draggingRef.current || syncLockedRef.current) return;
+    setColumns(groupTasksByKanbanWorkflow(tasks));
   }, [tasks]);
 
   const findColumnByItemId = (
@@ -382,6 +370,34 @@ const ClickUpKanbanBoard: React.FC<ClickUpKanbanBoardProps> = ({
       if (snapshot[col].some((t) => taskKey(t.id_tache) === id)) return col;
     }
     return null;
+  };
+
+  const applyCrossColumnMove = (
+    current: ColumnsMap,
+    activeItemId: UniqueIdentifier,
+    overItemId: UniqueIdentifier,
+    destCol: ClickUpColumnId
+  ): ColumnsMap => {
+    const fromCol = findColumnByItemId(activeItemId, current);
+    if (!fromCol || fromCol === destCol) return current;
+
+    const fromItems = [...current[fromCol]];
+    const activeIdx = fromItems.findIndex(
+      (t) => taskKey(t.id_tache) === activeItemId
+    );
+    if (activeIdx === -1) return current;
+
+    const overIsContainer = isColumnKey(overItemId);
+    const toItems = [...current[destCol]];
+    let insertAt = overIsContainer
+      ? toItems.length
+      : toItems.findIndex((t) => taskKey(t.id_tache) === overItemId);
+    if (insertAt < 0) insertAt = toItems.length;
+
+    const moving = { ...fromItems[activeIdx], statut_t: destCol };
+    fromItems.splice(activeIdx, 1);
+    toItems.splice(insertAt, 0, moving);
+    return { ...current, [fromCol]: fromItems, [destCol]: toItems };
   };
 
   const collisionDetection: CollisionDetection = (args) => {
@@ -431,20 +447,20 @@ const ClickUpKanbanBoard: React.FC<ClickUpKanbanBoardProps> = ({
     });
   };
 
-  const handleDragEnd = (e: DragEndEvent) => {
+  const handleDragEnd = async (e: DragEndEvent) => {
     const { active, over } = e;
     draggingRef.current = false;
     setActiveId(null);
 
+    const sourceCol = sourceColumnRef.current;
+    sourceColumnRef.current = null;
+
     if (!over) {
-      setColumns(groupTasksByClickUpColumns(tasks));
-      sourceColumnRef.current = null;
       lastOverColumnRef.current = null;
+      setColumns(groupTasksByKanbanWorkflow(tasks));
       return;
     }
 
-    const sourceCol = sourceColumnRef.current;
-    sourceColumnRef.current = null;
     const snap = columnsRef.current;
     const targetFromOver =
       over?.id != null ? findColumnByItemId(over.id, snap) : null;
@@ -465,8 +481,28 @@ const ClickUpKanbanBoard: React.FC<ClickUpKanbanBoardProps> = ({
       return current;
     });
 
-    if (!canReorderTasks || !finalCol || !sourceCol || finalCol === sourceCol) return;
-    void onMoveTask(parseTaskKey(active.id), finalCol);
+    if (!canReorderTasks || !finalCol || !sourceCol) return;
+
+    if (finalCol === sourceCol) return;
+
+    const taskId = parseTaskKey(active.id);
+    const stillInSource = snap[sourceCol]?.some(
+      (t) => taskKey(t.id_tache) === active.id
+    );
+    const nextColumns = stillInSource
+      ? applyCrossColumnMove(snap, active.id, over.id, finalCol)
+      : snap;
+
+    syncLockedRef.current = true;
+    setColumns(nextColumns);
+
+    try {
+      await onMoveTask(taskId, finalCol);
+    } catch {
+      setColumns(groupTasksByKanbanWorkflow(tasks));
+    } finally {
+      syncLockedRef.current = false;
+    }
   };
 
   const handleDragCancel = () => {
@@ -474,7 +510,7 @@ const ClickUpKanbanBoard: React.FC<ClickUpKanbanBoardProps> = ({
     setActiveId(null);
     sourceColumnRef.current = null;
     lastOverColumnRef.current = null;
-    setColumns(groupTasksByClickUpColumns(tasks));
+    setColumns(groupTasksByKanbanWorkflow(tasks));
   };
 
   const activeTask = useMemo(() => {

@@ -17,25 +17,21 @@
   color: #646f79;
   font-size: 13px;
   line-height: 1.3;
-  transition: background 0.12s ease;
 }
 
-.cu-spaces-tree-row:hover {
-  background: #f4f4f6;
-}
-
-.cu-spaces-tree-row.is-active {
+/* Light sidebar only — member dark tree uses SidebarMemberDark.css */
+.cu-spaces-tree:not(.cu-spaces-tree--member) .cu-spaces-tree-row.is-active {
   background: #f3f1fd;
   color: #7b68ee;
 }
 
-.cu-spaces-tree-row.is-active .cu-spaces-tree-label--space {
+.cu-spaces-tree:not(.cu-spaces-tree--member) .cu-spaces-tree-row.is-active .cu-spaces-tree-label--space {
   color: #292d34;
   font-weight: 600;
 }
 
-.cu-spaces-tree-row.is-active .cu-spaces-tree-label--project,
-.cu-spaces-tree-row.is-active .cu-spaces-tree-label--list {
+.cu-spaces-tree:not(.cu-spaces-tree--member) .cu-spaces-tree-row.is-active .cu-spaces-tree-label--project,
+.cu-spaces-tree:not(.cu-spaces-tree--member) .cu-spaces-tree-row.is-active .cu-spaces-tree-label--list {
   color: #7b68ee;
   font-weight: 500;
 }
@@ -72,11 +68,11 @@
   gap: 8px;
   border: none;
   background: transparent;
-  padding: 0;
+  padding: 2px 4px;
+  border-radius: 6px;
   color: inherit;
   font: inherit;
   text-align: left;
-  cursor: pointer;
 }
 
 .cu-spaces-tree-main--label {
@@ -128,6 +124,16 @@
   font-size: 12.5px;
 }
 
+.cu-spaces-tree-label--subtask {
+  font-size: 12px;
+  font-weight: 400;
+  color: #646f79;
+}
+
+.cu-spaces-tree-row.is-active .cu-spaces-tree-label--subtask {
+  color: #7b68ee;
+}
+
 .cu-spaces-tree-task-dot {
   width: 8px;
   height: 8px;
@@ -135,6 +141,12 @@
   border: 1.5px solid #b0b5c0;
   flex-shrink: 0;
   background: transparent;
+}
+
+.cu-spaces-tree-task-dot--sub {
+  width: 6px;
+  height: 6px;
+  border-width: 1px;
 }
 
 .cu-spaces-tree-row.is-active .cu-spaces-tree-task-dot {
@@ -211,6 +223,35 @@
   padding-left: 72px;
 }
 
+.cu-spaces-tree-indent-5 {
+  padding-left: 92px;
+}
+
+.cu-spaces-tree-indent-task-sub {
+  padding-left: 74px;
+}
+
+.cu-spaces-tree-main--subtask-edit {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: default;
+}
+
+.subtask-delete-btn--sidebar {
+  margin-left: auto;
+}
+
+.cu-spaces-tree-subtask-input {
+  font-size: 12px;
+}
+
 .cu-spaces-tree-label--sprint {
   font-weight: 500;
   color: #292d34;
@@ -267,4 +308,37 @@
   height: 1px;
   margin: 4px 6px;
   background: #e6e8ef;
+}
+
+.cu-spaces-tree-empty--sprint {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 12px 10px 36px;
+}
+
+.cu-spaces-tree-empty-label {
+  margin: 0;
+  font-size: 11px;
+  color: #87909e;
+}
+
+.cu-spaces-tree-empty-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #7b68ee;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.cu-spaces-tree-empty-action:hover {
+  color: #6a58dc;
+  text-decoration: underline;
 }

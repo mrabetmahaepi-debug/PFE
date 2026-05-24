@@ -1,10 +1,20 @@
 import { Request, Response, NextFunction } from "express";
-import { registerUser, loginUser, getMe, AuthError, markUserOffline } from "../services/auth.service";
+import {
+  registerUser,
+  loginUser,
+  getMe,
+  AuthError,
+  markUserOffline,
+  type UserProjectRoleRow,
+} from "../services/auth.service";
+import { resolveProjectPosteLabel } from "../lib/projectRoleLabels";
+import prisma from "../prisma/prismaClient";
 import {
   requestPasswordReset,
   resetPasswordWithToken,
 } from "../services/passwordReset.service";
 import { generateToken } from "../utils/jwt";
+import { logRoleAssignment } from "../lib/roleAssignmentLog";
 import {
   registerSchema,
   loginSchema,
@@ -50,6 +60,41 @@ export const loginController = async (
       user.email ||
       "Utilisateur";
 
+    const posteRaw = (user as { poste?: string | null }).poste;
+    const poste = posteRaw?.trim()
+      ? resolveProjectPosteLabel(posteRaw)
+      : undefined;
+
+    let projectRoles: UserProjectRoleRow[] = [];
+    try {
+      const rows = await prisma.membre_projet.findMany({
+        where: { id_utilisateur: user.id_utilisateur },
+        select: {
+          id_projet: true,
+          role_projet: true,
+          projet: { select: { nom_p: true } },
+        },
+        orderBy: { id_projet: "asc" },
+      });
+      projectRoles = rows.map((r) => ({
+        id_projet: r.id_projet,
+        nom_p: r.projet?.nom_p?.trim() || `Projet #${r.id_projet}`,
+        role_projet: resolveProjectPosteLabel(r.role_projet),
+      }));
+    } catch (err) {
+      console.warn("[auth] login projectRoles fetch failed:", err);
+    }
+
+    logRoleAssignment("login", {
+      selectedRole: null,
+      savedRole: poste ?? null,
+      loadedRole: poste ?? user.poste ?? null,
+      globalRoleNom: roleName,
+      poste: poste ?? user.poste ?? null,
+      userId: user.id_utilisateur,
+      email: user.email,
+    });
+
     return res.json({
       token,
       user: {
@@ -61,9 +106,13 @@ export const loginController = async (
         role: roleName,
         id_role: user.id_role,
         id_entreprise: user.id_entreprise ?? undefined,
+        poste,
+        projectRoles,
       },
       role: roleName,
       id_role: user.id_role,
+      poste,
+      projectRoles,
     });
   } catch (err: any) {
     if (err?.name === "ZodError") return next(err);

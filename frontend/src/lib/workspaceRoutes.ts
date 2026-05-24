@@ -11,6 +11,8 @@ export const appPaths = {
   team: '/team',
   settings: '/settings',
   spaces: '/spaces',
+  /** Membre — alias vers le space « Mon espace » (redirige après chargement hierarchy). */
+  monEspace: '/mon-espace',
   space: (spaceId: number | string) => `/spaces/${spaceId}`,
   folder: (spaceId: number | string, folderId: number | string) =>
     `/spaces/${spaceId}/folders/${folderId}`,

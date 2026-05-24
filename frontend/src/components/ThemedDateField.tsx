@@ -14,8 +14,12 @@ type ThemedDateFieldProps = {
   onChange: (iso: string) => void;
   ariaLabel: string;
   required?: boolean;
-  /** Allow typing jj/mm/aaaa with auto-format (task due date). */
+  disabled?: boolean;
+  /** Allow typing jj/mm/aaaa — commits to parent on blur only. */
   allowManualInput?: boolean;
+  error?: string;
+  className?: string;
+  onInvalidDate?: (message: string | null) => void;
 };
 
 function computePopupPosition(anchor: HTMLElement) {
@@ -37,7 +41,11 @@ const ThemedDateField: React.FC<ThemedDateFieldProps> = ({
   onChange,
   ariaLabel,
   required = false,
+  disabled = false,
   allowManualInput = false,
+  error,
+  className,
+  onInvalidDate,
 }) => {
   const rootRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -60,21 +68,29 @@ const ThemedDateField: React.FC<ThemedDateFieldProps> = ({
       ? formatDateDdMmYyyy(parseIsoDateLocal(value)!)
       : '';
 
-  const commitText = useCallback(
-    (next: string) => {
-      const formatted = formatDateInput(next);
-      setText(formatted);
-      const iso = parseDdMmYyyyToIso(formatted);
-      if (iso) {
-        onChange(iso);
-        return;
-      }
-      if (!formatted.replace(/\D/g, '').length) {
-        onChange('');
-      }
-    },
-    [onChange]
-  );
+  const handleTextChange = useCallback((next: string) => {
+    setText(formatDateInput(next));
+  }, []);
+
+  const commitOnBlur = useCallback(() => {
+    isEditingRef.current = false;
+    const digits = text.replace(/\D/g, '');
+    if (!digits.length) {
+      onInvalidDate?.(null);
+      onChange('');
+      setText('');
+      return;
+    }
+    const iso = parseDdMmYyyyToIso(text);
+    if (iso) {
+      onInvalidDate?.(null);
+      const parsed = parseIsoDateLocal(iso);
+      setText(parsed ? formatDateDdMmYyyy(parsed) : '');
+      onChange(iso);
+      return;
+    }
+    onInvalidDate?.('Date invalide ou incomplète. Format : jj/mm/aaaa');
+  }, [onChange, onInvalidDate, text]);
 
   useLayoutEffect(() => {
     if (!open || !rootRef.current) {
@@ -154,7 +170,7 @@ const ThemedDateField: React.FC<ThemedDateFieldProps> = ({
   return (
     <div
       ref={rootRef}
-      className={`themed-date-field${open ? ' is-open' : ''}`}
+      className={`themed-date-field${open ? ' is-open' : ''}${className ? ` ${className}` : ''}${error ? ' has-error' : ''}`}
     >
       <div
         className={`input-wrapper themed-date-field__control${allowManualInput ? ' themed-date-field__control--editable' : ''}`}
@@ -190,7 +206,9 @@ const ThemedDateField: React.FC<ThemedDateFieldProps> = ({
           autoComplete="off"
           spellCheck={false}
           aria-label={ariaLabel}
+          aria-invalid={error ? true : undefined}
           required={required}
+          disabled={disabled}
           onFocus={
             allowManualInput
               ? () => {
@@ -200,7 +218,7 @@ const ThemedDateField: React.FC<ThemedDateFieldProps> = ({
           }
           onChange={
             allowManualInput
-              ? (e) => commitText(e.target.value)
+              ? (e) => handleTextChange(e.target.value)
               : undefined
           }
           onPaste={
@@ -210,43 +228,25 @@ const ThemedDateField: React.FC<ThemedDateFieldProps> = ({
                   const pasted = e.clipboardData.getData('text');
                   const input = inputRef.current;
                   if (!input) {
-                    commitText(pasted);
+                    handleTextChange(pasted);
                     return;
                   }
                   const start = input.selectionStart ?? text.length;
                   const end = input.selectionEnd ?? text.length;
-                  commitText(text.slice(0, start) + pasted + text.slice(end));
+                  handleTextChange(
+                    text.slice(0, start) + pasted + text.slice(end)
+                  );
                 }
               : undefined
           }
-          onBlur={
-            allowManualInput
-              ? () => {
-                  isEditingRef.current = false;
-                  const digits = text.replace(/\D/g, '');
-                  if (!digits.length) {
-                    onChange('');
-                    setText('');
-                    return;
-                  }
-                  const iso = parseDdMmYyyyToIso(text);
-                  if (iso) {
-                    const parsed = parseIsoDateLocal(iso);
-                    setText(parsed ? formatDateDdMmYyyy(parsed) : '');
-                    onChange(iso);
-                    return;
-                  }
-                  const parsed = parseIsoDateLocal(value);
-                  setText(parsed ? formatDateDdMmYyyy(parsed) : '');
-                }
-              : undefined
-          }
+          onBlur={allowManualInput ? commitOnBlur : undefined}
           onClick={allowManualInput ? (e) => e.stopPropagation() : undefined}
         />
         <button
           type="button"
           className="themed-date-field__open-btn"
           aria-label="Ouvrir le calendrier"
+          disabled={disabled}
           onMouseDown={(e) => e.preventDefault()}
           onClick={openCalendar}
         >
@@ -254,6 +254,11 @@ const ThemedDateField: React.FC<ThemedDateFieldProps> = ({
         </button>
       </div>
       {popup}
+      {error ? (
+        <span className="themed-date-field__error" role="alert">
+          {error}
+        </span>
+      ) : null}
     </div>
   );
 };

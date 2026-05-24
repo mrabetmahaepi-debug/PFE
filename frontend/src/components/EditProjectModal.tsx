@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -14,7 +14,12 @@ import {
   projectService,
   buildCreateProjectRequestBody,
 } from '../services/project.service';
-import { PROJECT_MEMBER_ROLE_OPTIONS, type Projet } from '../types/project';
+import { teamService } from '../services/team.service';
+import type { Projet } from '../types/project';
+import {
+  normalizeProjectLocalRole,
+  PROJECT_LOCAL_ROLE_OPTIONS,
+} from '../lib/projectRoleLabels';
 import type { User } from '../types/auth.types';
 import { useAuth } from '../hooks/useAuth';
 import {
@@ -23,8 +28,17 @@ import {
   type ProjectManageContext,
 } from '../lib/projectManageAccess';
 import { usePermission } from '../hooks/usePermission';
+import { dispatchProjectTeamChanged } from '../lib/workspaceEvents';
 import { isEnterpriseAdmin } from '../lib/permissions';
 import { projectCan } from '../lib/projectPermissions';
+import { filterUsersForProjectMemberAdd } from '../lib/enterpriseMemberPicker';
+import {
+  formatUserPickerLabel,
+  normalizePickerUser,
+  normalizePickerUserList,
+  pickerUserId,
+  type UserLike,
+} from '../lib/userPickerDisplay';
 import './CreateProjectModal.css';
 
 export type EditProjectModalProps = {
@@ -34,7 +48,16 @@ export type EditProjectModalProps = {
   onSuccess: () => void;
 };
 
-const DEFAULT_MEMBER_ROLE = PROJECT_MEMBER_ROLE_OPTIONS[0];
+const DEFAULT_MEMBER_ROLE = 'Développeur';
+
+type ExtraMemberRow = {
+  userId: number;
+  projectRole: string;
+  prenom?: string;
+  nom?: string;
+  email?: string;
+  name?: string;
+};
 
 function toDateInputValue(iso: string | undefined | null): string {
   if (!iso) return '';
@@ -62,12 +85,17 @@ function validateProjectDates(debut: string, fin: string): string | null {
 }
 
 function userNumericId(u: User): number {
-  return Number(u.id_utilisateur ?? u.id);
+  return pickerUserId(u);
 }
 
-function userDisplayName(u: User): string {
-  const n = `${u.prenom || ''} ${u.nom || ''}`.trim();
-  return n || u.email;
+function extraMemberToUser(row: ExtraMemberRow): User {
+  return normalizePickerUser({
+    id_utilisateur: row.userId,
+    prenom: row.prenom,
+    nom: row.nom,
+    email: row.email,
+    name: row.name,
+  });
 }
 
 function resolveChefUserId(project: Projet): number | null {
@@ -91,14 +119,16 @@ function resolveChefUserId(project: Projet): number | null {
 function mapProjectTeamToExtraMembers(
   team: Projet['projectTeam'],
   chefId: number | null,
-): { userId: number; projectRole: string }[] {
+): ExtraMemberRow[] {
   const chef = chefId ?? -1;
-  const opts = PROJECT_MEMBER_ROLE_OPTIONS as readonly string[];
   return (team ?? [])
     .filter((r) => r.userId != null && Number(r.userId) !== chef)
     .map((r) => ({
       userId: Number(r.userId),
-      projectRole: opts.includes(r.roleProjet) ? r.roleProjet : DEFAULT_MEMBER_ROLE,
+      projectRole: normalizeProjectLocalRole(r.roleProjet ?? DEFAULT_MEMBER_ROLE),
+      prenom: r.prenom ?? '',
+      nom: r.nom ?? '',
+      email: r.email ?? '',
     }));
 }
 
@@ -114,38 +144,53 @@ const EditProjectModal: React.FC<EditProjectModalProps> = ({
   const canPickChefGlobally = isEnterpriseAdmin(user) || can('PROJECT_EDIT');
 
   const [loading, setLoading] = useState(false);
-  const [teamMembers, setTeamMembers] = useState<User[]>([]);
+  const [responsibleCandidates, setResponsibleCandidates] = useState<User[]>([]);
+  const [teamAddCandidates, setTeamAddCandidates] = useState<User[]>([]);
   const [teamLoading, setTeamLoading] = useState(false);
   const [nom, setNom] = useState('');
   const [description, setDescription] = useState('');
   const [dateDebut, setDateDebut] = useState('');
   const [dateFin, setDateFin] = useState('');
   const [chefId, setChefId] = useState<number | null>(null);
-  const [extraMembers, setExtraMembers] = useState<{ userId: number; projectRole: string }[]>(
-    [],
-  );
+  const [extraMembers, setExtraMembers] = useState<ExtraMemberRow[]>([]);
+  const [loadedProjectTeam, setLoadedProjectTeam] = useState<Projet['projectTeam']>([]);
   const [canManageChef, setCanManageChef] = useState(false);
   const [canManageMembers, setCanManageMembers] = useState(false);
   const [dateError, setDateError] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const loadTeamCandidates = useCallback(async (id: number) => {
-    setTeamLoading(true);
-    try {
-      const data = await projectService.getTeamCandidates(id);
-      setTeamMembers(Array.isArray(data) ? data : []);
-    } catch (e: unknown) {
-      console.error(e);
-      setTeamMembers([]);
-      const msg =
-        (e as { response?: { data?: { message?: string } } })?.response?.data?.message ||
-        "Impossible de charger les membres disponibles.";
-      setError((prev) => prev || msg);
-    } finally {
-      setTeamLoading(false);
-    }
-  }, []);
+  const loadPickerCandidates = useCallback(
+    async (id: number) => {
+      setTeamLoading(true);
+      try {
+        const responsible = await projectService.getResponsibleCandidates(id);
+        setResponsibleCandidates(
+          Array.isArray(responsible) ? responsible : [],
+        );
+
+        let enterpriseUsers: User[] = [];
+        if (isEnterpriseAdmin(user)) {
+          const all = await teamService.getAllMembers({ type: 'all' });
+          enterpriseUsers = normalizePickerUserList(all);
+        } else {
+          enterpriseUsers = await projectService.getTeamCandidates(id);
+        }
+        setTeamAddCandidates(enterpriseUsers);
+      } catch (e: unknown) {
+        console.error(e);
+        setResponsibleCandidates([]);
+        setTeamAddCandidates([]);
+        const msg =
+          (e as { response?: { data?: { message?: string } } })?.response?.data
+            ?.message || 'Impossible de charger les membres disponibles.';
+        setError((prev) => prev || msg);
+      } finally {
+        setTeamLoading(false);
+      }
+    },
+    [user],
+  );
 
   const loadProject = useCallback(
     async (id: number) => {
@@ -161,6 +206,7 @@ const EditProjectModal: React.FC<EditProjectModalProps> = ({
         setProjectCtx(ctx);
         const chef = resolveChefUserId(project);
         setChefId(chef);
+        setLoadedProjectTeam(project.projectTeam ?? []);
         setExtraMembers(mapProjectTeamToExtraMembers(project.projectTeam, chef));
         const canManage = canManageProject(user, project);
         const pp = project.currentUserPermissions ?? [];
@@ -169,9 +215,10 @@ const EditProjectModal: React.FC<EditProjectModalProps> = ({
         setCanManageChef(manageTeam);
         setCanManageMembers(manageTeam);
         if (manageTeam) {
-          await loadTeamCandidates(id);
+          await loadPickerCandidates(id);
         } else {
-          setTeamMembers([]);
+          setResponsibleCandidates([]);
+          setTeamAddCandidates([]);
         }
       } catch (e: unknown) {
         console.error(e);
@@ -183,7 +230,7 @@ const EditProjectModal: React.FC<EditProjectModalProps> = ({
         setLoading(false);
       }
     },
-    [can, canPickChefGlobally, loadTeamCandidates, user],
+    [can, canPickChefGlobally, loadPickerCandidates, user],
   );
 
   useEffect(() => {
@@ -205,10 +252,53 @@ const EditProjectModal: React.FC<EditProjectModalProps> = ({
     return () => window.removeEventListener('keydown', handler);
   }, [isOpen, isSubmitting, onClose]);
 
-  const membersAvailableToAdd = teamMembers.filter(
-    (m) =>
-      userNumericId(m) !== chefId &&
-      !extraMembers.some((row) => row.userId === userNumericId(m)),
+  const pickerUsersById = useMemo(() => {
+    const map = new Map<number, User>();
+    const add = (raw: UserLike) => {
+      const u = normalizePickerUser(raw);
+      const id = userNumericId(u);
+      if (id > 0) map.set(id, u);
+    };
+    for (const u of responsibleCandidates) add(u);
+    for (const u of teamAddCandidates) add(u);
+    for (const m of loadedProjectTeam ?? []) {
+      if (m.userId == null) continue;
+      add({
+        id_utilisateur: m.userId,
+        prenom: m.prenom,
+        nom: m.nom,
+        email: m.email,
+      });
+    }
+    for (const row of extraMembers) add(extraMemberToUser(row));
+    return map;
+  }, [responsibleCandidates, teamAddCandidates, loadedProjectTeam, extraMembers]);
+
+  const resolvePickerUser = (userId: number, row?: ExtraMemberRow): User => {
+    const fromMap = pickerUsersById.get(userId);
+    if (fromMap && formatUserPickerLabel(fromMap)) return fromMap;
+    if (row) {
+      const fromRow = extraMemberToUser(row);
+      if (formatUserPickerLabel(fromRow)) return fromRow;
+    }
+    return fromMap ?? extraMemberToUser(row ?? { userId, projectRole: DEFAULT_MEMBER_ROLE });
+  };
+
+  /** IDs already shown in « Membres du projet » (not the responsable section). */
+  const displayedMemberIds = useMemo(() => {
+    const ids = new Set<number>();
+    for (const row of extraMembers) {
+      if (row.userId > 0) ids.add(row.userId);
+    }
+    return ids;
+  }, [extraMembers]);
+
+  const membersAvailableToAdd = useMemo(
+    () =>
+      filterUsersForProjectMemberAdd(teamAddCandidates, displayedMemberIds, {
+        sessionUser: user,
+      }),
+    [teamAddCandidates, displayedMemberIds, user],
   );
 
   const addMemberFromSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -217,7 +307,21 @@ const EditProjectModal: React.FC<EditProjectModalProps> = ({
     if (!v) return;
     const uid = Number(v);
     if (!Number.isFinite(uid) || uid <= 0) return;
-    setExtraMembers((prev) => [...prev, { userId: uid, projectRole: DEFAULT_MEMBER_ROLE }]);
+    const picked =
+      membersAvailableToAdd.find((m) => userNumericId(m) === uid) ??
+      teamAddCandidates.find((m) => userNumericId(m) === uid);
+    const normalized = picked ? normalizePickerUser(picked) : null;
+    setExtraMembers((prev) => [
+      ...prev,
+      {
+        userId: uid,
+        projectRole: DEFAULT_MEMBER_ROLE,
+        prenom: normalized?.prenom ?? '',
+        nom: normalized?.nom ?? '',
+        email: normalized?.email ?? '',
+        name: normalized?.name,
+      },
+    ]);
   };
 
   const updateMemberRole = (userId: number, projectRole: string) => {
@@ -229,8 +333,6 @@ const EditProjectModal: React.FC<EditProjectModalProps> = ({
   const removeMemberRow = (userId: number) => {
     setExtraMembers((prev) => prev.filter((m) => m.userId !== userId));
   };
-
-  const userById = (id: number) => teamMembers.find((m) => userNumericId(m) === id);
 
   const showChefSection = canManageChef || canManageMembers;
   const showMembersSection = canManageMembers;
@@ -280,6 +382,7 @@ const EditProjectModal: React.FC<EditProjectModalProps> = ({
         await projectService.updateTeam(projectId, payload, {
           project: projectCtx ?? undefined,
         });
+        dispatchProjectTeamChanged({ projectId });
       } else if (canManageChef && chefId != null) {
         await projectService.assignChef(projectId, chefId, {
           project: projectCtx ?? undefined,
@@ -309,7 +412,8 @@ const EditProjectModal: React.FC<EditProjectModalProps> = ({
     return null;
   }
 
-  const noTeam = !teamLoading && teamMembers.length === 0;
+  const noResponsible =
+    !teamLoading && responsibleCandidates.length === 0;
 
   const modal = (
     <AnimatePresence>
@@ -452,10 +556,13 @@ const EditProjectModal: React.FC<EditProjectModalProps> = ({
                       <div className="create-project-section create-project-section--tight-top">
                         <h3 className="create-project-section-title">
                           <UserCircle2 size={14} aria-hidden />
-                          Responsable du projet
+                          Chef de projet
                         </h3>
+                        <p className="create-project-chef-role-hint">
+                          Responsable principal du projet (distinct de l&apos;équipe ci-dessous).
+                        </p>
                         <div className="form-group form-group--flush">
-                          <label htmlFor="edit-project-chef">Chef de projet</label>
+                          <label htmlFor="edit-project-chef">Responsable du projet</label>
                           <div className="input-wrapper">
                             <UserCircle2 className="input-icon" size={16} />
                             <select
@@ -465,17 +572,21 @@ const EditProjectModal: React.FC<EditProjectModalProps> = ({
                                 const v = e.target.value;
                                 setChefId(v ? Number(v) : null);
                               }}
-                              disabled={isSubmitting || teamLoading || noTeam}
+                              disabled={isSubmitting || teamLoading || noResponsible}
                               required={canManageMembers}
                             >
                               <option value="">
-                                {canManageMembers ? 'Sélectionner un chef de projet' : 'Non assigné'}
+                                {canManageMembers
+                                  ? noResponsible
+                                    ? 'Aucun responsable éligible'
+                                    : 'Sélectionner un chef de projet'
+                                  : 'Non assigné'}
                               </option>
-                              {teamMembers.map((m) => {
+                              {responsibleCandidates.map((m) => {
                                 const id = userNumericId(m);
                                 return (
                                   <option key={id} value={id}>
-                                    {userDisplayName(m)} — {m.email}
+                                    {formatUserPickerLabel(m)}
                                   </option>
                                 );
                               })}
@@ -503,23 +614,19 @@ const EditProjectModal: React.FC<EditProjectModalProps> = ({
                               disabled={
                                 isSubmitting ||
                                 teamLoading ||
-                                noTeam ||
-                                !chefId ||
                                 membersAvailableToAdd.length === 0
                               }
                             >
                               <option value="">
-                                {!chefId
-                                  ? 'Sélectionnez d\'abord un chef de projet'
-                                  : membersAvailableToAdd.length === 0
-                                    ? 'Aucun membre à ajouter'
-                                    : 'Ajouter…'}
+                                {membersAvailableToAdd.length === 0
+                                  ? 'Aucun membre à ajouter'
+                                  : 'Ajouter…'}
                               </option>
                               {membersAvailableToAdd.map((m) => {
                                 const id = userNumericId(m);
                                 return (
                                   <option key={id} value={id}>
-                                    {userDisplayName(m)} — {m.email}
+                                    {formatUserPickerLabel(m)}
                                   </option>
                                 );
                               })}
@@ -530,14 +637,22 @@ const EditProjectModal: React.FC<EditProjectModalProps> = ({
                         {extraMembers.length > 0 ? (
                           <ul className="create-project-member-list" aria-label="Membres du projet">
                             {extraMembers.map((row) => {
-                              const u = userById(row.userId);
+                              const u = resolvePickerUser(row.userId, row);
+                              const label = formatUserPickerLabel(u);
+                              const [namePart, emailPart] = label.includes(' — ')
+                                ? label.split(' — ', 2)
+                                : [label, ''];
                               return (
                                 <li key={row.userId} className="create-project-member-row">
                                   <div className="create-project-member-identity">
                                     <span className="create-project-member-name">
-                                      {u ? userDisplayName(u) : `Utilisateur #${row.userId}`}
+                                      {namePart || emailPart || label}
                                     </span>
-                                    <span className="create-project-member-email">{u?.email}</span>
+                                    {emailPart && namePart ? (
+                                      <span className="create-project-member-email">
+                                        {emailPart}
+                                      </span>
+                                    ) : null}
                                   </div>
                                   <label className="create-project-role-label">
                                     <span>Rôle dans le projet</span>
@@ -547,8 +662,9 @@ const EditProjectModal: React.FC<EditProjectModalProps> = ({
                                         updateMemberRole(row.userId, e.target.value)
                                       }
                                       disabled={isSubmitting}
+                                      aria-label={`Rôle de ${namePart || emailPart || 'membre'} dans ce projet`}
                                     >
-                                      {PROJECT_MEMBER_ROLE_OPTIONS.map((opt) => (
+                                      {PROJECT_LOCAL_ROLE_OPTIONS.map((opt) => (
                                         <option key={opt} value={opt}>
                                           {opt}
                                         </option>

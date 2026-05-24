@@ -9,7 +9,104 @@
 }
 
 .list-status-view--clickup {
-  padding: 12px 0 24px;
+  padding: 8px 0 24px;
+}
+
+.list-status-view--clickup.list-status-view--member-badges .list-status-group-header {
+  padding: 6px 0;
+}
+
+.list-status-view--clickup.list-status-view--member-badges .list-status-tr {
+  transition: background 0.12s ease;
+}
+
+.list-status-view--clickup.list-status-view--member-badges .list-status-tr:hover td {
+  background: #f8f7ff;
+}
+
+.list-status-view--clickup.list-status-view--member-badges .list-status-task-name-cell {
+  font-weight: 500;
+  color: #292d34;
+}
+
+.list-status-view--clickup.list-status-view--member-badges .list-status-add-new-task {
+  color: #87909e;
+  font-weight: 500;
+}
+
+.list-status-view--clickup.list-status-view--member-badges .list-status-add-new-task:hover {
+  color: #7b68ee;
+  background: #f8f7ff;
+}
+
+.list-status-view--member-badges .list-status-group-header {
+  gap: 6px;
+}
+
+.list-status-group-title-btn {
+  display: inline-flex;
+  align-items: center;
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.list-status-group-title-btn:hover {
+  opacity: 0.92;
+}
+
+.list-status-view--member-badges .list-status-count {
+  font-size: 11px;
+  font-weight: 600;
+  color: #87909e;
+  margin-left: 0;
+}
+
+.list-status-view--member-badges .member-status-pill {
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.list-status-view--member-badges .col-status .status-badge,
+.list-status-view--member-badges .col-status .status-badge-select {
+  display: none;
+}
+
+/* Member list / sprint list — ClickUp-style column headers */
+.list-status-view--member-badges .list-status-table-wrap {
+  border: 1px solid #eceafd;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.list-status-view--member-badges .list-status-table thead {
+  background: #fafafd;
+  border-bottom: 1px solid #eceafd;
+}
+
+.list-status-view--member-badges .list-status-table th {
+  padding: 12px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  color: #8b82f6;
+  background: #fafafd;
+  border-bottom: 1px solid #eceafd;
+  vertical-align: middle;
+  text-transform: none;
+}
+
+.list-status-view--member-badges .list-status-table .col-checkbox {
+  padding-left: 12px;
+  padding-right: 8px;
+}
+
+.list-status-view--member-badges .list-status-table td {
+  background: #fff;
 }
 
 .list-status-table-panel--clickup .list-status-table {

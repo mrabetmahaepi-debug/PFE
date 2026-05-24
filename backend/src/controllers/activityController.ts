@@ -7,6 +7,7 @@ import {
 } from "../lib/activityFilters";
 import {
   getEnterpriseRecentActivities,
+  getMemberActivityChart,
   getMemberRecentActivities,
 } from "../services/enterpriseActivity.service";
 
@@ -62,10 +63,28 @@ export const getMemberActivities = async (req: Request, res: Response) => {
       return res.status(401).json({ message: "Non authentifié" });
     }
 
+    const chartDaysRaw = parseInt(
+      String(req.query.days ?? req.query.chartDays ?? "0"),
+      10
+    );
+    if (Number.isFinite(chartDaysRaw) && chartDaysRaw > 0) {
+      const activities = await getMemberActivityChart(
+        Number(user.id),
+        chartDaysRaw
+      );
+      return res.json(activities);
+    }
+
     const limitRaw = parseInt(String(req.query.limit ?? "12"), 10);
     const limit = Number.isFinite(limitRaw) ? limitRaw : 12;
+    const tasksOnly =
+      req.query.tasksOnly === "true" || req.query.tasksOnly === "1";
 
-    const activities = await getMemberRecentActivities(Number(user.id), limit);
+    const activities = await getMemberRecentActivities(
+      Number(user.id),
+      limit,
+      { tasksOnly }
+    );
     return res.json(activities);
   } catch (error) {
     console.error("[getMemberActivities] error:", error);

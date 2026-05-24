@@ -1,0 +1,117 @@
+/* Member workflow status pills — list views, task groups, Gestion de projet */
+.member-status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #eef1f5;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #4b5563;
+  text-transform: uppercase;
+  line-height: 1.2;
+  flex-shrink: 0;
+  border: 1px solid transparent;
+  box-sizing: border-box;
+}
+
+.member-status-pill--purple {
+  background: #f0e9ff;
+  color: #7b68ee;
+}
+
+.member-status-pill--amber {
+  background: #fff2dd;
+  color: #f59e0b;
+}
+
+.member-status-pill--green {
+  background: #e7f8ef;
+  color: #20c997;
+}
+
+/* Status column dropdown — pill + invisible native select (ClickUp-style) */
+.member-status-select-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+}
+
+.member-status-select-wrap .member-status-pill {
+  pointer-events: none;
+  user-select: none;
+}
+
+.member-status-select-native {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  opacity: 0;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.member-status-select-native:disabled {
+  cursor: wait;
+}
+
+/* Member priority — colored text only (list table) */
+.member-priority-text-select {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-width: 4.5rem;
+  max-width: 100%;
+}
+
+.member-priority-text {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+  pointer-events: none;
+  user-select: none;
+}
+
+.member-priority-text--high {
+  color: #ef4444;
+}
+
+.member-priority-text--medium {
+  color: #3b82f6;
+}
+
+.member-priority-text--low {
+  color: #22c55e;
+}
+
+.member-priority-text-select-native {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  opacity: 0;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.member-priority-text-select-native:disabled {
+  cursor: wait;
+}
+
+.member-priority-text-select--readonly .member-priority-text {
+  pointer-events: auto;
+}

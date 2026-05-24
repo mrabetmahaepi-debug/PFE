@@ -1,0 +1,135 @@
+.cu-delete-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 11000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  background: rgba(15, 23, 42, 0.52);
+  animation: cu-delete-overlay-in 0.2s ease;
+}
+
+@keyframes cu-delete-overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.cu-delete-modal {
+  width: 100%;
+  max-width: 440px;
+  padding: 1.5rem 1.5rem 1.25rem;
+  background: #fff;
+  border-radius: 20px;
+  box-shadow:
+    0 24px 48px rgba(15, 23, 42, 0.14),
+    0 8px 16px rgba(15, 23, 42, 0.08);
+  text-align: left;
+  animation: cu-delete-modal-in 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes cu-delete-modal-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.cu-delete-modal-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin-bottom: 1rem;
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+  background: #fef2f2;
+  color: #ef4444;
+}
+
+.cu-delete-modal-title {
+  margin: 0 0 0.625rem;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: #1e293b;
+}
+
+.cu-delete-modal-desc {
+  margin: 0 0 1.375rem;
+  font-size: 0.875rem;
+  line-height: 1.55;
+  color: #64748b;
+}
+
+.cu-delete-modal-desc-line {
+  display: block;
+}
+
+.cu-delete-modal-error {
+  margin: -0.75rem 0 1rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #dc2626;
+}
+
+.cu-delete-modal-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.625rem;
+}
+
+.cu-delete-modal-cancel {
+  padding: 0.5rem 1rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: #fff;
+  color: #334155;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.cu-delete-modal-cancel:hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: #94a3b8;
+}
+
+.cu-delete-modal-cancel:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.cu-delete-modal-confirm {
+  padding: 0.5rem 1.125rem;
+  border: none;
+  border-radius: 10px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.cu-delete-modal-confirm:hover:not(:disabled) {
+  background: #dc2626;
+}
+
+.cu-delete-modal-confirm:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}

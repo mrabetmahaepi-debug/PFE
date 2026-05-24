@@ -1,0 +1,57 @@
+/* ClickUp-style clickable stat widgets — member dashboard only */
+.mcdb-stat-card {
+  background: #fff;
+  border: 1px solid #e8eaed;
+  border-radius: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  padding: 14px 40px 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  width: 100%;
+  position: relative;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+}
+
+.mcdb-stat-card:hover {
+  border-color: #d5d8de;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
+}
+
+.mcdb-stat-card:focus-visible {
+  outline: 2px solid #7b68ee;
+  outline-offset: 2px;
+}
+
+.mcdb-stat-card:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.mcdb-stat-arrow {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  margin-top: -0.5em;
+  font-size: 16px;
+  font-weight: 600;
+  color: #7b68ee;
+  opacity: 0;
+  transform: translateX(6px);
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+  line-height: 1;
+}
+
+.mcdb-stat-card:hover .mcdb-stat-arrow {
+  opacity: 1;
+  transform: translateX(0);
+}

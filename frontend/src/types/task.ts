@@ -53,7 +53,9 @@ export interface Tache {
   id_group?: number | null;
   id_folder?: number | null;
   id_list?: number | null;
+  id_parent_tache?: number | null;
   assigne_a?: number;
+  subtasks?: Tache[];
   createdAt?: string;
   updatedAt?: string;
   utilisateur?: {
@@ -74,6 +76,9 @@ export interface Tache {
     id_projet: number;
     nom_p?: string | null;
   } | null;
+  /** Inclus par GET /tasks/:id — effective project permission slugs for the current user. */
+  currentUserPermissions?: string[];
+  currentUserProjectRole?: string | null;
 }
 
 export interface CreateTaskData {
@@ -87,5 +92,6 @@ export interface CreateTaskData {
   id_folder?: number | null;
   id_list?: number | null;
   assigne_a?: number | null;
+  date_debut_t?: string;
   date_limite_t?: string;
 }

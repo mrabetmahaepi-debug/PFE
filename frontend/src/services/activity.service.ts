@@ -31,6 +31,29 @@ export interface EnterpriseActivityItem {
   status: EnterpriseActivityStatus;
 }
 
+function mapActivityFeedError(err: unknown): Error {
+  const res = (err as { response?: { status?: number; data?: Record<string, unknown> } })
+    ?.response;
+  const status = res?.status;
+  const data = res?.data;
+  const message =
+    (typeof data?.message === 'string' && data.message) ||
+    (typeof data?.error === 'string' && data.error) ||
+    undefined;
+  if (status === 401) {
+    return new Error(message || 'Session expirée — reconnectez-vous');
+  }
+  if (status === 404) {
+    return new Error(
+      'Service activité indisponible — redémarrez le backend (route /api/activities/member)'
+    );
+  }
+  if (!status) {
+    return new Error('Serveur injoignable — vérifiez que le backend est démarré');
+  }
+  return new Error(message || "Impossible de charger l'activité");
+}
+
 export const activityService = {
   /** Member dashboard — assigned tasks & project workspace events. */
   async getMemberFeed(limit = 12): Promise<EnterpriseActivityItem[]> {
@@ -40,26 +63,31 @@ export const activityService = {
       });
       return response.data ?? [];
     } catch (err: unknown) {
-      const res = (err as { response?: { status?: number; data?: Record<string, unknown> } })
-        ?.response;
-      const status = res?.status;
-      const data = res?.data;
-      const message =
-        (typeof data?.message === 'string' && data.message) ||
-        (typeof data?.error === 'string' && data.error) ||
-        undefined;
-      if (status === 401) {
-        throw new Error(message || 'Session expirée — reconnectez-vous');
-      }
-      if (status === 404) {
-        throw new Error(
-          'Service activité indisponible — redémarrez le backend (route /api/activities/member)'
-        );
-      }
-      if (!status) {
-        throw new Error('Serveur injoignable — vérifiez que le backend est démarré');
-      }
-      throw new Error(message || "Impossible de charger l'activité");
+      throw mapActivityFeedError(err);
+    }
+  },
+
+  /** Member dashboard chart — tracked events from the last N days (default 7). */
+  async getMemberChartActivity(days = 7): Promise<EnterpriseActivityItem[]> {
+    try {
+      const response = await api.get<EnterpriseActivityItem[]>('/activities/member', {
+        params: { days },
+      });
+      return response.data ?? [];
+    } catch (err: unknown) {
+      throw mapActivityFeedError(err);
+    }
+  },
+
+  /** Member today page — task events only (created, completed, EN COURS, overdue, assigned). */
+  async getMemberTaskFeed(limit = 14): Promise<EnterpriseActivityItem[]> {
+    try {
+      const response = await api.get<EnterpriseActivityItem[]>('/activities/member', {
+        params: { limit, tasksOnly: true },
+      });
+      return response.data ?? [];
+    } catch (err: unknown) {
+      throw mapActivityFeedError(err);
     }
   },
 

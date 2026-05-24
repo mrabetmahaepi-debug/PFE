@@ -1,4 +1,5 @@
 import api from './api';
+import { dispatchProjectTaskStatsChanged } from '../lib/workspaceEvents';
 
 export type CreateSidebarFolderPayload = {
   spaceId: number;
@@ -6,9 +7,13 @@ export type CreateSidebarFolderPayload = {
 };
 
 export type CreateSidebarListPayload = {
-  spaceId: number;
-  folderId: number | null;
-  name: string;
+  spaceId?: number;
+  folderId?: number | null;
+  name?: string;
+  /** Sprint-scoped list (sidebar Sprint → + → Créer liste). */
+  id_projet?: number;
+  id_sprint?: number;
+  nom?: string;
 };
 
 export type SidebarFolderResponse = {
@@ -33,6 +38,9 @@ export type CreateSidebarTaskPayload = {
   title: string;
   status?: string;
   projectId?: number;
+  startDate?: string;
+  endDate?: string;
+  assigneeId?: number;
 };
 
 export const sidebarCreateService = {
@@ -56,6 +64,16 @@ export const sidebarCreateService = {
       title: payload.title,
       status: payload.status ?? 'À faire',
       projectId: payload.projectId,
+      date_debut_t: payload.startDate,
+      startDate: payload.startDate,
+      date_limite_t: payload.endDate,
+      dueDate: payload.endDate,
+      endDate: payload.endDate,
+      assigneeId: payload.assigneeId,
+      assigne_a: payload.assigneeId,
+    });
+    dispatchProjectTaskStatsChanged({
+      projectId: payload.projectId ?? undefined,
     });
     return response.data;
   },

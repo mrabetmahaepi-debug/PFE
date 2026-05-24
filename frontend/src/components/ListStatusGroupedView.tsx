@@ -27,6 +27,17 @@ import {
   taskMatchesStatusGroup,
 } from '../lib/listStatusGroups';
 import { getStatusLabel, getStatusTone, type StatusTone } from '../lib/listStatusStyles';
+import {
+  memberStatusPillClass,
+  memberWorkflowStatusLabel,
+  statutKeyToPillTone,
+  memberPriorityTextClass,
+  memberListPriorityLabel,
+  memberListPriorityValue,
+  MEMBER_LIST_PRIORITY_OPTIONS,
+  taskPriorityToPillTone,
+} from '../lib/memberStatusPill';
+import '../styles/memberStatusPill.css';
 import './ListStatusGroupedView.css';
 
 export type TaskFieldPatch = Partial<{
@@ -35,20 +46,32 @@ export type TaskFieldPatch = Partial<{
   date_limite_t: string | null;
 }>;
 
-const CLICKUP_STATUS_KEYS = ['todo', 'en_cours', 'terminee'] as const;
+/** ClickUp list view — group order in main content */
+const CLICKUP_STATUS_KEYS = [
+  'en_cours',
+  'todo',
+  'en_retard',
+  'terminee',
+] as const;
 
 const CLICKUP_STATUS_LABELS: Record<string, string> = {
   todo: 'À FAIRE',
   en_cours: 'EN COURS',
-  terminee: 'TERMINÉE',
+  en_retard: 'EN RETARD',
+  terminee: 'TERMINÉ',
 };
 
 export interface ListStatusGroupedViewProps {
   variant?: 'default' | 'clickup';
+  /** Member list pages — colored status pills instead of dot + plain text. */
+  memberStatusBadges?: boolean;
   listId: number;
   listName: string;
   tasks: Tache[];
   searchQuery?: string;
+  /** When false, hide TERMINÉ / closed status group */
+  showClosed?: boolean;
+  visibleColumns?: Partial<Record<ColumnKey, boolean>>;
   parentCtx: HierarchyParentContext;
   canCreateTask: boolean;
   highlightTaskId?: number | null;
@@ -59,6 +82,8 @@ export interface ListStatusGroupedViewProps {
   navigateOnRowClick?: boolean;
   onStatusesChange?: () => void;
   canEditStatus?: boolean;
+  /** Member list — per-task status edit (change_task_status / change_own_task_status). */
+  canEditStatusFor?: (task: Tache) => boolean;
   canEditFields?: boolean;
   assigneeOptions?: { id: number; label: string }[];
   projectMembers?: { id: number; label: string }[];
@@ -148,6 +173,7 @@ interface StatusBadgeSelectProps {
   statuses: ListStatusPM[];
   canEdit: boolean;
   saving?: boolean;
+  memberPills?: boolean;
   onChange: (statutKey: string) => void;
 }
 
@@ -156,13 +182,25 @@ const StatusBadgeSelect: React.FC<StatusBadgeSelectProps> = ({
   statuses,
   canEdit,
   saving,
+  memberPills = false,
   onChange,
 }) => {
   const currentKey = normalizeTaskStatutKey(task.statut_t);
   const tone = getStatusTone(currentKey);
   const label = getStatusLabel(currentKey, statuses);
+  const pillTone = statutKeyToPillTone(currentKey);
+  const pillLabel = memberWorkflowStatusLabel(currentKey);
 
   const options = useMemo(() => {
+    if (memberPills) {
+      return CLICKUP_STATUS_KEYS.map((key) => ({
+        id_status: -1,
+        id_list: task.id_list ?? 0,
+        label: memberWorkflowStatusLabel(key),
+        statut_key: key,
+        position: -1,
+      }));
+    }
     const list = [...statuses];
     if (!list.some((s) => s.statut_key === currentKey)) {
       list.unshift({
@@ -174,7 +212,41 @@ const StatusBadgeSelect: React.FC<StatusBadgeSelectProps> = ({
       });
     }
     return list;
-  }, [statuses, currentKey, label, task.id_list]);
+  }, [statuses, currentKey, label, task.id_list, memberPills]);
+
+  if (memberPills) {
+    if (!canEdit) {
+      return (
+        <span className={memberStatusPillClass(pillTone)}>{pillLabel}</span>
+      );
+    }
+
+    return (
+      <div
+        className="member-status-select-wrap"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <span className={memberStatusPillClass(pillTone)}>{pillLabel}</span>
+        <select
+          className="member-status-select-native"
+          value={currentKey}
+          disabled={saving}
+          onChange={(e) => {
+            e.stopPropagation();
+            onChange(e.target.value);
+          }}
+          onClick={(e) => e.stopPropagation()}
+          aria-label={`Statut : ${pillLabel}`}
+        >
+          {options.map((s) => (
+            <option key={s.statut_key} value={s.statut_key}>
+              {memberWorkflowStatusLabel(s.statut_key)}
+            </option>
+          ))}
+        </select>
+      </div>
+    );
+  }
 
   if (!canEdit) {
     return (
@@ -217,12 +289,104 @@ const StatusBadgeSelect: React.FC<StatusBadgeSelectProps> = ({
   );
 };
 
+interface PriorityBadgeSelectProps {
+  task: Tache;
+  canEdit: boolean;
+  memberPills?: boolean;
+  clickUpVariant?: boolean;
+  onChange: (priority: TaskPriority) => void;
+}
+
+const PriorityBadgeSelect: React.FC<PriorityBadgeSelectProps> = ({
+  task,
+  canEdit,
+  memberPills = false,
+  clickUpVariant = false,
+  onChange,
+}) => {
+  const priorityValue = memberPills
+    ? memberListPriorityValue(task.priorite_t)
+    : (task.priorite_t ?? TaskPriority.MEDIUM);
+  const tone = taskPriorityToPillTone(priorityValue);
+  const label = memberPills
+    ? memberListPriorityLabel(task.priorite_t)
+    : (TASK_PRIORITY_LABELS[task.priorite_t] ?? task.priorite_t ?? '—');
+
+  if (memberPills) {
+    const textClass = memberPriorityTextClass(tone);
+
+    if (!canEdit) {
+      return <span className={textClass}>{label}</span>;
+    }
+
+    return (
+      <div
+        className="member-priority-text-select"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <span className={textClass}>{label}</span>
+        <select
+          className="member-priority-text-select-native"
+          value={priorityValue}
+          aria-label={`Priorité : ${label}`}
+          onChange={(e) => {
+            e.stopPropagation();
+            onChange(e.target.value as TaskPriority);
+          }}
+        >
+          {MEMBER_LIST_PRIORITY_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+      </div>
+    );
+  }
+
+  if (!canEdit) {
+    return (
+      <span className="list-status-priority">
+        {clickUpVariant && <Flag size={13} aria-hidden />}
+        {label}
+      </span>
+    );
+  }
+
+  return (
+    <select
+      className="list-status-inline-select"
+      value={priorityValue}
+      onMouseDown={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      }}
+      onClick={(e) => e.stopPropagation()}
+      onChange={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onChange(e.target.value as TaskPriority);
+      }}
+    >
+      {Object.entries(TASK_PRIORITY_LABELS).map(([k, optLabel]) => (
+        <option key={k} value={k}>
+          {optLabel}
+        </option>
+      ))}
+    </select>
+  );
+};
+
 interface StatusTaskTableProps {
   tasks: Tache[];
   allStatuses: ListStatusPM[];
   clickUpVariant?: boolean;
+  memberStatusBadges?: boolean;
+  externalSearchQuery?: string;
+  visibleColumns?: Partial<Record<ColumnKey, boolean>>;
   canCreateTask: boolean;
   canEditStatus: boolean;
+  canEditStatusFor?: (task: Tache) => boolean;
   canEditFields: boolean;
   assigneeOptions: { id: number; label: string }[];
   highlightTaskId?: number | null;
@@ -245,8 +409,10 @@ const StatusTaskTable: React.FC<StatusTaskTableProps> = ({
   tasks,
   allStatuses,
   clickUpVariant = false,
+  memberStatusBadges = false,
   canCreateTask,
   canEditStatus,
+  canEditStatusFor,
   canEditFields,
   assigneeOptions,
   highlightTaskId,
@@ -256,24 +422,37 @@ const StatusTaskTable: React.FC<StatusTaskTableProps> = ({
   navigateOnRowClick = true,
   onTaskFieldChange,
   onTaskStatusChange,
+  externalSearchQuery,
+  visibleColumns: visibleColumnsProp,
 }) => {
   const navigate = useNavigate();
   const [filter, setFilter] = useState('');
   const [visibleCols, setVisibleCols] = useState<Record<ColumnKey, boolean>>(
-    clickUpVariant ? CLICKUP_VISIBLE : DEFAULT_VISIBLE
+    () => ({
+      ...(clickUpVariant ? CLICKUP_VISIBLE : DEFAULT_VISIBLE),
+      ...visibleColumnsProp,
+    })
   );
   const [columnsOpen, setColumnsOpen] = useState(false);
   const [selected, setSelected] = useState<Set<number>>(() => new Set());
 
+  useEffect(() => {
+    if (!visibleColumnsProp) return;
+    setVisibleCols((prev) => ({ ...prev, ...visibleColumnsProp }));
+  }, [visibleColumnsProp]);
+
+  const searchText =
+    externalSearchQuery !== undefined ? externalSearchQuery : filter;
+
   const filtered = useMemo(() => {
-    const q = filter.trim().toLowerCase();
+    const q = searchText.trim().toLowerCase();
     if (!q) return tasks;
     return tasks.filter((t) => {
       const name = (t.nom_t || '').toLowerCase();
       const desc = (t.description_t || '').toLowerCase();
       return name.includes(q) || desc.includes(q);
     });
-  }, [tasks, filter]);
+  }, [tasks, searchText]);
 
   const columnDefs = clickUpVariant ? CLICKUP_COLUMNS : ALL_COLUMNS;
   const visibleColumnList = columnDefs.filter((c) => visibleCols[c.key]);
@@ -297,6 +476,130 @@ const StatusTaskTable: React.FC<StatusTaskTableProps> = ({
       navigate(`/tasks/${task.id_tache}`);
     }
     onTaskClick?.(task);
+  };
+
+  const interactiveColumns = new Set<ColumnKey>([
+    'checkbox',
+    'assignee',
+    'dueDate',
+    'status',
+    'priority',
+  ]);
+
+  const renderTaskCell = (colKey: ColumnKey, t: Tache): React.ReactNode => {
+    switch (colKey) {
+      case 'checkbox':
+        return clickUpVariant ? (
+          <span className="list-status-task-circle" aria-hidden>
+            <Circle size={14} strokeWidth={1.75} />
+          </span>
+        ) : (
+          <input
+            type="checkbox"
+            checked={selected.has(t.id_tache)}
+            onMouseDown={stopInteractive}
+            onClick={stopInteractive}
+            onChange={() => toggleSelect(t.id_tache)}
+            aria-label={`Select ${t.nom_t}`}
+          />
+        );
+      case 'name':
+        return (
+          <span className="list-status-task-name-cell">{t.nom_t}</span>
+        );
+      case 'description':
+        return (
+          <span className="list-status-cell-muted">
+            {t.description_t?.trim() || '—'}
+          </span>
+        );
+      case 'assignee':
+        return canEditFields && assigneeOptions.length > 0 ? (
+          <select
+            className="list-status-inline-select"
+            value={t.assigne_a ?? ''}
+            onMouseDown={stopInteractive}
+            onClick={stopInteractive}
+            onChange={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              const v = e.target.value;
+              void onTaskFieldChange?.(t.id_tache, {
+                assigne_a: v ? Number(v) : null,
+              });
+            }}
+          >
+            <option value="">—</option>
+            {assigneeOptions.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.label}
+              </option>
+            ))}
+          </select>
+        ) : t.utilisateur ? (
+          <span className="list-status-assignee">
+            <span className="list-status-assignee-avatar">
+              {assigneeInitials(t)}
+            </span>
+            <span>{assigneeLabel(t)}</span>
+          </span>
+        ) : (
+          <span className="list-status-cell-muted">—</span>
+        );
+      case 'dueDate':
+        return canEditFields ? (
+          <input
+            type="date"
+            className="list-status-inline-date"
+            onMouseDown={stopInteractive}
+            onClick={stopInteractive}
+            value={
+              t.date_limite_t ? String(t.date_limite_t).slice(0, 10) : ''
+            }
+            onChange={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              void onTaskFieldChange?.(t.id_tache, {
+                date_limite_t: e.target.value || null,
+              });
+            }}
+          />
+        ) : (
+          <span className="list-status-due-cell">
+            {clickUpVariant && <Calendar size={13} aria-hidden />}
+            {formatDueDate(t.date_limite_t)}
+          </span>
+        );
+      case 'priority':
+        return (
+          <PriorityBadgeSelect
+            task={t}
+            canEdit={canEditFields}
+            memberPills={memberStatusBadges}
+            clickUpVariant={clickUpVariant}
+            onChange={(prio) =>
+              void onTaskFieldChange?.(t.id_tache, { priorite_t: prio })
+            }
+          />
+        );
+      case 'status': {
+        const statusEditable = canEditStatusFor
+          ? canEditStatusFor(t)
+          : canEditStatus;
+        return (
+          <StatusBadgeSelect
+            task={t}
+            statuses={allStatuses}
+            canEdit={statusEditable}
+            saving={savingStatusTaskId === t.id_tache}
+            memberPills={memberStatusBadges}
+            onChange={(key) => void onTaskStatusChange?.(t.id_tache, key)}
+          />
+        );
+      }
+      default:
+        return null;
+    }
   };
 
   return (
@@ -379,162 +682,25 @@ const StatusTaskTable: React.FC<StatusTaskTableProps> = ({
                 onClick={() => handleTaskRowClick(t)}
                 style={{ cursor: 'pointer' }}
               >
-                {visibleCols.checkbox && (
-                  <td
-                    className="col-checkbox"
-                    onMouseDown={stopInteractive}
-                    onClick={stopInteractive}
-                  >
-                    {clickUpVariant ? (
-                      <span className="list-status-task-circle" aria-hidden>
-                        <Circle size={14} strokeWidth={1.75} />
-                      </span>
-                    ) : (
-                      <input
-                        type="checkbox"
-                        checked={selected.has(t.id_tache)}
-                        onMouseDown={stopInteractive}
-                        onClick={stopInteractive}
-                        onChange={() => toggleSelect(t.id_tache)}
-                        aria-label={`Select ${t.nom_t}`}
-                      />
-                    )}
-                  </td>
-                )}
-                {visibleCols.name && (
-                  <td className="col-name">
-                    <span className="list-status-task-name-cell">{t.nom_t}</span>
-                  </td>
-                )}
-                {visibleCols.description && (
-                  <td className="col-description">
-                    <span className="list-status-cell-muted">
-                      {t.description_t?.trim() || '—'}
-                    </span>
-                  </td>
-                )}
-                {visibleCols.assignee && (
-                  <td
-                    className="col-assignee"
-                    onMouseDown={stopInteractive}
-                    onClick={stopInteractive}
-                  >
-                    {canEditFields && assigneeOptions.length > 0 ? (
-                      <select
-                        className="list-status-inline-select"
-                        value={t.assigne_a ?? ''}
-                        onMouseDown={stopInteractive}
-                        onClick={stopInteractive}
-                        onChange={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          const v = e.target.value;
-                          void onTaskFieldChange?.(t.id_tache, {
-                            assigne_a: v ? Number(v) : null,
-                          });
-                        }}
-                      >
-                        <option value="">—</option>
-                        {assigneeOptions.map((m) => (
-                          <option key={m.id} value={m.id}>
-                            {m.label}
-                          </option>
-                        ))}
-                      </select>
-                    ) : t.utilisateur ? (
-                      <span className="list-status-assignee">
-                        <span className="list-status-assignee-avatar">
-                          {assigneeInitials(t)}
-                        </span>
-                        <span>{assigneeLabel(t)}</span>
-                      </span>
-                    ) : (
-                      <span className="list-status-cell-muted">—</span>
-                    )}
-                  </td>
-                )}
-                {visibleCols.dueDate && (
-                  <td
-                    className="col-dueDate"
-                    onMouseDown={stopInteractive}
-                    onClick={stopInteractive}
-                  >
-                    {canEditFields ? (
-                      <input
-                        type="date"
-                        className="list-status-inline-date"
-                        onMouseDown={stopInteractive}
-                        onClick={stopInteractive}
-                        value={
-                          t.date_limite_t
-                            ? String(t.date_limite_t).slice(0, 10)
-                            : ''
-                        }
-                        onChange={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          void onTaskFieldChange?.(t.id_tache, {
-                            date_limite_t: e.target.value || null,
-                          });
-                        }}
-                      />
-                    ) : (
-                      <span className="list-status-due-cell">
-                        {clickUpVariant && <Calendar size={13} aria-hidden />}
-                        {formatDueDate(t.date_limite_t)}
-                      </span>
-                    )}
-                  </td>
-                )}
-                {visibleCols.status && (
-                  <td
-                    className="col-status"
-                    onMouseDown={stopInteractive}
-                    onClick={stopInteractive}
-                  >
-                    <StatusBadgeSelect
-                      task={t}
-                      statuses={allStatuses}
-                      canEdit={canEditStatus}
-                      saving={savingStatusTaskId === t.id_tache}
-                      onChange={(key) => void onTaskStatusChange?.(t.id_tache, key)}
-                    />
-                  </td>
-                )}
-                {visibleCols.priority && (
-                  <td
-                    className="col-priority"
-                    onMouseDown={stopInteractive}
-                    onClick={stopInteractive}
-                  >
-                    {canEditFields ? (
-                      <select
-                        className="list-status-inline-select"
-                        value={t.priorite_t ?? TaskPriority.MEDIUM}
-                        onMouseDown={stopInteractive}
-                        onClick={stopInteractive}
-                        onChange={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          void onTaskFieldChange?.(t.id_tache, {
-                            priorite_t: e.target.value as TaskPriority,
-                          });
-                        }}
-                      >
-                        {Object.entries(TASK_PRIORITY_LABELS).map(([k, label]) => (
-                          <option key={k} value={k}>
-                            {label}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      <span className="list-status-priority">
-                        {clickUpVariant && <Flag size={13} aria-hidden />}
-                        {TASK_PRIORITY_LABELS[t.priorite_t] ?? t.priorite_t ?? '—'}
-                      </span>
-                    )}
-                  </td>
-                )}
+                {visibleColumnList.map((col) => {
+                  const interactive = interactiveColumns.has(col.key);
+                  const memberCellNoPrevent =
+                    memberStatusBadges &&
+                    (col.key === 'priority' || col.key === 'status');
+                  const cellStop = memberCellNoPrevent
+                    ? (e: React.MouseEvent) => e.stopPropagation()
+                    : stopInteractive;
+                  return (
+                    <td
+                      key={col.key}
+                      className={`col-${col.key}`}
+                      onMouseDown={interactive ? cellStop : undefined}
+                      onClick={interactive ? cellStop : undefined}
+                    >
+                      {renderTaskCell(col.key, t)}
+                    </td>
+                  );
+                })}
               </tr>
             ))}
             {canCreateTask && (
@@ -546,7 +712,7 @@ const StatusTaskTable: React.FC<StatusTaskTableProps> = ({
                     onClick={onAddTask}
                   >
                     <Plus size={14} />
-                    {clickUpVariant ? '+ Ajouter Tâche' : '+ Add new task'}
+                    {clickUpVariant ? 'Ajouter Tâche' : '+ Add new task'}
                   </button>
                 </td>
               </tr>
@@ -560,10 +726,13 @@ const StatusTaskTable: React.FC<StatusTaskTableProps> = ({
 
 const ListStatusGroupedView: React.FC<ListStatusGroupedViewProps> = ({
   variant = 'default',
+  memberStatusBadges = false,
   listId,
   listName,
   tasks,
   searchQuery = '',
+  showClosed = true,
+  visibleColumns,
   parentCtx,
   canCreateTask,
   highlightTaskId,
@@ -572,6 +741,7 @@ const ListStatusGroupedView: React.FC<ListStatusGroupedViewProps> = ({
   navigateOnRowClick = true,
   onStatusesChange,
   canEditStatus = false,
+  canEditStatusFor,
   canEditFields = false,
   assigneeOptions = [],
   projectMembers = [],
@@ -629,8 +799,12 @@ const ListStatusGroupedView: React.FC<ListStatusGroupedViewProps> = ({
     const ordered = CLICKUP_STATUS_KEYS.map((key) =>
       filtered.find((s) => s.statut_key === key)
     ).filter(Boolean) as ListStatusPM[];
-    return ordered.length > 0 ? ordered : filtered;
-  }, [statuses, isClickUp]);
+    let result = ordered.length > 0 ? ordered : filtered;
+    if (!showClosed) {
+      result = result.filter((s) => s.statut_key !== 'terminee');
+    }
+    return result;
+  }, [statuses, isClickUp, showClosed]);
 
   useEffect(() => {
     if (displayStatuses.length > 0) {
@@ -699,7 +873,11 @@ const ListStatusGroupedView: React.FC<ListStatusGroupedViewProps> = ({
   };
 
   return (
-    <div className={`list-status-view${isClickUp ? ' list-status-view--clickup' : ''}`}>
+    <div
+      className={`list-status-view${isClickUp ? ' list-status-view--clickup' : ''}${
+        memberStatusBadges ? ' list-status-view--member-badges' : ''
+      }`}
+    >
       <h1 className="list-status-view-title">{listName}</h1>
 
       <div className="list-status-groups">
@@ -730,15 +908,29 @@ const ListStatusGroupedView: React.FC<ListStatusGroupedViewProps> = ({
                     <ChevronRight size={16} />
                   )}
                 </button>
-                <button
-                  type="button"
-                  className="list-status-name"
-                  onClick={() => toggleExpand(key)}
-                >
-                  {isClickUp
-                    ? CLICKUP_STATUS_LABELS[key] ?? status.label.toUpperCase()
-                    : status.label}
-                </button>
+                {memberStatusBadges ? (
+                  <button
+                    type="button"
+                    className="list-status-group-title-btn"
+                    onClick={() => toggleExpand(key)}
+                  >
+                    <span className={memberStatusPillClass(statutKeyToPillTone(key))}>
+                      {isClickUp
+                        ? CLICKUP_STATUS_LABELS[key] ?? status.label.toUpperCase()
+                        : status.label.toUpperCase()}
+                    </span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="list-status-name"
+                    onClick={() => toggleExpand(key)}
+                  >
+                    {isClickUp
+                      ? CLICKUP_STATUS_LABELS[key] ?? status.label.toUpperCase()
+                      : status.label}
+                  </button>
+                )}
                 <span className="list-status-count">{groupTasks.length}</span>
                 <div className="list-status-header-spacer" />
                 <div className="list-status-header-actions">
@@ -793,8 +985,10 @@ const ListStatusGroupedView: React.FC<ListStatusGroupedViewProps> = ({
                   tasks={groupTasks}
                   allStatuses={displayStatuses}
                   clickUpVariant={isClickUp}
+                  memberStatusBadges={memberStatusBadges}
                   canCreateTask={canCreateTask}
                   canEditStatus={canEditStatus}
+                  canEditStatusFor={canEditStatusFor}
                   canEditFields={canEditFields}
                   assigneeOptions={memberOptions}
                   highlightTaskId={highlightTaskId}
@@ -804,6 +998,8 @@ const ListStatusGroupedView: React.FC<ListStatusGroupedViewProps> = ({
                   navigateOnRowClick={navigateOnRowClick}
                   onTaskFieldChange={onTaskFieldChange}
                   onTaskStatusChange={onTaskStatusChange}
+                  externalSearchQuery={searchQuery}
+                  visibleColumns={visibleColumns}
                 />
               )}
             </div>

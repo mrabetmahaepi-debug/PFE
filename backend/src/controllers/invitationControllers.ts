@@ -16,10 +16,20 @@ import {
   isInvitationUsable,
   isPendingInviteUserUsable,
   findRoleByName,
+  setUserInvitationEmailStatus,
+  setInvitationRowEmailStatus,
+  type InvitationEmailStatus,
 } from "../services/invitation.service";
-import { sendEmail, isEmailConfigured, getEmailProviderInfo } from "../services/email.service";
+import {
+  sendEmail,
+  isEmailConfigured,
+  getEmailProviderInfo,
+  getEmailTransportLogContext,
+} from "../services/email.service";
 import { buildInvitationEmail } from "../services/emailTemplates/invitationEmail";
 import { createUtilisateurSafe } from "../lib/createUtilisateurSafe";
+import { resolveProjectPosteLabel } from "../lib/projectRoleLabels";
+import { listInvitationProjectsForUser } from "../lib/invitationProjectAccess";
 
 const ADMIN_ROLE_NAMES = ["Admin", "ADMIN", "admin"];
 
@@ -40,8 +50,157 @@ const buildInvitationLink = (token: string) => {
     process.env.APP_URL ||
     "http://localhost:5173"
   ).replace(/\/$/, "");
-  return `${base}/accept-invitation?token=${encodeURIComponent(token)}`;
+  return `${base}/invitations/accept/${encodeURIComponent(token)}`;
 };
+
+const memberSafeError = (raw: string): string => {
+  const lower = raw.toLowerCase();
+  if (lower.includes("expir")) {
+    return "Cette invitation a expiré. Demandez un nouvel envoi à votre administrateur.";
+  }
+  if (lower.includes("déjà accept") || lower.includes("deja accept")) {
+    return "Cette invitation a déjà été utilisée. Connectez-vous ou réinitialisez votre mot de passe.";
+  }
+  if (lower.includes("mot de passe") || lower.includes("correspondent pas")) {
+    return raw;
+  }
+  if (lower.includes("token") || lower.includes("introuvable") || lower.includes("invalide")) {
+    return "Lien d'invitation invalide ou expiré.";
+  }
+  return "Impossible de finaliser l'invitation. Vérifiez le lien ou contactez votre administrateur.";
+};
+
+type InvitationEmailAttempt = {
+  emailStatus: InvitationEmailStatus;
+  delivery_error?: string;
+  messageId?: string;
+  mode?: string;
+  httpStatus?: number;
+  brevoResponse?: unknown;
+};
+
+async function attemptInvitationEmail(params: {
+  to: string;
+  workspaceName: string;
+  inviterDisplayName: string;
+  inviterEmail?: string | null;
+  roleName: string;
+  acceptUrl: string;
+  expiresAt: Date | null;
+}): Promise<InvitationEmailAttempt> {
+  const transportLog = getEmailTransportLogContext();
+
+  if (!isEmailConfigured()) {
+    const msg =
+      "Fournisseur email non configuré (BREVO_API_KEY / EMAIL_FROM ou SMTP).";
+    console.warn("[invite:email] skipped — provider not configured", {
+      to: params.to,
+      acceptUrl: params.acceptUrl,
+      transport: transportLog,
+    });
+    return { emailStatus: "pending", delivery_error: msg, mode: "none" };
+  }
+
+  try {
+    const built = buildInvitationEmail({
+      workspaceName: params.workspaceName,
+      inviterName: params.inviterDisplayName,
+      inviterEmail: params.inviterEmail ?? undefined,
+      roleName: params.roleName,
+      acceptUrl: params.acceptUrl,
+      expiresAt: params.expiresAt,
+      appName: process.env.APP_NAME || "GestionPro",
+    });
+
+    const provider = getEmailProviderInfo().provider;
+
+    console.log({
+      provider,
+      from: transportLog.from,
+      to: params.to,
+      subject: built.subject,
+    });
+
+    console.info("[invite:email] before send", {
+      to: params.to,
+      workspaceName: params.workspaceName,
+      roleName: params.roleName,
+      acceptUrl: params.acceptUrl,
+      expiresAt: params.expiresAt?.toISOString?.() ?? params.expiresAt,
+      inviter: params.inviterDisplayName,
+      inviterEmail: params.inviterEmail ?? null,
+      transport: transportLog,
+    });
+
+    const sendResult = await sendEmail({
+      to: params.to,
+      subject: built.subject,
+      html: built.html,
+      text: built.text,
+      replyTo: params.inviterEmail || undefined,
+    });
+
+    if (sendResult.delivered) {
+      console.info("[invite:email] after Brevo send success", {
+        to: params.to,
+        mode: sendResult.mode,
+        messageId: sendResult.messageId,
+        httpStatus: sendResult.httpStatus,
+        brevoResponse: sendResult.brevoResponse,
+      });
+      return {
+        emailStatus: "sent",
+        messageId: sendResult.messageId,
+        mode: sendResult.mode,
+        httpStatus: sendResult.httpStatus,
+        brevoResponse: sendResult.brevoResponse,
+      };
+    }
+
+    const errMsg =
+      sendResult.error ||
+      "Erreur d'envoi email (aucun détail rapporté par le transport).";
+    console.error("[invite:email] Brevo/email delivery failed", {
+      to: params.to,
+      mode: sendResult.mode,
+      error: errMsg,
+      httpStatus: sendResult.httpStatus,
+      brevoResponse: sendResult.brevoResponse,
+      transport: transportLog,
+    });
+    const deliveryDetail =
+      sendResult.brevoResponse != null
+        ? `${errMsg} — Brevo: ${JSON.stringify(sendResult.brevoResponse)}`
+        : errMsg;
+    return {
+      emailStatus: "failed",
+      delivery_error: deliveryDetail,
+      mode: sendResult.mode,
+      httpStatus: sendResult.httpStatus,
+      brevoResponse: sendResult.brevoResponse,
+    };
+  } catch (mailErr: unknown) {
+    const e = mailErr as {
+      message?: string;
+      status?: number;
+      code?: string;
+      response?: {
+        body?: unknown;
+        data?: unknown;
+        text?: string;
+        status?: number;
+      };
+    };
+    console.error("BREVO SEND ERROR:", {
+      message: e?.message ?? (mailErr instanceof Error ? mailErr.message : String(mailErr)),
+      status: e?.status ?? e?.response?.status,
+      body: e?.response?.body,
+      data: e?.response?.data,
+      text: e?.response?.text,
+    });
+    throw mailErr;
+  }
+}
 
 export const createInvitation = async (
   req: Request,
@@ -60,16 +219,63 @@ export const createInvitation = async (
       id_invited_by: inviter?.id ?? null,
     });
 
+    const acceptUrl = buildInvitationLink(invitation.token!);
+    const [inviterRecord, enterprise, roleRow] = await Promise.all([
+      inviter?.id
+        ? prisma.utilisateur.findUnique({
+            where: { id_utilisateur: Number(inviter.id) },
+            select: { prenom: true, nom: true, email: true },
+          })
+        : Promise.resolve(null),
+      invitation.id_entreprise
+        ? prisma.entreprise.findUnique({
+            where: { id_entreprise: invitation.id_entreprise },
+            select: { nom: true },
+          })
+        : Promise.resolve(null),
+      invitation.id_role
+        ? prisma.role.findUnique({
+            where: { id_role: invitation.id_role },
+            select: { nom: true },
+          })
+        : Promise.resolve(null),
+    ]);
+
+    const delivery = await attemptInvitationEmail({
+      to: invitation.email!,
+      workspaceName: enterprise?.nom || "votre espace de travail",
+      inviterDisplayName: buildInviterDisplayName(inviterRecord),
+      inviterEmail: inviterRecord?.email,
+      roleName: roleRow?.nom || "Membre",
+      acceptUrl,
+      expiresAt: invitation.expires_at,
+    });
+
+    await setInvitationRowEmailStatus(
+      invitation.id_invitation,
+      delivery.emailStatus
+    );
+
+    const link = acceptUrl;
+    const warning =
+      delivery.emailStatus !== "sent"
+        ? "Invitation créée, mais l'email n'a pas pu être envoyé."
+        : undefined;
+
     return res.status(201).json({
-      message: "Invitation créée",
+      message: warning || "Invitation créée et email envoyé.",
+      warning,
       invitation: {
         id_invitation: invitation.id_invitation,
         email: invitation.email,
         token: invitation.token,
+        link,
         expires_at: invitation.expires_at,
         id_role: invitation.id_role,
         id_entreprise: invitation.id_entreprise,
+        emailStatus: delivery.emailStatus,
       },
+      ...(delivery.delivery_error ? { delivery_error: delivery.delivery_error } : {}),
     });
   } catch (error: any) {
     if (error?.name === "ZodError") return next(error);
@@ -96,6 +302,15 @@ export const createTeamInvitations = async (
   res: Response,
   next: NextFunction
 ) => {
+  console.info("[invite:team] invitation request started", {
+    path: req.path,
+    method: req.method,
+    bodyEmails: Array.isArray(req.body?.emails) ? req.body.emails : null,
+    poste: req.body?.poste,
+    projectIds: req.body?.project_ids,
+    expiresAt: req.body?.expires_at,
+  });
+
   try {
     const parsed = createTeamInvitationSchema.parse(req.body);
     const inviter = (req as any).user;
@@ -115,38 +330,16 @@ export const createTeamInvitations = async (
       });
     }
 
-    // Email is the production transport for this flow. If no provider
-    // is configured we refuse to create invitations so admins never end
-    // up relying on a manual "copy link" workaround as the main UX.
+    // Invitations are always persisted first; email delivery is attempted
+    // afterward and failures are surfaced with a copyable link for admins.
     if (!isEmailConfigured()) {
       console.warn(
-        "[invite:team] refused: no email provider configured (Brevo or SMTP)"
+        "[invite:team] email provider not configured — invitations will be created with emailStatus=pending",
+        getEmailProviderInfo()
       );
-      return res.status(503).json({
-        code: "EMAIL_NOT_CONFIGURED",
-        message:
-          "L'envoi d'email n'est pas configuré sur ce serveur. " +
-          "Configurez Brevo (recommandé) ou un SMTP dans le fichier .env du backend, puis redémarrez l'API.",
-        hint: {
-          recommended_provider: "brevo",
-          required_env: ["BREVO_API_KEY", "EMAIL_FROM"],
-          example_brevo: {
-            BREVO_API_KEY: "xkeysib-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-            EMAIL_FROM: "GestionPro <no-reply@yourdomain.com>",
-            FRONTEND_URL: "http://localhost:5173",
-          },
-          alternative_smtp: {
-            SMTP_HOST: "smtp.gmail.com",
-            SMTP_PORT: 587,
-            SMTP_SECURE: false,
-            SMTP_USER: "your-account@gmail.com",
-            SMTP_PASS: "your-gmail-app-password",
-          },
-        },
-      });
+    } else {
+      console.info("[invite:team] email provider diagnostics", getEmailProviderInfo());
     }
-
-    console.info("[invite:team] email provider diagnostics", getEmailProviderInfo());
 
     const membreRoleId = await resolveTenantMembreRoleId(
       prisma,
@@ -188,7 +381,7 @@ export const createTeamInvitations = async (
       enterpriseId: inviter.id_entreprise,
       workspaceName,
       roleId: membreRoleId,
-      roleName: "Membre",
+      roleName: parsed.poste,
       requestedEmails: parsed.emails.length,
       uniqueEmails: uniqueEmails.length,
       smtpConfigured: isEmailConfigured(),
@@ -197,13 +390,14 @@ export const createTeamInvitations = async (
     const results: Array<
       | {
           email: string;
-          status: "sent";
+          status: "created";
           token: string;
           link: string;
           expires_at: Date | null;
           id_utilisateur: number;
+          emailStatus: InvitationEmailStatus;
+          /** @deprecated use emailStatus */
           email_delivery: "sent" | "skipped" | "failed";
-          /** Populated when Brevo/SMTP rejects or times out. */
           delivery_error?: string;
         }
       | {
@@ -222,85 +416,78 @@ export const createTeamInvitations = async (
           id_entreprise: inviter.id_entreprise as number,
           prenom: parsed.prenom,
           nom: parsed.nom,
+          poste: parsed.poste,
           id_invited_by: inviterId,
+          project_ids: parsed.project_ids,
+          expires_at: parsed.expires_at,
         });
 
         const acceptUrl = buildInvitationLink(pendingUser.invitation_token!);
 
-        let emailDelivery: "sent" | "skipped" | "failed" = "skipped";
-        let lastDeliveryError: string | undefined;
-        try {
-          const built = buildInvitationEmail({
-            workspaceName,
-            inviterName: inviterDisplayName,
-            inviterEmail: inviterRecord?.email,
-            roleName: "Membre",
-            acceptUrl,
-            expiresAt: pendingUser.invitation_expires,
-            appName: process.env.APP_NAME || "GestionPro",
-          });
-          console.info("[invite:team] invoking sendEmail (transactional provider)", {
-            to: email,
-            invitation_id: pendingUser.id_utilisateur,
-            subject_preview:
-              built.subject.length > 80
-                ? `${built.subject.slice(0, 77)}…`
-                : built.subject,
-          });
+        console.info("[invite:team] before sending invitation email", {
+          email,
+          acceptUrl,
+          poste: parsed.poste,
+          expiresAt: pendingUser.invitation_expires,
+          id_utilisateur: pendingUser.id_utilisateur,
+        });
 
-          const sendResult = await sendEmail({
-            to: email,
-            subject: built.subject,
-            html: built.html,
-            text: built.text,
-            replyTo: inviterRecord?.email || undefined,
-          });
+        const delivery = await attemptInvitationEmail({
+          to: email,
+          workspaceName,
+          inviterDisplayName,
+          inviterEmail: inviterRecord?.email,
+          roleName: parsed.poste,
+          acceptUrl,
+          expiresAt: pendingUser.invitation_expires,
+        });
 
-          console.info("[invite:team] sendEmail resolved", {
+        if (delivery.emailStatus === "sent") {
+          console.info("[invite:team] invitation email sent", {
             email,
-            invitationId: pendingUser.id_utilisateur,
-            delivered: sendResult.delivered,
-            mode: sendResult.mode,
-            messageId: sendResult.messageId,
-            transportError: sendResult.error || null,
+            messageId: delivery.messageId,
+            httpStatus: delivery.httpStatus,
           });
-
-          if (sendResult.delivered) emailDelivery = "sent";
-          else if (!isEmailConfigured()) emailDelivery = "skipped";
-          else {
-            emailDelivery = "failed";
-            lastDeliveryError =
-              sendResult.error || "Erreur d'envoi (aucun détail rapporté)";
-          }
-
-          console.info("[invite:team] email delivery result", {
+        } else {
+          console.error("[invite:team] invitation email not sent", {
             email,
-            invitationId: pendingUser.id_utilisateur,
-            delivery: emailDelivery,
-            mode: sendResult.mode,
-            messageId: sendResult.messageId,
-            error: sendResult.error,
+            emailStatus: delivery.emailStatus,
+            delivery_error: delivery.delivery_error,
+            httpStatus: delivery.httpStatus,
+            brevoResponse: delivery.brevoResponse,
           });
-        } catch (mailErr: any) {
-          console.error("[invite:team] email template/send failed", {
-            email,
-            invitationId: pendingUser.id_utilisateur,
-            error: mailErr,
-          });
-          emailDelivery = "failed";
-          lastDeliveryError =
-            mailErr?.message || "Erreur inconnue lors de l'envoi d'email";
         }
+
+        await setUserInvitationEmailStatus(
+          pendingUser.id_utilisateur,
+          delivery.emailStatus
+        );
+
+        const emailDeliveryLegacy =
+          delivery.emailStatus === "sent"
+            ? "sent"
+            : delivery.emailStatus === "failed"
+              ? "failed"
+              : "skipped";
 
         results.push({
           email,
-          status: "sent",
+          status: "created",
           token: pendingUser.invitation_token!,
           link: acceptUrl,
           expires_at: pendingUser.invitation_expires,
           id_utilisateur: pendingUser.id_utilisateur,
-          email_delivery: emailDelivery,
-          ...(lastDeliveryError ? { delivery_error: lastDeliveryError } : {}),
+          emailStatus: delivery.emailStatus,
+          email_delivery: emailDeliveryLegacy,
+          ...(delivery.delivery_error
+            ? { delivery_error: delivery.delivery_error }
+            : {}),
+          ...(delivery.httpStatus != null
+            ? { httpStatus: delivery.httpStatus }
+            : {}),
+          ...(delivery.brevoResponse != null
+            ? { brevoResponse: delivery.brevoResponse }
+            : {}),
         });
       } catch (err: any) {
         const reason = err?.message || "Erreur inconnue";
@@ -324,49 +511,55 @@ export const createTeamInvitations = async (
       }
     }
 
-    const sent = results.filter((r) => r.status === "sent").length;
+    const created = results.filter((r) => r.status === "created").length;
     const skipped = results.filter((r) => r.status === "skipped").length;
     const failed = results.filter((r) => r.status === "error").length;
     const emailDelivered = results.filter(
-      (r) => r.status === "sent" && r.email_delivery === "sent"
+      (r) => r.status === "created" && r.emailStatus === "sent"
     ).length;
     const emailFailed = results.filter(
-      (r) => r.status === "sent" && r.email_delivery === "failed"
+      (r) => r.status === "created" && r.emailStatus === "failed"
     ).length;
-    const emailSkipped = results.filter(
-      (r) => r.status === "sent" && r.email_delivery === "skipped"
+    const emailPending = results.filter(
+      (r) => r.status === "created" && r.emailStatus === "pending"
     ).length;
 
     console.info("[invite:team] completed", {
       inviterId,
       enterpriseId: inviter.id_entreprise,
       roleId: membreRoleId,
-      sent,
+      created,
       skipped,
       failed,
       emailDelivered,
       emailFailed,
-      emailSkipped,
+      emailPending,
     });
 
     let summaryMessage: string;
-    if (emailDelivered > 0 && emailFailed === 0 && skipped === 0 && failed === 0) {
+    let warning: string | undefined;
+    if (
+      emailDelivered > 0 &&
+      emailFailed === 0 &&
+      emailPending === 0 &&
+      skipped === 0 &&
+      failed === 0
+    ) {
       summaryMessage = `${emailDelivered} invitation(s) envoyée(s) par email.`;
-    } else if (emailDelivered > 0 && (emailFailed > 0 || skipped > 0 || failed > 0)) {
-      summaryMessage = `${emailDelivered} invitation(s) envoyée(s) par email · ${
-        emailFailed + skipped + failed
-      } non remise(s).`;
-    } else if (sent > 0 && emailDelivered === 0) {
-      const firstFail = results.find(
-        (r) =>
-          r.status === "sent" &&
-          r.email_delivery === "failed" &&
-          typeof (r as { delivery_error?: string }).delivery_error === "string"
-      ) as { delivery_error?: string } | undefined;
-      const hint = firstFail?.delivery_error;
+    } else if (created > 0 && emailDelivered === 0) {
+      warning = "Invitation créée, mais l'email n'a pas pu être envoyé.";
       summaryMessage =
-        "Invitations créées mais aucun email n'a été livré (Brevo ou SMTP)." +
-        (hint ? ` Détail : ${hint}` : "");
+        created === 1
+          ? warning
+          : `${created} invitation(s) créée(s), mais aucun email n'a pu être envoyé.`;
+    } else if (emailDelivered > 0) {
+      summaryMessage = `${emailDelivered} invitation(s) envoyée(s) par email · ${
+        emailFailed + emailPending + skipped + failed
+      } avec avertissement.`;
+      if (emailFailed > 0 || emailPending > 0) {
+        warning =
+          "Invitation créée, mais l'email n'a pas pu être envoyé pour certaines adresses.";
+      }
     } else {
       summaryMessage =
         "Aucune invitation envoyée. Consultez le détail par email ci-dessous.";
@@ -374,18 +567,19 @@ export const createTeamInvitations = async (
 
     return res.status(emailDelivered > 0 ? 201 : 200).json({
       message: summaryMessage,
+      warning,
       role: { id_role: membreRoleId, nom: "Membre" },
       workspace: workspaceName,
       inviter: inviterDisplayName,
       email_configured: isEmailConfigured(),
       summary: {
         total: results.length,
-        invitation_created: sent,
+        invitation_created: created,
         skipped,
         failed,
         email_delivered: emailDelivered,
         email_failed: emailFailed,
-        email_skipped: emailSkipped,
+        email_pending: emailPending,
       },
       results,
     });
@@ -502,13 +696,24 @@ export const lookupInvitationByToken = async (req: Request, res: Response) => {
           console.warn("[lookupInvitationByToken] inviter lookup failed", err);
         }
       }
+      const invitePoste =
+        pendingUser.poste?.trim() || pendingUser.role?.nom || "Membre";
+      const projects = await listInvitationProjectsForUser(
+        pendingUser.id_utilisateur
+      );
       return res.json({
         email: pendingUser.email,
         prenom: pendingUser.prenom,
         nom: pendingUser.nom,
-        role: pendingUser.role?.nom || "Membre",
+        role: invitePoste,
+        poste: invitePoste,
+        profile: invitePoste,
         entreprise: pendingUser.entreprise?.nom || null,
         expires_at: pendingUser.invitation_expires,
+        projects: projects.map((p) => ({
+          id_projet: p.id_projet,
+          nom: p.nom,
+        })),
         inviter,
       });
     }
@@ -587,6 +792,7 @@ export const acceptInvitationWithToken = async (
       userId: user.id_utilisateur,
       email: user.email,
       role: user.role?.nom,
+      poste: user.poste,
       tenantId: user.id_entreprise,
     });
 
@@ -598,6 +804,7 @@ export const acceptInvitationWithToken = async (
         nom: user.nom,
         prenom: user.prenom,
         role: user.role?.nom || null,
+        poste: user.poste ? resolveProjectPosteLabel(user.poste) : null,
         id_role: user.id_role,
         id_entreprise: user.id_entreprise ?? null,
       },
@@ -605,7 +812,7 @@ export const acceptInvitationWithToken = async (
   } catch (error: any) {
     if (error?.name === "ZodError") return next(error);
     return res.status(400).json({
-      message: error.message || "Lien d'invitation invalide ou expiré.",
+      message: memberSafeError(error.message || "Lien d'invitation invalide ou expiré."),
     });
   }
 };

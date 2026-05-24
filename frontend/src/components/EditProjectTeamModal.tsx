@@ -12,6 +12,8 @@ import {
 } from '../lib/projectManageAccess';
 import type { User } from '../types/auth.types';
 import { PROJECT_MEMBER_ROLE_OPTIONS } from '../types/project';
+import { dispatchProjectTeamChanged } from '../lib/workspaceEvents';
+import { resolveProjectPosteLabel } from '../lib/projectRoleLabels';
 import './CreateProjectModal.css';
 
 export type EditProjectTeamModalProps = {
@@ -31,7 +33,7 @@ export type EditProjectTeamModalProps = {
   onSuccess: () => void;
 };
 
-const DEFAULT_MEMBER_ROLE = PROJECT_MEMBER_ROLE_OPTIONS[0];
+const DEFAULT_MEMBER_ROLE = 'Membre';
 
 function userNumericId(u: User): number {
   return Number(u.id_utilisateur ?? u.id);
@@ -52,7 +54,7 @@ const EditProjectTeamModal: React.FC<EditProjectTeamModalProps> = ({
   onClose,
   onSuccess,
 }) => {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
 
   const projectCtx = useMemo(() => {
     const raw = projectProp ?? { id_projet: projectId, chef_id: chefIdProp, chef_de_projet_id: chefIdProp };
@@ -192,7 +194,11 @@ const EditProjectTeamModal: React.FC<EditProjectTeamModalProps> = ({
     if (!v) return;
     const uid = Number(v);
     if (!Number.isFinite(uid) || uid <= 0) return;
-    setExtraMembers((prev) => [...prev, { userId: uid, projectRole: DEFAULT_MEMBER_ROLE }]);
+    const picked = teamMembers.find((m) => userNumericId(m) === uid);
+    const projectRole = picked?.poste?.trim()
+      ? resolveProjectPosteLabel(picked.poste)
+      : DEFAULT_MEMBER_ROLE;
+    setExtraMembers((prev) => [...prev, { userId: uid, projectRole }]);
   };
 
   const updateMemberRole = (userId: number, projectRole: string) => {
@@ -232,6 +238,8 @@ const EditProjectTeamModal: React.FC<EditProjectTeamModalProps> = ({
         user,
       });
       window.dispatchEvent(new CustomEvent('projects:updated'));
+      dispatchProjectTeamChanged({ projectId });
+      void refreshUser();
       onSuccess();
       onClose();
     } catch (err: unknown) {

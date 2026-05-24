@@ -1,0 +1,46 @@
+.subtask-delete-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #e8384f;
+  cursor: pointer;
+  opacity: 0.55;
+  transition:
+    opacity 0.12s ease,
+    background 0.12s ease,
+    color 0.12s ease;
+}
+
+.subtask-delete-btn:hover:not(:disabled) {
+  opacity: 1;
+  background: #fdecea;
+  color: #c93c37;
+}
+
+.subtask-delete-btn:focus-visible {
+  opacity: 1;
+  outline: 2px solid rgba(232, 56, 79, 0.35);
+  outline-offset: 1px;
+}
+
+.subtask-delete-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
+}
+
+.cu-spaces-tree-row:hover .subtask-delete-btn,
+.mtd-subtasks-item:hover .subtask-delete-btn,
+.subtask-delete-btn--visible {
+  opacity: 0.85;
+}
+
+.subtask-delete-btn-spinner {
+  color: #e8384f;
+}

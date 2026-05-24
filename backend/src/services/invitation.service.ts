@@ -2,8 +2,41 @@ import crypto from "crypto";
 import bcrypt from "bcrypt";
 import prisma from "../prisma/prismaClient";
 import { createUtilisateurSafe } from "../lib/createUtilisateurSafe";
+import { provisionDefaultRolePermissions } from "./defaultRoleAccess.service";
+import { resolveProjectPosteLabel } from "../lib/projectRoleLabels";
+import { logRoleAssignment } from "../lib/roleAssignmentLog";
+import { syncInvitationProjectAccess } from "../lib/invitationProjectAccess";
 
 const INVITATION_TTL_DAYS = 7;
+
+export function resolveInvitationExpiresAt(expiresAt?: Date | null): Date {
+  if (expiresAt && !Number.isNaN(expiresAt.getTime()) && expiresAt.getTime() > Date.now()) {
+    return expiresAt;
+  }
+  return new Date(Date.now() + INVITATION_TTL_DAYS * 24 * 60 * 60 * 1000);
+}
+
+export type InvitationEmailStatus = "pending" | "sent" | "failed";
+
+export async function setUserInvitationEmailStatus(
+  userId: number,
+  status: InvitationEmailStatus
+): Promise<void> {
+  await prisma.utilisateur.update({
+    where: { id_utilisateur: userId },
+    data: { invitation_email_status: status },
+  });
+}
+
+export async function setInvitationRowEmailStatus(
+  invitationId: number,
+  status: InvitationEmailStatus
+): Promise<void> {
+  await prisma.invitation.update({
+    where: { id_invitation: invitationId },
+    data: { email_status: status },
+  });
+}
 
 const ADMIN_ROLE_NAMES = ["Admin", "ADMIN", "admin"];
 
@@ -91,6 +124,7 @@ export const createInvitation = async (data: CreateInvitationData) => {
         token,
         expires_at: expiresAt,
         id_invited_by: data.id_invited_by ?? null,
+        email_status: "pending",
         createdAt: now,
       },
     });
@@ -106,6 +140,7 @@ export const createInvitation = async (data: CreateInvitationData) => {
       token,
       expires_at: expiresAt,
       id_invited_by: data.id_invited_by ?? null,
+      email_status: "pending",
     },
   });
 };
@@ -114,9 +149,12 @@ export interface CreateTeamMemberPendingInviteInput {
   email: string;
   id_role: number;
   id_entreprise: number;
-  prenom?: string | null;
-  nom?: string | null;
+  prenom: string;
+  nom: string;
+  poste: string;
   id_invited_by: number;
+  project_ids: number[];
+  expires_at?: Date | null;
 }
 
 /**
@@ -129,11 +167,22 @@ export const createTeamMemberPendingInvite = async (
   const email = data.email.trim().toLowerCase();
   const now = new Date();
   const token = generateInvitationToken();
-  const expiresAt = new Date(Date.now() + INVITATION_TTL_DAYS * 24 * 60 * 60 * 1000);
+  const expiresAt = resolveInvitationExpiresAt(data.expires_at ?? null);
 
-  const prenom =
-    (data.prenom && data.prenom.trim()) || email.split("@")[0] || "Invité";
-  const nom = (data.nom && data.nom.trim()) || "—";
+  const prenom = data.prenom.trim() || email.split("@")[0] || "Invité";
+  const nom = data.nom.trim() || "—";
+  const poste = resolveProjectPosteLabel(data.poste);
+
+  const afterProjectSync = async (userId: number) => {
+    await syncInvitationProjectAccess({
+      userId,
+      enterpriseId: data.id_entreprise,
+      projectIds: data.project_ids,
+      poste,
+      grantedById: data.id_invited_by,
+      invitationPending: true,
+    });
+  };
 
   const existing = await prisma.utilisateur.findUnique({
     where: { email },
@@ -158,15 +207,35 @@ export const createTeamMemberPendingInvite = async (
         data: {
           invitation_token: token,
           invitation_expires: expiresAt,
+          invitation_email_status: "pending",
           invited_by_id: data.id_invited_by,
           id_role: data.id_role,
           id_entreprise: data.id_entreprise,
           prenom,
           nom,
+          poste,
           password: null,
           statut: "INVITATION_PENDING",
         },
         include: { role: true },
+      }).then(async (updated) => {
+      await provisionDefaultRolePermissions({
+        userId: updated.id_utilisateur,
+        enterpriseId: data.id_entreprise,
+        poste,
+        grantedById: data.id_invited_by,
+      });
+      await afterProjectSync(updated.id_utilisateur);
+      logRoleAssignment("createTeamMemberPendingInvite:refresh", {
+        selectedRole: data.poste,
+        savedRole: poste,
+        loadedRole: updated.poste ?? poste,
+        globalRoleNom: updated.role?.nom ?? null,
+        poste: updated.poste ?? poste,
+        userId: updated.id_utilisateur,
+        email: updated.email,
+      });
+      return updated;
       });
     }
     if (existing.statut === "PENDING" && !existing.password) {
@@ -181,21 +250,43 @@ export const createTeamMemberPendingInvite = async (
     where: { email, id_entreprise: data.id_entreprise, accepted_at: null },
   });
 
-  return prisma.utilisateur.create({
+  const created = await prisma.utilisateur.create({
     data: {
       email,
       prenom,
       nom,
+      poste,
       id_role: data.id_role,
       id_entreprise: data.id_entreprise,
       password: null,
       statut: "INVITATION_PENDING",
       invitation_token: token,
       invitation_expires: expiresAt,
+      invitation_email_status: "pending",
       invited_by_id: data.id_invited_by,
     },
     include: { role: true },
   });
+
+  await provisionDefaultRolePermissions({
+    userId: created.id_utilisateur,
+    enterpriseId: data.id_entreprise,
+    poste,
+    grantedById: data.id_invited_by,
+  });
+  await afterProjectSync(created.id_utilisateur);
+
+  logRoleAssignment("createTeamMemberPendingInvite", {
+    selectedRole: data.poste,
+    savedRole: poste,
+    loadedRole: created.poste ?? poste,
+    globalRoleNom: created.role?.nom ?? null,
+    poste: created.poste ?? poste,
+    userId: created.id_utilisateur,
+    email: created.email,
+  });
+
+  return created;
 };
 
 export const findInvitationByToken = async (token: string) => {
@@ -278,6 +369,22 @@ export const acceptInvitationByToken = async (data: AcceptInvitationData) => {
     await prisma.invitation.deleteMany({
       where: { email: updated.email!, accepted_at: null },
     });
+    if (updated.id_entreprise) {
+      await provisionDefaultRolePermissions({
+        userId: updated.id_utilisateur,
+        enterpriseId: updated.id_entreprise,
+        poste: updated.poste,
+      });
+    }
+    logRoleAssignment("acceptInvitationByToken", {
+      selectedRole: pendingUser.poste ?? null,
+      savedRole: updated.poste ?? pendingUser.poste ?? null,
+      loadedRole: updated.poste ?? null,
+      globalRoleNom: updated.role?.nom ?? null,
+      poste: updated.poste ?? null,
+      userId: updated.id_utilisateur,
+      email: updated.email,
+    });
     return updated;
   }
 
@@ -323,6 +430,14 @@ export const acceptInvitationByToken = async (data: AcceptInvitationData) => {
     where: { id_invitation: invitation!.id_invitation },
     data: { accepted_at: new Date() },
   });
+
+  if (user.id_entreprise) {
+    await provisionDefaultRolePermissions({
+      userId: user.id_utilisateur,
+      enterpriseId: user.id_entreprise,
+      poste: user.poste,
+    });
+  }
 
   return user;
 };

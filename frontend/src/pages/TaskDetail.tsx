@@ -33,8 +33,15 @@ import {
   type Tache,
 } from '../types/task';
 import type { ListStatusPM } from '../types/hierarchy';
-import type { User } from '../types/auth.types';
+import {
+  projectMemberDisplayLabel,
+  type ProjectTeamMemberRow,
+} from '../lib/projectTeamMembers';
 import TaskAiPanel from '../components/TaskAiPanel';
+import { useAuth } from '../hooks/useAuth';
+import { isGlobalMember } from '../lib/permissions';
+import { permissionDeniedFromError } from '../lib/permissionDenied';
+import MemberTaskDetail from './MemberTaskDetail';
 import './TaskDetail.css';
 
 type BreadcrumbCtx = {
@@ -56,19 +63,6 @@ function toDateInput(raw?: string | null): string {
   }
 }
 
-function memberLabel(u: User): string {
-  const name = `${u.prenom || ''} ${u.nom || ''}`.trim();
-  return name || u.email || `Utilisateur #${u.id_utilisateur}`;
-}
-
-function memberInitials(u: User): string {
-  const p = (u.prenom || '').trim()[0] || '';
-  const n = (u.nom || '').trim()[0] || '';
-  const init = (p + n).toUpperCase();
-  if (init) return init.slice(0, 2);
-  return (u.email || '?')[0].toUpperCase();
-}
-
 function assigneeInitials(task: Tache): string {
   if (!task.utilisateur) return '?';
   const p = (task.utilisateur.prenom || '').trim()[0] || '';
@@ -78,8 +72,8 @@ function assigneeInitials(task: Tache): string {
   return (task.utilisateur.email || '?')[0].toUpperCase();
 }
 
-/** ClickUp-style task details — route /tasks/:taskId */
-const TaskDetailsPage: React.FC = () => {
+/** Admin / PM task details — route /tasks/:taskId */
+const AdminTaskDetailsPage: React.FC = () => {
   const { taskId } = useParams<{ taskId: string }>();
   const navigate = useNavigate();
 
@@ -94,9 +88,10 @@ const TaskDetailsPage: React.FC = () => {
     sprintId: null,
   });
   const [statuses, setStatuses] = useState<ListStatusPM[]>([]);
-  const [members, setMembers] = useState<User[]>([]);
+  const [members, setMembers] = useState<ProjectTeamMemberRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [forbidden, setForbidden] = useState(false);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<'comments' | 'activity'>('comments');
   const [aiPanelOpen, setAiPanelOpen] = useState(false);
@@ -152,10 +147,11 @@ const TaskDetailsPage: React.FC = () => {
 
     setBreadcrumb(ctx);
 
-    if (loaded.id_projet) {
+    const projectId = ctx.projectId ?? loaded.id_projet ?? null;
+    if (projectId) {
       try {
-        const team = await projectService.getTeamCandidates(loaded.id_projet);
-        setMembers(Array.isArray(team) ? team : []);
+        const team = await projectService.getProjectMembers(projectId);
+        setMembers(team);
       } catch {
         setMembers([]);
       }
@@ -176,11 +172,18 @@ const TaskDetailsPage: React.FC = () => {
 
     setLoading(true);
     setError('');
+    setForbidden(false);
     void (async () => {
       try {
         await loadTask(id);
-      } catch {
-        setError('Impossible de charger la tâche');
+      } catch (err: unknown) {
+        const ax = err as { response?: { status?: number } };
+        if (ax?.response?.status === 403) {
+          setForbidden(true);
+          setError(permissionDeniedFromError(err));
+        } else {
+          setError('Impossible de charger la tâche');
+        }
         setTask(null);
       } finally {
         setLoading(false);
@@ -251,6 +254,23 @@ const TaskDetailsPage: React.FC = () => {
         <div className="cu-task-loading">
           <Loader2 size={22} className="animate-spin" aria-hidden />
           <span>Chargement de la tâche…</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (forbidden) {
+    return (
+      <div className="cu-task-page">
+        <div className="cu-task-page-inner" style={{ padding: '2rem', textAlign: 'center' }}>
+          <h2 style={{ marginBottom: '0.5rem' }}>Accès refusé</h2>
+          <p style={{ color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
+            {error || "Vous n'avez pas accès à cette tâche."}
+          </p>
+          <Link to={appPaths.projects} className="cu-task-back">
+            <ArrowLeft size={16} />
+            Retour aux projets
+          </Link>
         </div>
       </div>
     );
@@ -501,14 +521,11 @@ const TaskDetailsPage: React.FC = () => {
                   aria-label="Assigné"
                 >
                   <option value="">Non assigné</option>
-                  {members.map((m) => {
-                    const mid = Number(m.id_utilisateur ?? m.id);
-                    return (
-                      <option key={mid} value={mid}>
-                        {memberLabel(m)}
-                      </option>
-                    );
-                  })}
+                  {members.map((m) => (
+                    <option key={m.userId} value={m.userId}>
+                      {projectMemberDisplayLabel(m)}
+                    </option>
+                  ))}
                 </select>
                 <button type="button" className="cu-task-placeholder-btn" title="Inviter">
                   <UserPlus size={14} aria-hidden />
@@ -634,6 +651,15 @@ const TaskDetailsPage: React.FC = () => {
       />
     </div>
   );
+};
+
+/** Route /tasks/:taskId — member vs admin UI */
+const TaskDetailsPage: React.FC = () => {
+  const { user } = useAuth();
+  if (isGlobalMember(user)) {
+    return <MemberTaskDetail />;
+  }
+  return <AdminTaskDetailsPage />;
 };
 
 export default TaskDetailsPage;

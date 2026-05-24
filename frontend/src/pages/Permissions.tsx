@@ -1,108 +1,109 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import {
-  Loader2,
-  Users,
-  Lock,
-  AlertTriangle,
-  Briefcase,
-} from 'lucide-react';
+import { Loader2, AlertTriangle, Plus, ShieldCheck } from 'lucide-react';
 import {
   permissionService,
-  type Permission,
   type ProjectRoleMatrixResponse,
 } from '../services/permission.service';
-import {
-  meService,
-  type PermissionsCatalogResponse,
-  type MePermissionGroup,
-} from '../services/me.service';
 import { useAuth } from '../hooks/useAuth';
 import { usePermission } from '../hooks/usePermission';
 import BackButton from '../components/BackButton';
+import { dispatchProjectPermissionsChanged } from '../lib/workspaceEvents';
 import './Permissions.css';
 
-interface RoleWithPermissions {
-  id_role: number;
-  nom: string;
-  description?: string;
-  id_entreprise?: number;
-  permission?: Array<{ id_permission: number; nom: string }>;
+/** Default editable permission profiles shown in the matrix. */
+const DEFAULT_VISIBLE_PROFILES = ['CHEF_PROJET', 'DEVELOPPEUR'] as const;
+
+/** Global / implicit roles — never shown in the editable matrix. */
+const IMPLICIT_ROLE_KEYS = new Set([
+  'ADMIN',
+  'Admin',
+  'admin',
+  'SUPERADMIN',
+  'SuperAdmin',
+]);
+
+function visibleRolesStorageKey(enterpriseId: number): string {
+  return `gp-perm-visible-roles-${enterpriseId}`;
 }
 
-const SYSTEM_ROLE_NAMES = new Set(['SuperAdmin']);
+function loadVisibleRoleKeys(enterpriseId: number, roleOrder: string[]): string[] {
+  const allowed = new Set(roleOrder.filter((rk) => !IMPLICIT_ROLE_KEYS.has(rk)));
+  const defaults = DEFAULT_VISIBLE_PROFILES.filter((rk) => allowed.has(rk));
 
-/** Hidden on enterprise permissions UI (non-essential / SuperAdmin-only domains). */
-const HIDDEN_CATALOG_GROUP_IDS = new Set(['ai', 'billing', 'system']);
+  try {
+    const raw = localStorage.getItem(visibleRolesStorageKey(enterpriseId));
+    if (!raw) return defaults.length ? [...defaults] : [...allowed].slice(0, 2);
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return defaults;
+    const cleaned = parsed
+      .map((rk) => (rk === 'CHEF' ? 'CHEF_PROJET' : rk))
+      .filter(
+        (rk): rk is string => typeof rk === 'string' && allowed.has(rk)
+      );
+    return cleaned.length ? cleaned : defaults;
+  } catch {
+    return defaults;
+  }
+}
+
+function persistVisibleRoleKeys(enterpriseId: number, keys: string[]): void {
+  try {
+    localStorage.setItem(visibleRolesStorageKey(enterpriseId), JSON.stringify(keys));
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
 
 const Permissions: React.FC = () => {
   const { user } = useAuth();
   const { isSuperAdmin, can } = usePermission();
+  const addRoleRef = useRef<HTMLDivElement>(null);
 
   const canManage = useMemo(
-    () => isSuperAdmin || can('TEAM_MANAGE_ROLES'),
+    () => isSuperAdmin || can('TEAM_MANAGE_ROLES') || can('TEAM_MANAGE'),
     [isSuperAdmin, can]
   );
 
-  const [catalog, setCatalog] = useState<PermissionsCatalogResponse | null>(null);
-  const [allPermissions, setAllPermissions] = useState<Permission[]>([]);
-  const [roles, setRoles] = useState<RoleWithPermissions[]>([]);
-  const [rolePerms, setRolePerms] = useState<Record<number, Set<number>>>({});
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState<string | null>(null); // "roleId-permId"
   const [error, setError] = useState<string | null>(null);
-  const [projPayload, setProjPayload] = useState<ProjectRoleMatrixResponse | null>(
-    null
-  );
+  const [projPayload, setProjPayload] = useState<ProjectRoleMatrixResponse | null>(null);
   const [projLoadFailed, setProjLoadFailed] = useState(false);
   const [savingProj, setSavingProj] = useState(false);
+  const [savingCell, setSavingCell] = useState<string | null>(null);
+  const [visibleRoleKeys, setVisibleRoleKeys] = useState<string[]>([
+    ...DEFAULT_VISIBLE_PROFILES,
+  ]);
+  const [addRoleOpen, setAddRoleOpen] = useState(false);
 
   useEffect(() => {
     void fetchAll();
   }, [user?.id_entreprise, canManage]);
 
+  useEffect(() => {
+    if (!addRoleOpen) return;
+    const onDocClick = (e: MouseEvent) => {
+      if (addRoleRef.current && !addRoleRef.current.contains(e.target as Node)) {
+        setAddRoleOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onDocClick);
+    return () => document.removeEventListener('mousedown', onDocClick);
+  }, [addRoleOpen]);
+
   const fetchAll = async () => {
     setLoading(true);
     setError(null);
     try {
-      const [catalogRes, permsRes, rolesRes] = await Promise.all([
-        meService.getCatalog(),
-        permissionService.getAll(),
-        user?.id_entreprise
-          ? permissionService.getEnterpriseRoles(user.id_entreprise)
-          : Promise.resolve([]),
-      ]);
-
-      setCatalog(catalogRes);
-      setAllPermissions(permsRes);
-      setRoles(rolesRes as RoleWithPermissions[]);
-
-      // Pre-build role -> permissionId set from the included permission list
-      const map: Record<number, Set<number>> = {};
-      for (const r of rolesRes as RoleWithPermissions[]) {
-        map[r.id_role] = new Set((r.permission || []).map((p) => p.id_permission));
-      }
-      // Roles without inline permission may need a manual fetch
-      const missing = (rolesRes as RoleWithPermissions[]).filter(
-        (r) => !r.permission
-      );
-      await Promise.all(
-        missing.map(async (r) => {
-          try {
-            const list = await permissionService.getRolePermissions(r.id_role);
-            map[r.id_role] = new Set(list.map((p) => p.id_permission));
-          } catch {
-            map[r.id_role] = new Set();
-          }
-        })
-      );
-      setRolePerms(map);
-
       if (user?.id_entreprise && canManage) {
         try {
           const pr = await permissionService.getProjectRoleMatrix();
           setProjPayload(pr);
           setProjLoadFailed(false);
+          const editableOrder = pr.roleOrder.filter((rk) => !IMPLICIT_ROLE_KEYS.has(rk));
+          setVisibleRoleKeys(
+            loadVisibleRoleKeys(user.id_entreprise, editableOrder)
+          );
         } catch (e) {
           console.error('Failed to load project-role matrix:', e);
           setProjPayload(null);
@@ -120,108 +121,91 @@ const Permissions: React.FC = () => {
     }
   };
 
-  // Index permissions by name for quick lookup
-  const permsByName = useMemo(() => {
-    const m = new Map<string, Permission>();
-    for (const p of allPermissions) m.set(p.nom, p);
-    return m;
-  }, [allPermissions]);
+  const editableRoleOrder = useMemo(() => {
+    if (!projPayload) return [];
+    return projPayload.roleOrder.filter((rk) => !IMPLICIT_ROLE_KEYS.has(rk));
+  }, [projPayload]);
 
-  const groups: MePermissionGroup[] = catalog?.groups || [];
+  const displayedRoleKeys = useMemo(() => {
+    const allowed = new Set(editableRoleOrder);
+    return visibleRoleKeys.filter((rk) => allowed.has(rk));
+  }, [editableRoleOrder, visibleRoleKeys]);
 
-  const visiblePermissionRows = useMemo(() => {
-    const rows: Array<MePermissionGroup['permissions'][number]> = [];
-    for (const group of groups) {
-      if (HIDDEN_CATALOG_GROUP_IDS.has(group.id)) continue;
-      for (const perm of group.permissions) {
-        rows.push(perm);
-      }
-    }
-    return rows;
-  }, [groups]);
+  const addableRoleKeys = useMemo(() => {
+    const visible = new Set(displayedRoleKeys);
+    return editableRoleOrder.filter((rk) => !visible.has(rk));
+  }, [editableRoleOrder, displayedRoleKeys]);
 
-  const isRoleEditable = (role: RoleWithPermissions): boolean => {
-    if (SYSTEM_ROLE_NAMES.has(role.nom) && !isSuperAdmin) return false;
-    return canManage;
-  };
-
-  const togglePermission = async (
-    roleId: number,
-    permName: string
-  ) => {
-    const role = roles.find((r) => r.id_role === roleId);
-    if (!role) return;
-    if (!isRoleEditable(role)) return;
-    const perm = permsByName.get(permName);
-    if (!perm) return;
-
-    const key = `${roleId}-${perm.id_permission}`;
-    setSaving(key);
-
-    const current = rolePerms[roleId] || new Set<number>();
-    const isOn = current.has(perm.id_permission);
-
-    try {
-      if (isOn) {
-        await permissionService.removeFromRole(roleId, perm.id_permission);
-        const next = new Set(current);
-        next.delete(perm.id_permission);
-        setRolePerms((prev) => ({ ...prev, [roleId]: next }));
-      } else {
-        await permissionService.assignToRole(roleId, perm.id_permission);
-        const next = new Set(current);
-        next.add(perm.id_permission);
-        setRolePerms((prev) => ({ ...prev, [roleId]: next }));
-      }
-    } catch (err: any) {
-      console.error('Failed to toggle permission:', err);
-      setError(
-        err?.response?.data?.message ||
-          "Échec de la modification de la permission."
-      );
-    } finally {
-      setSaving(null);
-    }
-  };
-
-  const toggleProjCell = (roleKey: string, slug: string) => {
-    setProjPayload((prev) => {
-      if (!prev) return prev;
-      const curList = prev.matrix[roleKey];
-      if (!curList) return prev;
-      const cur = new Set(curList);
-      if (cur.has(slug)) cur.delete(slug);
-      else cur.add(slug);
-      return {
-        ...prev,
-        matrix: { ...prev.matrix, [roleKey]: Array.from(cur) },
-      };
+  const addProjectRole = (roleKey: string) => {
+    if (!user?.id_entreprise) return;
+    setVisibleRoleKeys((prev) => {
+      if (prev.includes(roleKey)) return prev;
+      const next = [...prev, roleKey];
+      persistVisibleRoleKeys(user.id_entreprise!, next);
+      return next;
     });
+    setAddRoleOpen(false);
   };
 
-  const saveProjMatrix = async () => {
-    if (!projPayload) return;
-    for (const rk of projPayload.roleOrder) {
-      if (!projPayload.matrix[rk]?.length) {
+  const persistMatrix = async (
+    matrix: ProjectRoleMatrixResponse['matrix'],
+    cellKey?: string
+  ): Promise<boolean> => {
+    for (const rk of projPayload?.roleOrder ?? []) {
+      if (IMPLICIT_ROLE_KEYS.has(rk)) continue;
+      if (!matrix[rk]?.length) {
         setError(
-          "Chaque rôle de projet doit conserver au moins une permission avant d'enregistrer."
+          "Chaque rôle de projet doit conserver au moins une permission."
         );
-        return;
+        return false;
       }
     }
-    setSavingProj(true);
+    if (cellKey) setSavingCell(cellKey);
+    else setSavingProj(true);
     setError(null);
     try {
-      const res = await permissionService.saveProjectRoleMatrix(projPayload.matrix);
+      const res = await permissionService.saveProjectRoleMatrix(matrix);
       setProjPayload((p) => (p ? { ...p, matrix: res.matrix } : null));
+      dispatchProjectPermissionsChanged();
+      return true;
     } catch (err: any) {
       console.error(err);
       setError(
         err?.response?.data?.message ||
           "Échec de l'enregistrement des permissions projet."
       );
+      return false;
     } finally {
-      setSavingProj(false);
+      if (cellKey) setSavingCell(null);
+      else setSavingProj(false);
+    }
+  };
+
+  const toggleProjCell = async (roleKey: string, slug: string) => {
+    if (!projPayload || savingProj || savingCell) return;
+    const curList = projPayload.matrix[roleKey];
+    if (!curList) return;
+    const cur = new Set(curList);
+    const isOn = cur.has(slug);
+    if (isOn) cur.delete(slug);
+    else cur.add(slug);
+    if (cur.size === 0) {
+      setError(
+        "Chaque rôle de projet doit conserver au moins une permission."
+      );
+      return;
+    }
+    const previousMatrix = projPayload.matrix;
+    const nextMatrix = {
+      ...projPayload.matrix,
+      [roleKey]: Array.from(cur),
+    };
+    setProjPayload((prev) => (prev ? { ...prev, matrix: nextMatrix } : prev));
+    const ok = await persistMatrix(nextMatrix, `${roleKey}-${slug}`);
+    if (!ok) {
+      setProjPayload((prev) =>
+        prev ? { ...prev, matrix: previousMatrix } : prev
+      );
     }
   };
 
@@ -231,6 +215,7 @@ const Permissions: React.FC = () => {
     try {
       const res = await permissionService.resetProjectRoleMatrix();
       setProjPayload((p) => (p ? { ...p, matrix: res.matrix } : null));
+      dispatchProjectPermissionsChanged();
     } catch (err: any) {
       console.error(err);
       setError(
@@ -258,194 +243,190 @@ const Permissions: React.FC = () => {
   }
 
   return (
-    <div className="permissions-page">
+    <motion.div
+      className="permissions-page"
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25 }}
+    >
       <BackButton />
       <header className="page-header permissions-page-header">
         <h1>Rôles et permissions</h1>
+        <p className="permissions-page-subtitle">
+          Configurez les profils de permissions pour les utilisateurs. L&apos;administrateur
+          dispose automatiquement de tous les accès — il n&apos;apparaît pas dans ce
+          tableau.
+        </p>
       </header>
 
+      <div className="permissions-admin-note">
+        <ShieldCheck size={16} aria-hidden />
+        <span>
+          <strong>Admin</strong> — accès complet implicite sur l&apos;ensemble
+          des permissions.
+        </span>
+      </div>
+
       {error && (
-        <div className="error-banner premium-card" style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '0.75rem 1rem', color: '#b91c1c' }}>
-          <AlertTriangle size={16} />
+        <motion.div
+          className="error-banner premium-card permissions-error-banner"
+          initial={{ opacity: 0, y: -4 }}
+          animate={{ opacity: 1, y: 0 }}
+          role="alert"
+        >
+          <AlertTriangle size={16} aria-hidden />
           <span>{error}</span>
-        </div>
+        </motion.div>
       )}
 
-      {roles.length === 0 ? (
+      {!canManage || !user?.id_entreprise ? (
         <div className="empty-state premium-card">
-          <Users size={32} />
-          <h3>Aucun rôle disponible</h3>
-          <p>Aucun rôle n'est associé à cette entreprise pour l'instant.</p>
+          <h3>Accès restreint</h3>
+          <p>Vous n&apos;avez pas les droits pour gérer les rôles et permissions.</p>
         </div>
-      ) : (
-        <div className="matrix-wrapper premium-card">
-          <table className="permissions-matrix">
-            <thead>
-              <tr>
-                <th className="cat-col">Permission</th>
-                {roles.map((r) => {
-                  const editable = isRoleEditable(r);
-                  return (
-                    <th key={r.id_role} className={`role-col ${editable ? '' : 'locked'}`}>
-                      <div className="role-col-content">
-                        <span className="role-col-name">{r.nom}</span>
-                        {!editable && (
-                          <span className="role-col-lock" title="Lecture seule">
-                            <Lock size={12} />
-                          </span>
-                        )}
-                      </div>
-                    </th>
-                  );
-                })}
-              </tr>
-            </thead>
-            <tbody>
-              {visiblePermissionRows.map((perm) => (
-                <tr key={perm.name} className="perm-row">
-                  <td className="perm-name-cell">
-                    <div className="perm-name">{perm.name.replace(/_/g, ' ')}</div>
-                  </td>
-                      {roles.map((r) => {
-                        const dbPerm = permsByName.get(perm.name);
-                        const enabled =
-                          dbPerm && rolePerms[r.id_role]?.has(dbPerm.id_permission);
-                        const editable = isRoleEditable(r) && !!dbPerm;
-                        const cellKey = `${r.id_role}-${dbPerm?.id_permission ?? 'na'}`;
-                        const busy = saving === cellKey;
-
-                        if (perm.systemOnly && r.nom !== 'SuperAdmin') {
-                          return (
-                            <td key={r.id_role} className="cell na">
-                              <span className="cell-na">—</span>
-                            </td>
-                          );
-                        }
-
-                        return (
-                          <td key={r.id_role} className={`cell ${enabled ? 'on' : 'off'}`}>
-                            <motion.button
-                              type="button"
-                              whileTap={editable ? { scale: 0.9 } : undefined}
-                              className={`toggle-pill ${enabled ? 'on' : 'off'} ${editable ? '' : 'locked'}`}
-                              disabled={!editable || busy}
-                              onClick={() => togglePermission(r.id_role, perm.name)}
-                              aria-pressed={!!enabled}
-                              aria-label={`${enabled ? 'Désactiver' : 'Activer'} ${perm.name} pour ${r.nom}`}
-                            >
-                              {busy ? (
-                                <Loader2 size={14} className="animate-spin" />
-                              ) : enabled ? (
-                                'Activé'
-                              ) : (
-                                'Désactivé'
-                              )}
-                            </motion.button>
-                          </td>
-                        );
-                      })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {user?.id_entreprise && canManage && (
+      ) : projLoadFailed ? (
+        <section className="project-perms-section premium-card">
+          <motion.div
+            className="project-perms-fallback"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+          >
+            <p>Impossible de charger la matrice des permissions projet.</p>
+            <button
+              type="button"
+              className="project-perms-retry"
+              onClick={() => void fetchAll()}
+            >
+              Réessayer
+            </button>
+          </motion.div>
+        </section>
+      ) : projPayload ? (
         <section className="project-perms-section premium-card">
           <header className="project-perms-section-head">
-            <h2 className="project-perms-title">
-              <Briefcase size={22} aria-hidden />
-              <span>Permissions dans les projets</span>
-            </h2>
-          </header>
-
-          {projLoadFailed ? (
-            <div className="project-perms-fallback">
-              <p>Impossible de charger la matrice des permissions projet.</p>
+            <div className="project-perms-head-text">
+              <h2 className="project-perms-title">Profils de permissions</h2>
+              <p className="project-perms-lead">
+                Chef de projet et Développeur sont configurables par défaut.
+                Ajoutez d&apos;autres profils selon vos besoins.
+              </p>
+            </div>
+            <div className="permissions-add-role-wrap" ref={addRoleRef}>
               <button
                 type="button"
-                className="project-perms-retry"
-                onClick={() => void fetchAll()}
+                className="permissions-add-role-btn"
+                aria-expanded={addRoleOpen}
+                aria-haspopup="menu"
+                disabled={addableRoleKeys.length === 0}
+                title={
+                  addableRoleKeys.length === 0
+                    ? 'Tous les rôles disponibles sont déjà affichés'
+                    : undefined
+                }
+                onClick={() => setAddRoleOpen((o) => !o)}
               >
-                Réessayer
+                <Plus size={15} aria-hidden />
+                Ajouter un profil
               </button>
+              {addRoleOpen && addableRoleKeys.length > 0 && (
+                <div className="permissions-add-role-menu" role="menu">
+                  {addableRoleKeys.map((rk) => (
+                    <button
+                      key={rk}
+                      type="button"
+                      role="menuitem"
+                      className="permissions-add-role-item"
+                      onClick={() => addProjectRole(rk)}
+                    >
+                      {projPayload.roleLabels[rk] ?? rk}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
-          ) : projPayload ? (
-            <>
-              <div className="project-perms-toolbar">
-                <button
-                  type="button"
-                  className="project-perms-save"
-                  disabled={savingProj}
-                  onClick={() => void saveProjMatrix()}
-                >
-                  {savingProj ? (
-                    <Loader2 size={16} className="animate-spin" aria-hidden />
-                  ) : null}
-                  Enregistrer les changements
-                </button>
-                <button
-                  type="button"
-                  className="project-perms-reset"
-                  disabled={savingProj}
-                  onClick={() => void resetProjMatrix()}
-                >
-                  Réinitialiser aux valeurs par défaut
-                </button>
-              </div>
-              <div className="matrix-wrapper project-matrix-wrapper">
-                <table className="permissions-matrix project-perms-matrix">
-                  <thead>
-                    <tr>
-                      <th className="cat-col">Permission (projet)</th>
-                      {projPayload.roleOrder.map((rk) => (
-                        <th key={rk} className="role-col">
-                          <div className="role-col-content">
-                            <span className="role-col-name">
-                              {projPayload.roleLabels[rk] ?? rk}
-                            </span>
-                          </div>
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {projPayload.permissionSlugs.map((slug) => (
-                      <tr key={slug} className="perm-row">
-                        <td className="perm-name-cell">
-                          <div className="perm-name">
-                            {projPayload.permissionLabels[slug] ?? slug.replace(/_/g, ' ')}
-                          </div>
+          </header>
+
+          <div className="project-perms-toolbar">
+            <span className="project-perms-autosave-hint">
+              Les modifications sont enregistrées automatiquement.
+            </span>
+            <button
+              type="button"
+              className="project-perms-reset"
+              disabled={savingProj || !!savingCell}
+              onClick={() => void resetProjMatrix()}
+            >
+              Réinitialiser
+            </button>
+          </div>
+
+          <div className="matrix-wrapper project-matrix-wrapper">
+            <table className="permissions-matrix project-perms-matrix">
+              <thead>
+                <tr>
+                  <th className="cat-col">Permission</th>
+                  {displayedRoleKeys.map((rk) => (
+                    <th key={rk} className="role-col">
+                      <div className="role-col-content">
+                        <span className="role-col-name">
+                          {projPayload.roleLabels[rk] ?? rk}
+                        </span>
+                      </div>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {projPayload.permissionSlugs.map((slug) => (
+                  <tr key={slug} className="perm-row">
+                    <td className="perm-name-cell">
+                      <motion.div
+                        className="perm-name"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.15 }}
+                      >
+                        {projPayload.permissionLabels[slug] ??
+                          slug.replace(/_/g, ' ')}
+                      </motion.div>
+                    </td>
+                    {displayedRoleKeys.map((rk) => {
+                      const enabled =
+                        projPayload.matrix[rk]?.includes(slug) ?? false;
+                      const cellKey = `${rk}-${slug}`;
+                      const busy = savingCell === cellKey;
+                      return (
+                        <td key={rk} className={`cell ${enabled ? 'on' : 'off'}`}>
+                          <motion.button
+                            type="button"
+                            whileTap={
+                              savingProj || busy ? undefined : { scale: 0.92 }
+                            }
+                            className={`toggle-pill ${enabled ? 'on' : 'off'}`}
+                            disabled={savingProj || !!savingCell}
+                            onClick={() => void toggleProjCell(rk, slug)}
+                            aria-pressed={enabled}
+                            aria-label={`${enabled ? 'Désactiver' : 'Activer'} ${slug} pour ${projPayload.roleLabels[rk] ?? rk}`}
+                          >
+                            {busy ? (
+                              <Loader2 size={14} className="animate-spin" />
+                            ) : enabled ? (
+                              'Activé'
+                            ) : (
+                              'Désactivé'
+                            )}
+                          </motion.button>
                         </td>
-                        {projPayload.roleOrder.map((rk) => {
-                          const enabled = projPayload.matrix[rk]?.includes(slug) ?? false;
-                          return (
-                            <td key={rk} className={`cell ${enabled ? 'on' : 'off'}`}>
-                              <motion.button
-                                type="button"
-                                whileTap={savingProj ? undefined : { scale: 0.9 }}
-                                className={`toggle-pill ${enabled ? 'on' : 'off'}`}
-                                disabled={savingProj}
-                                onClick={() => toggleProjCell(rk, slug)}
-                                aria-pressed={enabled}
-                                aria-label={`${enabled ? 'Désactiver' : 'Activer'} ${slug} pour ${projPayload.roleLabels[rk] ?? rk}`}
-                              >
-                                {enabled ? 'Activé' : 'Désactivé'}
-                              </motion.button>
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          ) : null}
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </section>
-      )}
-    </div>
+      ) : null}
+    </motion.div>
   );
 };
 

@@ -643,6 +643,19 @@ button.project-info-chip--link:hover .project-info-chip-value {
   background: rgba(254, 226, 226, 0.5);
 }
 
+.project-menu-item--archive {
+  color: #0f766e;
+}
+
+.project-menu-item--archive:hover {
+  background: rgba(204, 251, 241, 0.55);
+}
+
+.project-menu-item:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .status-pill {
   display: inline-flex;
   padding: 0.25rem 0.75rem;

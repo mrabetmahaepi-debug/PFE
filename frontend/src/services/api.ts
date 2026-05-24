@@ -72,6 +72,16 @@ api.interceptors.response.use(
         window.location.href = "/login";
       }
     }
+    if (status === 403 && error.response?.data && typeof error.response.data === "object") {
+      const data = error.response.data as { message?: string; code?: string };
+      if (
+        !data.message ||
+        data.message === "Permission projet insuffisante" ||
+        data.code === "PROJECT_PERMISSION_DENIED"
+      ) {
+        data.message = "Vous n'avez pas l'autorisation nécessaire";
+      }
+    }
     return Promise.reject(error);
   }
 );

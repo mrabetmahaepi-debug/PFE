@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { projectService } from '../services/project.service';
+import { PROJECTS_UPDATED_EVENT } from '../lib/workspaceEvents';
 
 interface ProjectProgressProps {
   projectId: number;
@@ -12,13 +13,21 @@ const ProjectProgress: React.FC<ProjectProgressProps> = ({ projectId, statusColo
 
   useEffect(() => {
     let mounted = true;
-    projectService.getProgress(projectId)
-      .then((res) => {
-        if (mounted) setProgress(res.progressPercent || res.progress || 0);
-      })
-      .catch(console.error);
-
-    return () => { mounted = false; };
+    const load = () => {
+      projectService
+        .getProgress(projectId)
+        .then((res) => {
+          if (mounted) setProgress(res.progressPercent || res.progress || 0);
+        })
+        .catch(console.error);
+    };
+    load();
+    const onRefresh = () => load();
+    window.addEventListener(PROJECTS_UPDATED_EVENT, onRefresh);
+    return () => {
+      mounted = false;
+      window.removeEventListener(PROJECTS_UPDATED_EVENT, onRefresh);
+    };
   }, [projectId]);
 
   return (

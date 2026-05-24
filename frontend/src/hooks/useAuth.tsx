@@ -3,6 +3,7 @@ import type { User, LoginCredentials, RegisterData, AuthResponse } from '../type
 import { authService } from '../services/auth.service';
 import { meService } from '../services/me.service';
 import { checkPermission, isSuperAdmin } from '../lib/permissions';
+import { permissionSetHas } from '../lib/permissionCheck';
 
 /** Build session user from POST /auth/login body when GET /auth/me is temporarily unavailable. */
 function userFromLoginResponse(res: AuthResponse): User {
@@ -17,6 +18,11 @@ function userFromLoginResponse(res: AuthResponse): User {
           : '';
   const rawId = u.id ?? u.id_utilisateur;
   const idNum = Number(rawId);
+  const packPoste = (res as { poste?: string }).poste ?? (u as { poste?: string }).poste;
+  const packProjectRoles =
+    (res as { projectRoles?: User['projectRoles'] }).projectRoles ??
+    (u as { projectRoles?: User['projectRoles'] }).projectRoles;
+
   return {
     id: rawId as string | number,
     id_utilisateur: Number.isFinite(idNum) ? idNum : undefined,
@@ -27,6 +33,8 @@ function userFromLoginResponse(res: AuthResponse): User {
     role: roleStr || 'Membre',
     id_role: res.id_role ?? u.id_role,
     id_entreprise: u.id_entreprise,
+    poste: packPoste,
+    projectRoles: packProjectRoles,
     permissions: [],
   };
 }
@@ -221,7 +229,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const hasAnyPermission = useCallback(
     (permissions: string[]): boolean => {
       if (superAdmin) return true;
-      return permissions.some((p) => permissionSet.has(p));
+      return permissions.some((p) => permissionSetHas(permissionSet, p));
     },
     [permissionSet, superAdmin]
   );
@@ -229,7 +237,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const hasAllPermissions = useCallback(
     (permissions: string[]): boolean => {
       if (superAdmin) return true;
-      return permissions.every((p) => permissionSet.has(p));
+      return permissions.every((p) => permissionSetHas(permissionSet, p));
     },
     [permissionSet, superAdmin]
   );

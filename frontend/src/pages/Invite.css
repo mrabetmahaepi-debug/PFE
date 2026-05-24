@@ -1,3 +1,70 @@
+/* ---- New invitation form fields ----------------------------------------- */
+.invite-field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.invite-input-with-icon {
+  position: relative;
+}
+
+.invite-field-icon {
+  position: absolute;
+  left: 0.85rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+  pointer-events: none;
+}
+
+.invite-input-with-icon .invite-input-single {
+  padding-left: 2.35rem;
+}
+
+.invite-field-hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.8rem;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+.invite-project-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+}
+
+.invite-project-chip {
+  border: 1px solid rgba(14, 165, 233, 0.22);
+  background: #fff;
+  color: #334155;
+  border-radius: 999px;
+  padding: 0.4rem 0.85rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.invite-project-chip:hover {
+  border-color: rgba(14, 165, 233, 0.45);
+  background: rgba(14, 165, 233, 0.06);
+}
+
+.invite-project-chip.selected {
+  background: linear-gradient(135deg, rgba(20, 184, 166, 0.15), rgba(14, 165, 233, 0.18));
+  border-color: rgba(14, 165, 233, 0.5);
+  color: #0f766e;
+}
+
+@media (max-width: 640px) {
+  .invite-field-row {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ==========================================================================
    Invite page — modern, lightweight ClickUp/Linear-inspired layout
    ========================================================================== */
@@ -148,6 +215,11 @@
 
 .invite-input-single::placeholder {
   color: #94a3b8;
+}
+
+.invite-select {
+  cursor: pointer;
+  appearance: auto;
 }
 
 .invite-input-single:focus {
@@ -788,6 +860,45 @@
   font-size: 0.72rem;
   color: var(--text-muted);
   line-height: 1.45;
+}
+
+.invite-result-link-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 0.45rem;
+  width: 100%;
+}
+
+.invite-result-link-input {
+  flex: 1 1 12rem;
+  min-width: 0;
+  padding: 0.35rem 0.5rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  font-size: 0.72rem;
+  color: var(--text-main);
+}
+
+.invite-result-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35rem 0.65rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-surface-elevated);
+  color: var(--primary);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.invite-result-copy-btn:hover {
+  border-color: var(--primary);
+  background: var(--primary-soft, rgba(99, 102, 241, 0.08));
 }
 
 .invite-copy {

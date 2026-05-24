@@ -5,11 +5,23 @@ import {
   isGlobalMembreUser,
   isTenantAdminUser,
   userCanReadProject,
+  buildAssignedProjectVisibilityWhere,
 } from "../lib/projectAccess";
 import {
   getProjectPermissionContext,
   serializeWorkspaceProjectAuth,
 } from "../services/projectPermission.service";
+import {
+  filterHierarchyResources,
+  loadResourceGrantSets,
+  shouldFilterResourcesByGrants,
+} from "../lib/resourceAccessFilter";
+import { filterDeveloperAssignedHierarchy } from "../lib/sidebarAccessFilter";
+import { isLocalDeveloppeur } from "./projectLocalRolePermissions";
+import { isProjectAccessDenied } from "../lib/userAccessGrants";
+import { permissionSetHas } from "./permissionProfiles";
+import { mergeActiveProjectWhere } from "./projectArchive";
+import { buildProjectTasksWhere, resolveTaskProjectId } from "./projectTaskStats";
 
 const db = prisma as any;
 
@@ -27,6 +39,20 @@ export function resolveEnterpriseId(user: any): number | null {
   const ent = user?.entreprise;
   if (ent && typeof ent === "object") return toInt(ent.id_entreprise);
   return null;
+}
+
+async function loadUserPoste(userId: number): Promise<string | null> {
+  if (!Number.isFinite(userId) || userId < 1) return null;
+  try {
+    const row = await prisma.utilisateur.findUnique({
+      where: { id_utilisateur: userId },
+      select: { poste: true },
+    });
+    return row?.poste?.trim() || null;
+  } catch (err) {
+    console.warn("[spaceHierarchy] loadUserPoste failed:", err);
+    return null;
+  }
 }
 
 /** Ensure tenant has at least one space named "Mon espace". */
@@ -77,14 +103,25 @@ export async function buildProjectWhereClause(
 
   if (id_entreprise == null) return { id_projet: -1 };
 
+  const userId = toInt(user?.id);
+  if (!userId) return { id_projet: -1 };
+
   const whereClause: Record<string, unknown> = { id_entreprise };
 
   if (isGlobalMembreUser(user)) {
-    whereClause.membre_projet = { some: { id_utilisateur: user.id } };
+    const poste = user?.poste ?? (await loadUserPoste(userId));
+    Object.assign(
+      whereClause,
+      buildAssignedProjectVisibilityWhere(userId, poste)
+    );
   } else if (!isTenantAdminUser(user)) {
     const canViewAll = await userHasPermission(req, "PROJECT_VIEW_ALL");
     if (!canViewAll) {
-      whereClause.membre_projet = { some: { id_utilisateur: user.id } };
+      const poste = user?.poste ?? (await loadUserPoste(userId));
+      Object.assign(
+        whereClause,
+        buildAssignedProjectVisibilityWhere(userId, poste)
+      );
     }
   }
 
@@ -98,12 +135,19 @@ export async function loadReadableProjects(
   req: Request,
   user: any,
   id_entreprise: number | null,
-  options?: { includeTrashed?: boolean }
+  options?: { includeTrashed?: boolean; includeArchived?: boolean }
 ) {
-  const where = await buildProjectWhereClause(req, user, id_entreprise);
+  const userId = toInt(user?.id);
+  if (!userId) return [];
+
+  let where = await buildProjectWhereClause(req, user, id_entreprise);
   if (!options?.includeTrashed) {
     (where as any).deleted_at = null;
   }
+  where = mergeActiveProjectWhere(
+    where as Record<string, unknown>,
+    options?.includeArchived
+  ) as typeof where;
   const rows = await prisma.projet.findMany({
     where,
     select: {
@@ -114,11 +158,48 @@ export async function loadReadableProjects(
       id_space: true,
       id_entreprise: true,
       deleted_at: true,
-      membre_projet: { select: { id_utilisateur: true } },
+      chef_de_projet_id: true,
+      membre_projet: {
+        select: { id_utilisateur: true, role_projet: true },
+      },
     },
     orderBy: [{ nom_p: "asc" }],
   });
-  return rows.filter((p) => userCanReadProject(user, p));
+  const poste = user?.poste ?? (await loadUserPoste(userId));
+  const userWithPoste = { ...user, id: userId, poste };
+  return rows.filter((p) => userCanReadProject(userWithPoste, p));
+}
+
+/** Filter projects denied by admin and async deny grants. */
+export async function loadReadableProjectsAsync(
+  req: Request,
+  user: any,
+  id_entreprise: number | null,
+  options?: { includeTrashed?: boolean; includeArchived?: boolean }
+) {
+  try {
+    const rows = await loadReadableProjects(req, user, id_entreprise, options);
+    if (isSuperAdmin(user) || isTenantAdminUser(user)) return rows;
+    const userId = toInt(user?.id);
+    if (!userId) return [];
+    const filtered: typeof rows = [];
+    for (const p of rows) {
+      try {
+        if (await isProjectAccessDenied(userId, p.id_projet)) continue;
+      } catch (err) {
+        console.warn(
+          "[spaceHierarchy] isProjectAccessDenied failed for project",
+          p.id_projet,
+          err
+        );
+      }
+      filtered.push(p);
+    }
+    return filtered;
+  } catch (err) {
+    console.error("[spaceHierarchy] loadReadableProjectsAsync:", err);
+    return [];
+  }
 }
 
 export async function loadProjectAuth(
@@ -136,10 +217,32 @@ export async function loadProjectAuth(
   }
 }
 
+function mapTreeTaskNode(t: any, list: any): Record<string, unknown> {
+  return {
+    id_tache: t.id_tache,
+    nom_t: t.nom_t ?? "Tâche",
+    statut_t: t.statut_t ?? null,
+    id_list: t.id_list ?? list.id_list,
+    id_projet: t.id_projet ?? list.id_projet,
+    id_sprint: t.id_sprint ?? null,
+    id_parent_tache: t.id_parent_tache ?? null,
+    priorite_t: t.priorite_t ?? null,
+    date_limite_t: t.date_limite_t ?? null,
+  };
+}
+
 export function buildListNode(l: any, tasks: any[]) {
   const listTasks = (tasks as any[]).filter(
     (t) => Number(t.id_list) === Number(l.id_list)
   );
+  const roots = listTasks.filter((t) => !t.id_parent_tache);
+  const treeTasks = roots.map((root) => {
+    const node = mapTreeTaskNode(root, l);
+    const children = listTasks
+      .filter((t) => Number(t.id_parent_tache) === Number(root.id_tache))
+      .map((st) => mapTreeTaskNode(st, l));
+    return children.length > 0 ? { ...node, subtasks: children } : node;
+  });
   return {
     id_list: l.id_list,
     nom: l.nom ?? "Liste",
@@ -148,16 +251,7 @@ export function buildListNode(l: any, tasks: any[]) {
     id_projet: l.id_projet,
     id_sprint: l.id_sprint ?? null,
     task_count: listTasks.length,
-    tasks: listTasks.map((t) => ({
-      id_tache: t.id_tache,
-      nom_t: t.nom_t ?? "Tâche",
-      statut_t: t.statut_t ?? null,
-      id_list: t.id_list ?? l.id_list,
-      id_projet: t.id_projet ?? l.id_projet,
-      id_sprint: t.id_sprint ?? null,
-      priorite_t: t.priorite_t ?? null,
-      date_limite_t: t.date_limite_t ?? null,
-    })),
+    tasks: treeTasks,
   };
 }
 
@@ -187,18 +281,99 @@ export async function buildProjectNode(
   tasks: any[],
   user: any
 ) {
-  const auth = await loadProjectAuth(user, project.id_projet);
-  const projectSprints = (sprintsFlat as any[])
-    .filter((s) => s.id_projet === project.id_projet)
-    .map((s) => buildSprintNode(s, listsFlat, tasks));
+  const projectId = Number(project?.id_projet);
+  let auth = {
+    currentUserProjectRole: null as string | null,
+    currentUserPermissions: [] as string[],
+  };
+  let ctx: Awaited<ReturnType<typeof getProjectPermissionContext>> | null =
+    null;
+
+  try {
+    auth = await loadProjectAuth(user, projectId);
+    ctx = await getProjectPermissionContext(user, projectId);
+  } catch (err) {
+    console.warn(
+      "[spaceHierarchy] buildProjectNode auth failed for project",
+      projectId,
+      err
+    );
+  }
+
+  let projectSprintsRaw = (sprintsFlat as any[]).filter(
+    (s) => Number(s.id_projet) === projectId
+  );
+  let projectListsRaw = (listsFlat as any[]).filter(
+    (l) => Number(l.id_projet) === projectId
+  );
+  const projectIdByList = new Map(
+    projectListsRaw.map((l) => [Number(l.id_list), projectId])
+  );
+  const projectIdBySprint = new Map(
+    projectSprintsRaw.map((s) => [Number(s.id_sprint), projectId])
+  );
+  let projectTasksRaw = (tasks as any[]).filter(
+    (t) =>
+      resolveTaskProjectId(t, projectIdByList, projectIdBySprint) === projectId
+  );
+
+  if (ctx && user?.id) {
+    const userId = Number(user.id);
+    try {
+      if (shouldFilterResourcesByGrants(ctx.fullAccess, ctx.roleProjet, ctx.permissions)) {
+        if (isLocalDeveloppeur(ctx.roleProjet)) {
+          const filtered = filterDeveloperAssignedHierarchy(
+            projectSprintsRaw,
+            projectListsRaw,
+            projectTasksRaw,
+            userId
+          );
+          projectSprintsRaw = filtered.sprints;
+          projectListsRaw = filtered.lists;
+          projectTasksRaw = filtered.tasks;
+        } else {
+          const grants = await loadResourceGrantSets(userId, projectId);
+          if (
+            grants.hasExplicitResourceGrants ||
+            !permissionSetHas(ctx.permissions, "PROJECT_VIEW")
+          ) {
+            const filtered = filterHierarchyResources(
+              projectSprintsRaw,
+              projectListsRaw,
+              projectTasksRaw,
+              grants,
+              userId
+            );
+            projectSprintsRaw = filtered.sprints;
+            projectListsRaw = filtered.lists;
+            projectTasksRaw = filtered.tasks;
+          }
+        }
+      }
+    } catch (err) {
+      console.warn(
+        "[spaceHierarchy] buildProjectNode access filter failed for project",
+        projectId,
+        err
+      );
+    }
+  }
+
+  const projectSprints = projectSprintsRaw.map((s) =>
+    buildSprintNode(s, projectListsRaw, projectTasksRaw)
+  );
   return {
-    id_projet: project.id_projet,
+    id_projet: projectId,
     nom_p: project.nom_p ?? "Projet",
-    description_p: project.description_p,
-    statut_p: project.statut_p,
-    id_space: project.id_space,
+    description_p: project.description_p ?? null,
+    statut_p: project.statut_p ?? null,
+    id_space: project.id_space ?? null,
     sprints: projectSprints,
-    task_count: tasks.filter((t) => t.id_projet === project.id_projet).length,
+    task_count: projectTasksRaw.length,
+    hasAccessibleContent:
+      projectSprints.length > 0 ||
+      projectListsRaw.length > 0 ||
+      projectTasksRaw.length > 0,
     ...auth,
   };
 }
@@ -214,32 +389,41 @@ export async function loadHierarchyEntities(
   if (!options?.includeTrashedLists) {
     listWhere.deleted_at = null;
   }
-  const [sprintsFlat, listsFlat, tasks] = await Promise.all([
-    prisma.sprint.findMany({
-      where: { id_projet: { in: projectIds } },
+  const [sprintsFlat, listsFlat] = await Promise.all([
+    db.sprint.findMany({
+      where: { id_projet: { in: projectIds }, deleted_at: null },
       orderBy: [{ id_sprint: "asc" }],
     }),
     db.list_pm.findMany({
       where: listWhere,
       orderBy: [{ position: "asc" }, { id_list: "asc" }],
     }),
-    prisma.tache.findMany({
-      where: { id_projet: { in: projectIds } },
-      select: {
-        id_tache: true,
-        nom_t: true,
-        statut_t: true,
-        id_projet: true,
-        id_sprint: true,
-        id_list: true,
-        priorite_t: true,
-        date_limite_t: true,
-        assigne_a: true,
-      },
-      orderBy: [{ id_tache: "asc" }],
-    }),
   ]);
-  return { sprintsFlat, listsFlat, tasks };
+  const sprintIds = (sprintsFlat as { id_sprint: number }[]).map((s) => s.id_sprint);
+  const listIds = (listsFlat as { id_list: number }[]).map((l) => l.id_list);
+  const tasks = await db.tache.findMany({
+    where: buildProjectTasksWhere(projectIds, sprintIds, listIds),
+    select: {
+      id_tache: true,
+      nom_t: true,
+      statut_t: true,
+      id_projet: true,
+      id_sprint: true,
+      id_list: true,
+      id_parent_tache: true,
+      priorite_t: true,
+      date_limite_t: true,
+      assigne_a: true,
+    },
+    orderBy: [{ id_parent_tache: "asc" }, { id_tache: "asc" }],
+  });
+  const activeSprintIds = new Set(
+    sprintsFlat.map((s: { id_sprint: number }) => s.id_sprint)
+  );
+  const visibleLists = (listsFlat as { id_sprint?: number | null }[]).filter(
+    (l) => !l.id_sprint || activeSprintIds.has(l.id_sprint)
+  );
+  return { sprintsFlat, listsFlat: visibleLists, tasks };
 }
 
 /** ClickUp-style folder = projet scoped to a space. */
@@ -282,7 +466,7 @@ export async function createFolderInSpace(
       data: {
         id_projet: projet.id_projet,
         id_utilisateur: chefId,
-        role_projet: "Chef de Projet",
+        role_projet: "Chef de projet",
       },
     });
   }
@@ -413,17 +597,23 @@ export async function restoreProjectFromTrash(id_projet: number) {
   });
 }
 
-export async function moveListToTrash(id_list: number) {
+export async function moveListToTrash(
+  id_list: number,
+  deletedBy?: number | null
+) {
   await db.list_pm.update({
     where: { id_list },
-    data: { deleted_at: nowTrash() },
+    data: {
+      deleted_at: nowTrash(),
+      deleted_by: deletedBy ?? null,
+    },
   });
 }
 
 export async function restoreListFromTrash(id_list: number) {
   await db.list_pm.update({
     where: { id_list },
-    data: { deleted_at: null },
+    data: { deleted_at: null, deleted_by: null },
   });
 }
 
