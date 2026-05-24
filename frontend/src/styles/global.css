@@ -239,13 +239,91 @@ button:focus-visible {
 }
 
 /* Navbar — inner pages */
-.coach-layout:not(.coach-layout--dashboard) .navbar {
+.coach-layout:not(.coach-layout--dashboard):not(.coach-layout--member-assigned):not(
+    .coach-layout--member-today
+  ):not(.coach-layout--member-inbox):not(.coach-layout--member-space):not(
+    .coach-layout--member-task-detail
+  )
+  .navbar {
   margin: 1rem 1.75rem 0;
   padding: 0.65rem 1rem;
   background: var(--bg-surface-elevated);
   border: 1px solid var(--border-soft);
   border-radius: 20px;
   box-shadow: var(--shadow-soft);
+}
+
+/* Member pages — full-width compact top bar */
+.coach-layout--member-assigned .navbar,
+.coach-layout--member-today .navbar,
+.coach-layout--member-inbox .navbar,
+.coach-layout--member-space .navbar,
+.coach-layout--member-task-detail .navbar {
+  margin: 0;
+  background: #ffffff;
+  border: none;
+  border-bottom: 1px solid #ececf3;
+  border-radius: 0;
+  box-shadow: none;
+  justify-content: space-between;
+}
+
+.coach-layout--member-assigned .navbar,
+.coach-layout--member-today .navbar {
+  padding: 0 20px 0 16px;
+  height: 52px;
+  min-height: 52px;
+}
+
+.coach-layout--member-task-detail .navbar {
+  padding: 0 20px 0 16px;
+  height: 52px;
+  min-height: 52px;
+}
+
+.coach-layout--member-inbox .navbar {
+  padding: 0 20px 0 16px;
+  height: 56px;
+  min-height: 56px;
+}
+
+.coach-layout--member-workspace .navbar {
+  margin: 0;
+  background: #ffffff;
+  border: none;
+  border-bottom: 1px solid #ececf3;
+  border-radius: 0;
+  box-shadow: none;
+  justify-content: space-between;
+}
+
+.coach-layout--member-workspace .main-content {
+  background: #ffffff;
+}
+
+.coach-layout--member-assigned .main-content,
+.coach-layout--member-today .main-content,
+.coach-layout--member-inbox .main-content,
+.coach-layout--member-space .main-content,
+.coach-layout--member-task-detail .main-content {
+  background: #f7f8fc;
+}
+
+@media (max-width: 900px) {
+  .coach-layout--member-assigned .navbar,
+  .coach-layout--member-today .navbar {
+    padding: 0 16px 0 12px;
+  }
+
+  .coach-layout--member-inbox .navbar {
+    padding-left: 12px;
+    padding-right: 16px;
+  }
+
+  .coach-layout--member-task-detail .navbar {
+    padding-left: 12px;
+    padding-right: 16px;
+  }
 }
 
 /* Dashboard — floating actions */

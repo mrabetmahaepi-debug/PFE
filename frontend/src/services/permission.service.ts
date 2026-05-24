@@ -32,16 +32,16 @@ export const permissionService = {
 
   async saveProjectRoleMatrix(
     matrix: ProjectRolePermissionMatrix
-  ): Promise<ProjectRoleMatrixResponse> {
-    const response = await api.put<ProjectRoleMatrixResponse>(
+  ): Promise<{ matrix: ProjectRolePermissionMatrix }> {
+    const response = await api.put<{ matrix: ProjectRolePermissionMatrix }>(
       '/permissions/project-roles/matrix',
       { matrix }
     );
     return response.data;
   },
 
-  async resetProjectRoleMatrix(): Promise<ProjectRoleMatrixResponse> {
-    const response = await api.delete<ProjectRoleMatrixResponse>(
+  async resetProjectRoleMatrix(): Promise<{ matrix: ProjectRolePermissionMatrix }> {
+    const response = await api.delete<{ matrix: ProjectRolePermissionMatrix }>(
       '/permissions/project-roles/matrix'
     );
     return response.data;

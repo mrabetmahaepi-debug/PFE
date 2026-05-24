@@ -8,9 +8,10 @@ export const FALLBACK_LIST_STATUSES: Omit<
 >[] = [
   { label: 'À faire', statut_key: 'todo', position: 0, is_system: true },
   { label: 'En cours', statut_key: 'en_cours', position: 1, is_system: true },
-  { label: 'Terminée', statut_key: 'terminee', position: 2, is_system: true },
-  { label: 'Bloquée', statut_key: 'bloquee', position: 3, is_system: true },
-  { label: 'En révision', statut_key: 'en_revision', position: 4, is_system: true },
+  { label: 'En retard', statut_key: 'en_retard', position: 2, is_system: true },
+  { label: 'Terminé', statut_key: 'terminee', position: 3, is_system: true },
+  { label: 'Bloquée', statut_key: 'bloquee', position: 4, is_system: true },
+  { label: 'En révision', statut_key: 'en_revision', position: 5, is_system: true },
 ];
 
 export function normalizeTaskStatutKey(statut?: string | null): string {
@@ -28,10 +29,19 @@ export function normalizeTaskStatutKey(statut?: string | null): string {
     return 'en_cours';
   }
   if (
+    upper === 'EN_RETARD' ||
+    lower === 'en_retard' ||
+    upper === 'OVERDUE'
+  ) {
+    return 'en_retard';
+  }
+  if (
     upper === 'DONE' ||
     upper === 'TERMINEE' ||
     upper === 'TERMINE' ||
-    lower === 'terminee'
+    upper === 'ACHEVE' ||
+    lower === 'terminee' ||
+    lower === 'acheve'
   ) {
     return 'terminee';
   }
@@ -71,6 +81,8 @@ export function taskStatusToStatutKey(
   switch (status) {
     case TaskStatus.IN_PROGRESS:
       return 'en_cours';
+    case 'OVERDUE':
+      return 'en_retard';
     case TaskStatus.DONE:
       return 'terminee';
     case TaskStatus.TODO:

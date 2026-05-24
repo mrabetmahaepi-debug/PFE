@@ -6,12 +6,12 @@ import PermissionRoute from './components/PermissionRoute';
 import DashboardLayout from './layouts/DashboardLayout';
 import Dashboard from './pages/Dashboard';
 import Projects from './pages/Projects';
-import Tasks from './pages/Tasks';
+import TasksRoute from './components/TasksRoute';
 import Team from './pages/Team';
 import Settings from './pages/Settings';
 import Approvals from './pages/Approvals';
 import Enterprises from './pages/Enterprises';
-import Messages from './pages/Messages';
+import InboxRoute from './components/InboxRoute';
 import Permissions from './pages/Permissions';
 import ProjectAccess from './pages/ProjectAccess';
 import Workspace from './pages/Workspace';
@@ -23,7 +23,10 @@ import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import AcceptInvitation from './pages/AcceptInvitation';
+import InvitationSetupPassword from './pages/InvitationSetupPassword';
 import Invite from './pages/Invite';
+import AdminRecommendationsRoute from './components/AdminRecommendationsRoute';
+import ProjectEquipePage from './pages/ProjectEquipePage';
 
 
 import ProjectDetail from './pages/ProjectDetail';
@@ -31,7 +34,9 @@ import EnterpriseDetail from './pages/EnterpriseDetail';
 import UserDetail from './pages/UserDetail';
 import ActivityLogs from './pages/ActivityLogs';
 import { useAuth } from './hooks/useAuth';
-import { isSuperAdmin, isEnterpriseAdmin } from './lib/permissions';
+import { isSuperAdmin, isEnterpriseAdmin, isGlobalMember } from './lib/permissions';
+import MemberMonEspaceRedirect from './components/MemberMonEspaceRedirect';
+import { appPaths } from './lib/workspaceRoutes';
 import { RouteErrorBoundary } from './components/RouteErrorBoundary';
 
 const NoSuperAdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -58,6 +63,18 @@ const AdminWorkspaceRedirect: React.FC<{ children: React.ReactNode }> = ({ child
   return <>{children}</>;
 };
 
+const IndexRedirect: React.FC = () => {
+  const { user, loading } = useAuth();
+  if (loading) {
+    return (
+      <div style={{ padding: 24 }}>
+        <span>Chargement…</span>
+      </div>
+    );
+  }
+  return <Navigate to={appPaths.home} replace />;
+};
+
 /** Activity logs are global; backend requires SuperAdmin. */
 const SuperAdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
@@ -78,6 +95,10 @@ function App() {
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/invitations/accept/:token" element={<AcceptInvitation />} />
+          <Route
+            path="/invitations/setup-password/:token"
+            element={<InvitationSetupPassword />}
+          />
           <Route path="/accept-invitation" element={<AcceptInvitation />} />
           <Route path="/invitation/:token" element={<AcceptInvitation />} />
 
@@ -87,23 +108,26 @@ function App() {
               <DashboardLayout />
             </ProtectedRoute>
           }>
-            <Route index element={<Navigate to="/home" replace />} />
+            <Route index element={<IndexRedirect />} />
             <Route path="home" element={<Dashboard />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route
-              path="inbox"
+              path="mon-espace"
               element={
-                <PermissionRoute permission="MESSAGING_USE">
-                  <Messages />
+                <PermissionRoute any={['PROJECT_VIEW', 'PROJECT_VIEW_ALL', 'WORKSPACE_VIEW']}>
+                  <NoSuperAdminRoute>
+                    <MemberMonEspaceRedirect />
+                  </NoSuperAdminRoute>
                 </PermissionRoute>
               }
             />
+            <Route path="inbox" element={<InboxRoute />} />
             <Route path="messages" element={<Navigate to="/inbox" replace />} />
             <Route path="docs" element={<Docs />} />
             <Route
               path="projects"
               element={
-                <PermissionRoute any={['PROJECT_VIEW_ALL', 'WORKSPACE_VIEW']}>
+                <PermissionRoute any={['PROJECT_VIEW', 'PROJECT_VIEW_ALL', 'WORKSPACE_VIEW']}>
                   <NoSuperAdminRoute>
                     <RouteErrorBoundary pageLabel="la liste des projets">
                       <Projects />
@@ -115,7 +139,7 @@ function App() {
             <Route
               path="lists/:listId"
               element={
-                <PermissionRoute any={['PROJECT_VIEW_ALL', 'WORKSPACE_VIEW']}>
+                <PermissionRoute any={['PROJECT_VIEW', 'PROJECT_VIEW_ALL', 'WORKSPACE_VIEW']}>
                   <NoSuperAdminRoute>
                     <RouteErrorBoundary pageLabel="la liste">
                       <ListViewPage />
@@ -127,7 +151,7 @@ function App() {
             <Route
               path="spaces/*"
               element={
-                <PermissionRoute any={['PROJECT_VIEW_ALL', 'WORKSPACE_VIEW']}>
+                <PermissionRoute any={['PROJECT_VIEW', 'PROJECT_VIEW_ALL', 'WORKSPACE_VIEW']}>
                   <NoSuperAdminRoute>
                     <AdminWorkspaceRedirect>
                       <Workspace />
@@ -140,7 +164,7 @@ function App() {
             <Route
               path="tasks/:taskId"
               element={
-                <PermissionRoute any={['PROJECT_VIEW_ALL', 'WORKSPACE_VIEW', 'TASK_VIEW_ALL']}>
+                <PermissionRoute any={['PROJECT_VIEW', 'PROJECT_VIEW_ALL', 'WORKSPACE_VIEW', 'TASK_VIEW', 'TASK_VIEW_ALL']}>
                   <NoSuperAdminRoute>
                     <RouteErrorBoundary pageLabel="la tâche">
                       <TaskDetailsPage />
@@ -152,7 +176,7 @@ function App() {
             <Route
               path="projects/:id"
               element={
-                <PermissionRoute any={['PROJECT_VIEW_ALL', 'WORKSPACE_VIEW']}>
+                <PermissionRoute any={['PROJECT_VIEW', 'PROJECT_VIEW_ALL', 'WORKSPACE_VIEW']}>
                   <RouteErrorBoundary pageLabel="le détail du projet">
                     <ProjectDetail />
                   </RouteErrorBoundary>
@@ -170,11 +194,9 @@ function App() {
             <Route
               path="tasks"
               element={
-                <PermissionRoute permission="TASK_VIEW_ALL">
-                  <NoSuperAdminRoute>
-                    <Tasks />
-                  </NoSuperAdminRoute>
-                </PermissionRoute>
+                <NoSuperAdminRoute>
+                  <TasksRoute />
+                </NoSuperAdminRoute>
               }
             />
             <Route
@@ -196,14 +218,6 @@ function App() {
               }
             />
             <Route
-              path="messages"
-              element={
-                <PermissionRoute permission="MESSAGING_USE">
-                  <Messages />
-                </PermissionRoute>
-              }
-            />
-            <Route
               path="enterprises"
               element={
                 <PermissionRoute permission="SYSTEM_MANAGE_ENTERPRISES">
@@ -217,6 +231,14 @@ function App() {
                 <PermissionRoute permission="SYSTEM_MANAGE_ENTERPRISES">
                   <EnterpriseDetail />
                 </PermissionRoute>
+              }
+            />
+            <Route
+              path="recommendations"
+              element={
+                <NoSuperAdminRoute>
+                  <AdminRecommendationsRoute />
+                </NoSuperAdminRoute>
               }
             />
             <Route
@@ -245,6 +267,18 @@ function App() {
                 <PermissionRoute permission="PROJECT_MANAGE_ACCESS">
                   <NoSuperAdminRoute>
                     <ProjectAccess />
+                  </NoSuperAdminRoute>
+                </PermissionRoute>
+              }
+            />
+            <Route
+              path="equipe/:projectId?"
+              element={
+                <PermissionRoute any={['PROJECT_VIEW', 'PROJECT_VIEW_ALL', 'WORKSPACE_VIEW']}>
+                  <NoSuperAdminRoute>
+                    <RouteErrorBoundary pageLabel="l'équipe projet">
+                      <ProjectEquipePage />
+                    </RouteErrorBoundary>
                   </NoSuperAdminRoute>
                 </PermissionRoute>
               }

@@ -47,7 +47,7 @@
 
 .permissions-page .permissions-page-header h1,
 .permissions-page .page-header h1 {
-  margin: 0;
+  margin: 0 0 0.35rem;
   font-size: clamp(26px, 2vw, 34px);
   font-weight: 800;
   letter-spacing: -0.03em;
@@ -57,6 +57,46 @@
   -webkit-text-fill-color: transparent;
   background-clip: text;
   color: transparent;
+}
+
+.permissions-page-subtitle {
+  margin: 0;
+  max-width: 52rem;
+  font-size: 0.92rem;
+  line-height: 1.5;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.permissions-admin-note {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.65rem 0.9rem;
+  border-radius: 12px;
+  border: 1px solid rgba(14, 165, 233, 0.16);
+  background: rgba(255, 255, 255, 0.72);
+  color: #475569;
+  font-size: 0.84rem;
+  line-height: 1.4;
+}
+
+.permissions-admin-note svg {
+  flex-shrink: 0;
+  color: #0ea5e9;
+}
+
+.permissions-admin-note strong {
+  color: #0f766e;
+  font-weight: 700;
+}
+
+.permissions-error-banner {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  color: #b91c1c;
 }
 
 /* ── Glass cards / sections ──────────────────────────────────── */
@@ -301,37 +341,108 @@
   margin: -1.1rem -1.25rem 0.85rem;
   padding: 0.85rem 1.25rem;
   border-bottom: 1px solid rgba(14, 165, 233, 0.1);
-  background: var(--perm-header-strip);
+  background: rgba(255, 255, 255, 0.55);
   border-radius: 24px 24px 0 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.permissions-page .project-perms-head-text {
+  min-width: 0;
+  flex: 1;
+}
+
+.permissions-page .project-perms-lead {
+  margin: 0.25rem 0 0;
+  font-size: 0.84rem;
+  line-height: 1.45;
+  color: #64748b;
+  font-weight: 500;
+  max-width: 36rem;
 }
 
 .permissions-page .project-perms-title {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-  font-size: 1.1rem;
-  font-weight: 800;
+  display: block;
+  font-size: 1.05rem;
+  font-weight: 700;
   margin: 0;
   color: #1e293b;
 }
 
 .permissions-page .project-perms-title span {
-  background: var(--perm-accent);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  color: transparent;
+  background: none;
+  -webkit-text-fill-color: inherit;
+  color: inherit;
 }
 
-.permissions-page .project-perms-title svg {
+.permissions-page .permissions-add-role-wrap {
+  position: relative;
   flex-shrink: 0;
-  padding: 8px;
-  width: 38px;
-  height: 38px;
+}
+
+.permissions-page .permissions-add-role-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px dashed rgba(14, 165, 233, 0.35);
+  background: rgba(255, 255, 255, 0.85);
+  color: #0f766e;
+  border-radius: 10px;
+  padding: 0.45rem 0.85rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease;
+}
+
+.permissions-page .permissions-add-role-btn:hover:not(:disabled) {
+  background: #fff;
+  border-color: rgba(14, 165, 233, 0.55);
+  color: #0d9488;
+}
+
+.permissions-page .permissions-add-role-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.permissions-page .permissions-add-role-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 20;
+  min-width: 11rem;
+  padding: 0.35rem;
   border-radius: 12px;
-  background: var(--perm-icon);
-  color: #fff;
-  box-shadow: 0 6px 16px rgba(14, 165, 233, 0.22);
+  border: 1px solid rgba(14, 165, 233, 0.14);
+  background: #fff;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
+}
+
+.permissions-page .permissions-add-role-item {
+  display: block;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  padding: 0.5rem 0.65rem;
+  border-radius: 8px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.permissions-page .permissions-add-role-item:hover {
+  background: rgba(14, 165, 233, 0.08);
+  color: #0f766e;
 }
 
 .permissions-page .project-perms-toolbar {
@@ -339,6 +450,14 @@
   flex-wrap: wrap;
   gap: 0.65rem;
   margin-bottom: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.permissions-page .project-perms-autosave-hint {
+  font-size: 0.82rem;
+  color: #64748b;
+  font-weight: 500;
 }
 
 .permissions-page .project-perms-save,
@@ -399,7 +518,7 @@
 }
 
 .permissions-page .project-perms-matrix {
-  min-width: 960px;
+  min-width: 520px;
 }
 
 .permissions-page .perm-slug {

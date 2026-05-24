@@ -65,6 +65,11 @@
   color: #047857;
 }
 
+.cu-kanban-status-badge--amber {
+  background: #fef3c7;
+  color: #b45309;
+}
+
 .cu-kanban-column-count {
   font-size: 12px;
   font-weight: 600;

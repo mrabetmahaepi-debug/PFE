@@ -509,6 +509,17 @@
   border-color: var(--border-rose);
 }
 
+.onboarding-card-centered {
+  max-width: 440px;
+  width: 100%;
+  margin: 2rem auto;
+  padding: 2rem 1.75rem;
+  border-radius: 20px;
+  border: 1px solid var(--border-subtle, rgba(148, 163, 184, 0.25));
+  background: var(--bg-surface, #fff);
+  box-shadow: 0 24px 48px -20px rgba(15, 23, 42, 0.18);
+}
+
 /* ---- Responsive --------------------------------------------------------- */
 @media (max-width: 760px) {
   .onboarding-shell {

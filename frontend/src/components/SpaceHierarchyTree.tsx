@@ -24,6 +24,7 @@ import type { HierarchyParentContext } from './CreateHierarchyItemModal';
 import TreeTaskContextMenu, {
   type TreeTaskMenuAction,
 } from './TreeTaskContextMenu';
+import DeleteConfirmModal from './DeleteConfirmModal';
 import './WorkspaceTree.css';
 
 export interface SidebarTaskMenuContext {
@@ -257,6 +258,10 @@ const SpaceHierarchyTree: React.FC<SpaceHierarchyTreeProps> = ({
   onTaskMenuAction,
 }) => {
   const [openMenuTaskId, setOpenMenuTaskId] = useState<number | null>(null);
+  const [pendingDeleteList, setPendingDeleteList] = useState<{
+    id: number;
+    nom: string;
+  } | null>(null);
   const isControlled = !!controlledExpanded && !!onToggleExpand;
   const [internalExpanded, setInternalExpanded] = useState<Set<string>>(() => {
     const initial = new Set<string>();
@@ -401,9 +406,7 @@ const SpaceHierarchyTree: React.FC<SpaceHierarchyTreeProps> = ({
                 title="Plus d'options"
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (window.confirm(`Supprimer la liste "${list.nom}" ?`)) {
-                    onDelete('list', list.id_list);
-                  }
+                  setPendingDeleteList({ id: list.id_list, nom: list.nom });
                 }}
               >
                 <MoreHorizontal size={14} />
@@ -603,18 +606,39 @@ const SpaceHierarchyTree: React.FC<SpaceHierarchyTreeProps> = ({
     );
   };
 
+  const deleteListModal = (
+    <DeleteConfirmModal
+      open={!!pendingDeleteList}
+      itemName={pendingDeleteList?.nom ?? ''}
+      entityKind="list"
+      onCancel={() => setPendingDeleteList(null)}
+      onConfirm={() => {
+        if (pendingDeleteList && onDelete) {
+          onDelete('list', pendingDeleteList.id);
+          setPendingDeleteList(null);
+        }
+      }}
+    />
+  );
+
   if (!spaces.length) {
     return (
-      <div className="workspace-tree">
-        <div className="tree-empty">Aucun espace. Créez un espace pour commencer.</div>
-      </div>
+      <>
+        <div className="workspace-tree">
+          <div className="tree-empty">Aucun espace. Créez un espace pour commencer.</div>
+        </div>
+        {deleteListModal}
+      </>
     );
   }
 
   return (
-    <div className="workspace-tree">
-      {spaces.map(renderSpace)}
-    </div>
+    <>
+      <div className="workspace-tree">
+        {spaces.map(renderSpace)}
+      </div>
+      {deleteListModal}
+    </>
   );
 };
 

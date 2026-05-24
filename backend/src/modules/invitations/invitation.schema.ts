@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { passwordSchema } from "../auth/auth.schema";
+import { isValidInvitationProfileLabel } from "../../lib/projectRoleLabels";
 
 export const createInvitationSchema = z.object({
   email: z
@@ -41,8 +42,43 @@ export const createTeamInvitationSchema = z.object({
     .int("id_role doit être un entier")
     .positive("id_role doit être positif")
     .optional(),
-  prenom: z.string().max(100).optional(),
-  nom: z.string().max(100).optional(),
+  /** Profil de permissions (Chef de projet ou Développeur) — stocké sur `utilisateur.poste`. */
+  poste: z
+    .string()
+    .min(1, "Profil de permissions requis")
+    .max(120, "Profil trop long")
+    .transform((v) => v.trim())
+    .refine((v) => isValidInvitationProfileLabel(v), {
+      message:
+        "Profil invalide. Choisissez « Chef de projet » ou « Développeur ».",
+    }),
+  prenom: z
+    .string()
+    .min(1, "Prénom requis")
+    .max(100, "Prénom trop long")
+    .transform((v) => v.trim()),
+  nom: z
+    .string()
+    .min(1, "Nom requis")
+    .max(100, "Nom trop long")
+    .transform((v) => v.trim()),
+  project_ids: z
+    .array(z.number().int().positive())
+    .min(1, "Sélectionnez au moins un projet accessible"),
+  expires_at: z
+    .string()
+    .min(1, "Date d'expiration requise")
+    .transform((v) => new Date(v))
+    .refine((d) => !Number.isNaN(d.getTime()), {
+      message: "Date d'expiration invalide",
+    })
+    .refine((d) => d.getTime() > Date.now(), {
+      message: "La date d'expiration doit être dans le futur",
+    })
+    .refine(
+      (d) => d.getTime() <= Date.now() + 365 * 24 * 60 * 60 * 1000,
+      { message: "La date d'expiration ne peut pas dépasser un an" }
+    ),
 });
 
 export const acceptInvitationByTokenSchema = z

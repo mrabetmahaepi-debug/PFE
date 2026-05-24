@@ -1,11 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Activity, RefreshCw } from 'lucide-react';
-import { formatActivityTimestamp } from '../lib/formatActivityTimestamp';
+import { formatRecentActivityTime } from '../lib/formatRecentActivityTime';
 import { getAdminActivityKindLabel } from '../lib/adminActivityKind';
 import { filterBlockedDashboardLabels } from '../lib/dashboardContentPolicy';
+import { WORKSPACE_REFRESH_EVENT } from '../lib/workspaceEvents';
 import { activityService, type EnterpriseActivityItem } from '../services/activity.service';
 
 const REFRESH_MS = 60_000;
+const RELATIVE_TICK_MS = 30_000;
 const FEED_LIMIT = 12;
 
 function displayTitle(item: EnterpriseActivityItem): string {
@@ -56,7 +58,19 @@ const MemberActivityFeed: React.FC = () => {
     return () => window.clearInterval(timer);
   }, [loadFeed]);
 
-  const visibleActivities = useMemo(() => activities, [activities]);
+  useEffect(() => {
+    const onRefresh = () => void loadFeed(true);
+    window.addEventListener(WORKSPACE_REFRESH_EVENT, onRefresh);
+    return () => window.removeEventListener(WORKSPACE_REFRESH_EVENT, onRefresh);
+  }, [loadFeed]);
+
+  const [nowTick, setNowTick] = useState(0);
+  useEffect(() => {
+    const timer = window.setInterval(() => setNowTick((n) => n + 1), RELATIVE_TICK_MS);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const visibleActivities = useMemo(() => activities, [activities, nowTick]);
 
   return (
     <section
@@ -144,7 +158,7 @@ const MemberActivityFeed: React.FC = () => {
                   </p>
                 </div>
                 <span className="cu-activity-time cu-activity-time--end">
-                  {formatActivityTimestamp(act.date)}
+                  {formatRecentActivityTime(act.date)}
                 </span>
               </div>
             ))

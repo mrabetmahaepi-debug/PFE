@@ -142,6 +142,11 @@ export const PERMISSIONS: PermissionDefinition[] = [
 
   // --- Projects ---------------------------------------------------------
   {
+    name: "PROJECT_VIEW",
+    description: "Voir les projets auxquels l'utilisateur a accès",
+    category: "projects",
+  },
+  {
     name: "PROJECT_VIEW_ALL",
     description: "Voir tous les projets de l'entreprise",
     category: "projects",
@@ -199,6 +204,11 @@ export const PERMISSIONS: PermissionDefinition[] = [
 
   // --- Tasks ------------------------------------------------------------
   {
+    name: "TASK_VIEW",
+    description: "Voir les tâches du projet",
+    category: "tasks",
+  },
+  {
     name: "TASK_VIEW_ALL",
     description: "Voir toutes les tâches du projet",
     category: "tasks",
@@ -211,6 +221,46 @@ export const PERMISSIONS: PermissionDefinition[] = [
   {
     name: "TASK_EDIT",
     description: "Modifier des tâches",
+    category: "tasks",
+  },
+  {
+    name: "TASK_EDIT_ALL",
+    description: "Modifier toutes les tâches du projet",
+    category: "tasks",
+  },
+  {
+    name: "TASK_EDIT_ASSIGNED",
+    description: "Modifier les tâches qui lui sont assignées",
+    category: "tasks",
+  },
+  {
+    name: "TASK_STATUS_ALL",
+    description: "Changer le statut de toutes les tâches",
+    category: "tasks",
+  },
+  {
+    name: "TASK_STATUS_OWN",
+    description: "Changer le statut de ses tâches assignées",
+    category: "tasks",
+  },
+  {
+    name: "TASK_VALIDATE",
+    description: "Valider des tâches",
+    category: "tasks",
+  },
+  {
+    name: "COMMENT_CREATE",
+    description: "Commenter les tâches",
+    category: "tasks",
+  },
+  {
+    name: "FILE_UPLOAD",
+    description: "Téléverser des fichiers sur les tâches",
+    category: "tasks",
+  },
+  {
+    name: "ANOMALY_REPORT",
+    description: "Signaler des anomalies",
     category: "tasks",
   },
   {
@@ -231,6 +281,11 @@ export const PERMISSIONS: PermissionDefinition[] = [
     category: "sprints",
   },
   {
+    name: "SPRINT_CREATE",
+    description: "Créer des sprints",
+    category: "sprints",
+  },
+  {
     name: "SPRINT_MANAGE",
     description: "Créer, modifier et supprimer des sprints",
     category: "sprints",
@@ -245,6 +300,11 @@ export const PERMISSIONS: PermissionDefinition[] = [
   {
     name: "TEAM_INVITE",
     description: "Inviter de nouveaux membres",
+    category: "teams",
+  },
+  {
+    name: "TEAM_MANAGE",
+    description: "Gérer l'équipe du projet",
     category: "teams",
   },
   {
@@ -283,6 +343,11 @@ export const PERMISSIONS: PermissionDefinition[] = [
   },
 
   // --- Analytics --------------------------------------------------------
+  {
+    name: "REPORT_VIEW",
+    description: "Consulter les rapports du projet",
+    category: "analytics",
+  },
   {
     name: "ANALYTICS_VIEW",
     description: "Consulter les tableaux de bord analytiques",

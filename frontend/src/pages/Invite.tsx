@@ -1,7 +1,4 @@
-import React, {
-  useEffect,
-  useState,
-} from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Mail,
@@ -12,6 +9,8 @@ import {
   AlertCircle,
   CheckCircle2,
   Settings,
+  Calendar,
+  FolderKanban,
 } from 'lucide-react';
 import {
   invitationService,
@@ -19,24 +18,51 @@ import {
   type TeamInvitationResponse,
   type InvitationSmtpSetupError,
 } from '../services/invitation.service';
+import { projectService } from '../services/project.service';
+import type { Projet } from '../types/project';
+import { INVITATION_PROFILE_OPTIONS } from '../lib/invitationProfiles';
 import './Invite.css';
 
 const isValidEmail = (value: string) =>
   /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 
-const splitMemberDisplayName = (raw: string): { prenom: string; nom: string } => {
-  const tokens = raw.trim().split(/\s+/).filter(Boolean);
-  if (tokens.length === 0) return { prenom: '', nom: '' };
-  if (tokens.length === 1) return { prenom: tokens[0], nom: tokens[0] };
-  const [prenom, ...rest] = tokens;
-  return { prenom, nom: rest.join(' ') };
+const isInvitationCreated = (r: TeamInvitationResult): r is Extract<
+  TeamInvitationResult,
+  { status: 'created' | 'sent' }
+> => r.status === 'created' || r.status === 'sent';
+
+const copyText = async (text: string) => {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.select();
+  document.execCommand('copy');
+  document.body.removeChild(ta);
+};
+
+const defaultExpiryIso = () => {
+  const d = new Date();
+  d.setDate(d.getDate() + 7);
+  d.setHours(23, 59, 0, 0);
+  return d.toISOString().slice(0, 16);
 };
 
 const Invite: React.FC = () => {
-  const [memberDisplayName, setMemberDisplayName] = useState('');
-  const [emails, setEmails] = useState<string[]>([]);
-  const [emailDraft, setEmailDraft] = useState('');
-  const [emailError, setEmailError] = useState<string | null>(null);
+  const [email, setEmail] = useState('');
+  const [prenom, setPrenom] = useState('');
+  const [nom, setNom] = useState('');
+  const [poste, setPoste] = useState<string>(INVITATION_PROFILE_OPTIONS[1]);
+  const [projectIds, setProjectIds] = useState<number[]>([]);
+  const [expiresAt, setExpiresAt] = useState(defaultExpiryIso);
+  const [projects, setProjects] = useState<Projet[]>([]);
+  const [projectsLoading, setProjectsLoading] = useState(true);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -46,9 +72,10 @@ const Invite: React.FC = () => {
   const [responseMeta, setResponseMeta] = useState<
     Pick<
       TeamInvitationResponse,
-      'message' | 'workspace' | 'email_configured' | 'summary'
+      'message' | 'workspace' | 'email_configured' | 'summary' | 'warning'
     > | null
   >(null);
+  const [copiedLinkEmail, setCopiedLinkEmail] = useState<string | null>(null);
   const [toast, setToast] = useState<{
     type: 'success' | 'error' | 'warning';
     message: string;
@@ -60,118 +87,80 @@ const Invite: React.FC = () => {
     return () => window.clearTimeout(id);
   }, [toast]);
 
-  const canSubmit =
-    !submitting &&
-    memberDisplayName.trim().length >= 2 &&
-    (emails.length > 0 || isValidEmail(emailDraft));
+  useEffect(() => {
+    let cancelled = false;
+    projectService
+      .getAll()
+      .then((list) => {
+        if (!cancelled) setProjects(list);
+      })
+      .catch(() => {
+        if (!cancelled) setProjects([]);
+      })
+      .finally(() => {
+        if (!cancelled) setProjectsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-  const tryCommitEmail = (raw: string) => {
-    const value = raw.trim().replace(/[,;\s]+$/g, '');
-    if (!value) return true;
-    if (!isValidEmail(value)) {
-      setEmailError(`"${value}" n'est pas un email valide`);
-      return false;
-    }
-    if (emails.includes(value.toLowerCase())) {
-      setEmailDraft('');
-      return true;
-    }
-    setEmails((prev) => [...prev, value.toLowerCase()]);
-    setEmailDraft('');
-    setEmailError(null);
-    return true;
-  };
+  const canSubmit = useMemo(
+    () =>
+      !submitting &&
+      isValidEmail(email) &&
+      prenom.trim().length >= 1 &&
+      nom.trim().length >= 1 &&
+      poste.trim().length > 0 &&
+      projectIds.length > 0 &&
+      !!expiresAt &&
+      new Date(expiresAt).getTime() > Date.now(),
+    [submitting, email, prenom, nom, poste, projectIds, expiresAt],
+  );
 
-  const handleEmailKeyDown = (
-    e: React.KeyboardEvent<HTMLInputElement>,
-  ) => {
-    if (e.key === 'Enter' || e.key === ',' || e.key === ';' || e.key === ' ') {
-      e.preventDefault();
-      tryCommitEmail(emailDraft);
-    } else if (
-      e.key === 'Backspace' &&
-      emailDraft === '' &&
-      emails.length > 0
-    ) {
-      setEmails((prev) => prev.slice(0, -1));
-    }
-  };
-
-  const handleEmailPaste = (
-    e: React.ClipboardEvent<HTMLInputElement>,
-  ) => {
-    const data = e.clipboardData.getData('text');
-    if (!data || !/[,;\s]/.test(data)) return;
-    e.preventDefault();
-    const tokens = data
-      .split(/[,;\s]+/)
-      .map((t) => t.trim())
-      .filter(Boolean);
-    let added = 0;
-    let firstInvalid: string | null = null;
-    setEmails((prev) => {
-      const next = [...prev];
-      for (const token of tokens) {
-        if (!isValidEmail(token)) {
-          if (!firstInvalid) firstInvalid = token;
-          continue;
-        }
-        const lower = token.toLowerCase();
-        if (!next.includes(lower)) {
-          next.push(lower);
-          added += 1;
-        }
-      }
-      return next;
-    });
-    setEmailDraft('');
-    if (firstInvalid && added === 0) {
-      setEmailError(`"${firstInvalid}" n'est pas un email valide`);
-    } else if (firstInvalid) {
-      setEmailError(`Certains emails ont été ignorés (ex : "${firstInvalid}")`);
-    } else {
-      setEmailError(null);
-    }
-  };
-
-  const removeEmail = (target: string) => {
-    setEmails((prev) => prev.filter((e) => e !== target));
+  const toggleProject = (id: number) => {
+    setProjectIds((prev) =>
+      prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id],
+    );
+    setFormError(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    let working = [...emails];
-    if (emailDraft.trim()) {
-      const draft = emailDraft.trim().toLowerCase();
-      if (!isValidEmail(draft)) {
-        setEmailError(`"${emailDraft.trim()}" n'est pas un email valide`);
-        return;
-      }
-      if (!working.includes(draft)) working.push(draft);
-      setEmails(working);
-      setEmailDraft('');
-    }
-    if (working.length === 0) {
-      setEmailError('Ajoutez au moins un email à inviter');
+    setFormError(null);
+    const trimmedEmail = email.trim().toLowerCase();
+    if (!isValidEmail(trimmedEmail)) {
+      setFormError('Indiquez une adresse email valide');
       return;
     }
-    if (memberDisplayName.trim().length < 2) {
-      setEmailError('Indiquez le nom du membre (au moins 2 caractères)');
+    if (prenom.trim().length < 1 || nom.trim().length < 1) {
+      setFormError('Prénom et nom sont requis');
       return;
     }
-
-    const { prenom, nom } = splitMemberDisplayName(memberDisplayName);
+    if (projectIds.length === 0) {
+      setFormError('Sélectionnez au moins un projet accessible');
+      return;
+    }
+    const expiry = new Date(expiresAt);
+    if (Number.isNaN(expiry.getTime()) || expiry.getTime() <= Date.now()) {
+      setFormError("La date d'expiration doit être dans le futur");
+      return;
+    }
 
     setSubmitting(true);
     setSubmitError(null);
     setSmtpSetupError(null);
     setResults([]);
     setResponseMeta(null);
+
     try {
       const data = await invitationService.sendTeamInvitations({
-        emails: working,
-        prenom,
-        nom,
+        emails: [trimmedEmail],
+        prenom: prenom.trim(),
+        nom: nom.trim(),
+        poste,
+        project_ids: projectIds,
+        expires_at: expiry.toISOString(),
       });
       setResults(data.results);
       setResponseMeta({
@@ -179,81 +168,59 @@ const Invite: React.FC = () => {
         workspace: data.workspace,
         email_configured: data.email_configured,
         summary: data.summary,
+        warning: data.warning,
       });
 
-      const deliveredOk = data.results.filter(
-        (r) =>
-          r.status === 'sent' &&
-          'email_delivery' in r &&
-          r.email_delivery === 'sent',
+      const createdRows = data.results.filter(isInvitationCreated);
+      const deliveredOk = createdRows.filter(
+        (r) => r.emailStatus === 'sent' || r.email_delivery === 'sent',
       ).length;
-      const failedTransport = data.results.filter(
-        (r) =>
-          r.status === 'sent' &&
-          'email_delivery' in r &&
-          r.email_delivery === 'failed',
+      const failedTransport = createdRows.filter(
+        (r) => r.emailStatus === 'failed' || r.email_delivery === 'failed',
+      ).length;
+      const pendingTransport = createdRows.filter(
+        (r) => r.emailStatus === 'pending',
       ).length;
 
-      if (deliveredOk > 0 && failedTransport === 0) {
+      if (deliveredOk > 0) {
         setToast({
           type: 'success',
-          message:
-            data.message ||
-            `${deliveredOk} invitation(s) envoyée(s) par email.`,
+          message: data.message || 'Invitation envoyée par email.',
         });
-      } else if (failedTransport > 0 && deliveredOk === 0) {
-        const firstFail = data.results.find(
-          (r) =>
-            r.status === 'sent' &&
-            'delivery_error' in r &&
-            (r as { delivery_error?: string }).delivery_error,
-        ) as { delivery_error?: string } | undefined;
-        setToast({
-          type: 'error',
-          message:
-            firstFail?.delivery_error ||
-            data.message ||
-            "Les emails n'ont pas été livrés. Vérifiez Brevo (clé API, expéditeur vérifié).",
-        });
-      } else if (failedTransport > 0 && deliveredOk > 0) {
+      } else if (createdRows.length > 0) {
         setToast({
           type: 'warning',
           message:
-            data.message ||
-            'Certains emails n’ont pas été livrés — voir le détail ci-dessous.',
+            data.warning ||
+            "Invitation créée. L'email n'a pas pu être envoyé — copiez le lien ci-dessous.",
         });
       } else {
-        const onlySoft = data.results.every((r) => r.status === 'skipped');
         const hardErr = data.results.find((r) => r.status === 'error');
-        if (onlySoft) {
-          setToast({
-            type: 'warning',
-            message:
-              data.message ||
-              'Aucun envoi : certaines adresses sont déjà invitées ou en attente.',
-          });
-        } else if (hardErr && hardErr.status === 'error') {
-          setToast({
-            type: 'error',
-            message: hardErr.reason || data.message || 'Échec des invitations',
-          });
-        }
+        setToast({
+          type: hardErr ? 'error' : 'warning',
+          message:
+            hardErr?.status === 'error'
+              ? hardErr.reason
+              : data.message || 'Aucune invitation créée',
+        });
       }
 
-      // Keep emails that were not delivered so the user can retry.
-      const undelivered = data.results
-        .filter(
-          (r) =>
-            r.status !== 'sent' ||
-            (r.status === 'sent' && r.email_delivery !== 'sent'),
-        )
-        .map((r) => r.email);
-      setEmails(undelivered);
+      if (
+        createdRows.length > 0 &&
+        deliveredOk === 0 &&
+        (failedTransport > 0 || pendingTransport > 0)
+      ) {
+        // keep email for retry / copy link
+      } else if (deliveredOk > 0) {
+        setEmail('');
+        setPrenom('');
+        setNom('');
+        setProjectIds([]);
+      }
     } catch (err: unknown) {
       const anyErr = err as {
         response?: { status?: number; data?: unknown };
         message?: string;
-        code?: string;
       };
       const status = anyErr.response?.status;
       const data = anyErr.response?.data as
@@ -276,56 +243,42 @@ const Invite: React.FC = () => {
           message: m,
           hint: data?.hint,
         });
-        setToast({ type: 'error', message: m });
+        setToast({ type: 'warning', message: m });
       } else {
         if (Array.isArray(data?.results)) {
           setResults(data.results as TeamInvitationResult[]);
-          setResponseMeta({
-            message: data.message || 'Certaines invitations ont échoué',
-            workspace: data.workspace || '',
-            email_configured: !!data.email_configured,
-            summary: data.summary,
-          });
         }
-
-        const aborted =
-          anyErr.code === 'ECONNABORTED' || anyErr.code === 'ERR_CANCELED';
-        const network = !anyErr.response?.status;
-
-        let msg =
+        const msg =
           data?.message ||
           anyErr.message ||
-          'Une erreur est survenue lors de l\'envoi';
-        if (aborted) {
-          msg =
-            'Délai dépassé (90 s). Le serveur peut être bloqué sur l\'API Brevo ou injoignable — vérifiez le terminal backend.';
-        } else if (network && !is503Config) {
-          msg =
-            'Impossible de joindre l\'API. Vérifiez que le backend tourne et que VITE_API_URL pointe vers le bon port.';
-        }
-
-        if (!is503Config) {
-          setSubmitError(msg);
-          setToast({
-            type: 'error',
-            message: msg,
-          });
-        }
+          "Une erreur est survenue lors de l'envoi";
+        setSubmitError(msg);
+        setToast({ type: 'error', message: msg });
       }
     } finally {
       setSubmitting(false);
     }
   };
 
-  const sentCount = results.filter((r) => r.status === 'sent').length;
-  const skippedCount = results.filter((r) => r.status === 'skipped').length;
-  const errorCount = results.filter((r) => r.status === 'error').length;
+  const createdCount = results.filter(isInvitationCreated).length;
   const deliveredCount = results.filter(
-    (r) => r.status === 'sent' && r.email_delivery === 'sent',
+    (r) =>
+      isInvitationCreated(r) &&
+      (r.emailStatus === 'sent' || r.email_delivery === 'sent'),
   ).length;
-  const failedDeliveryCount = results.filter(
-    (r) => r.status === 'sent' && r.email_delivery === 'failed',
-  ).length;
+
+  const handleCopyLink = async (targetEmail: string, link: string) => {
+    try {
+      await copyText(link);
+      setCopiedLinkEmail(targetEmail);
+      window.setTimeout(() => setCopiedLinkEmail(null), 2500);
+    } catch {
+      setToast({
+        type: 'error',
+        message: 'Impossible de copier le lien.',
+      });
+    }
+  };
 
   return (
     <div className="invite-page">
@@ -340,8 +293,6 @@ const Invite: React.FC = () => {
           >
             {toast.type === 'success' ? (
               <CheckCircle2 size={18} aria-hidden />
-            ) : toast.type === 'warning' ? (
-              <AlertCircle size={18} aria-hidden />
             ) : (
               <AlertCircle size={18} aria-hidden />
             )}
@@ -350,7 +301,7 @@ const Invite: React.FC = () => {
               type="button"
               className="invite-toast-close"
               onClick={() => setToast(null)}
-              aria-label="Fermer la notification"
+              aria-label="Fermer"
             >
               <X size={14} />
             </button>
@@ -361,7 +312,9 @@ const Invite: React.FC = () => {
       <header className="invite-hero">
         <div className="invite-hero-text">
           <h1>Inviter un membre</h1>
-          <p className="invite-hero-lead">Ajoutez un membre à votre espace.</p>
+          <p className="invite-hero-lead">
+            Définissez le profil, les projets accessibles et la date d&apos;expiration.
+          </p>
         </div>
         <div className="invite-hero-illustration">
           <div className="invite-hero-icon">
@@ -381,60 +334,12 @@ const Invite: React.FC = () => {
             <Settings size={18} />
           </div>
           <div className="invite-banner-body">
-            <strong>Configuration email requise</strong>
+            <strong>Configuration email</strong>
             <p>{smtpSetupError.message}</p>
-            {smtpSetupError.hint?.required_env && (
-              <p className="invite-banner-hint">
-                Variables requises dans <code>backend/.env</code> :{' '}
-                {smtpSetupError.hint.required_env.map((k, i) => (
-                  <React.Fragment key={k}>
-                    {i > 0 ? ', ' : ''}
-                    <code>{k}</code>
-                  </React.Fragment>
-                ))}
-              </p>
-            )}
-            {smtpSetupError.hint?.example_brevo && (
-              <details className="invite-banner-details" open>
-                <summary>Brevo (recommandé)</summary>
-                <pre>
-                  {Object.entries(smtpSetupError.hint.example_brevo)
-                    .map(([k, v]) => `${k}=${v}`)
-                    .join('\n')}
-                </pre>
-                <small>
-                  Créez un compte sur{' '}
-                  <a
-                    href="https://www.brevo.com"
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    brevo.com
-                  </a>
-                  , générez une clé API, vérifiez votre adresse{' '}
-                  <code>EMAIL_FROM</code>, puis redémarrez le backend.
-                </small>
-              </details>
-            )}
-            {(smtpSetupError.hint?.alternative_smtp ||
-              smtpSetupError.hint?.example_gmail) && (
-              <details className="invite-banner-details">
-                <summary>Alternative : SMTP (Gmail, SES, …)</summary>
-                <pre>
-                  {Object.entries(
-                    smtpSetupError.hint.alternative_smtp ||
-                      smtpSetupError.hint.example_gmail ||
-                      {},
-                  )
-                    .map(([k, v]) => `${k}=${v}`)
-                    .join('\n')}
-                </pre>
-                <small>
-                  Pour Gmail, <code>SMTP_PASS</code> doit être un{' '}
-                  <em>App Password</em> Google.
-                </small>
-              </details>
-            )}
+            <p className="invite-banner-hint">
+              Vous pouvez tout de même créer l&apos;invitation et copier le lien
+              manuellement.
+            </p>
           </div>
         </motion.div>
       )}
@@ -442,83 +347,133 @@ const Invite: React.FC = () => {
       <div className="invite-card">
         <form onSubmit={handleSubmit} className="invite-form">
           <div className="invite-field">
-            <label className="invite-label" htmlFor="invite-member-name">
-              Nom du membre
+            <label className="invite-label" htmlFor="invite-email">
+              Email du membre
             </label>
-            <input
-              id="invite-member-name"
-              type="text"
-              className="invite-input-single"
-              placeholder="Saisir le nom complet"
-              value={memberDisplayName}
-              onChange={(e) => setMemberDisplayName(e.target.value)}
-              autoComplete="name"
-            />
+            <div className="invite-input-with-icon">
+              <Mail size={16} className="invite-field-icon" />
+              <input
+                id="invite-email"
+                type="email"
+                className="invite-input-single"
+                placeholder="membre@entreprise.com"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  setFormError(null);
+                }}
+                autoComplete="email"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="invite-field-row">
+            <div className="invite-field">
+              <label className="invite-label" htmlFor="invite-prenom">
+                Prénom
+              </label>
+              <input
+                id="invite-prenom"
+                type="text"
+                className="invite-input-single"
+                value={prenom}
+                onChange={(e) => setPrenom(e.target.value)}
+                required
+              />
+            </div>
+            <div className="invite-field">
+              <label className="invite-label" htmlFor="invite-nom">
+                Nom
+              </label>
+              <input
+                id="invite-nom"
+                type="text"
+                className="invite-input-single"
+                value={nom}
+                onChange={(e) => setNom(e.target.value)}
+                required
+              />
+            </div>
+          </div>
+
+          <div className="invite-field">
+            <label className="invite-label" htmlFor="invite-poste">
+              Profil de permissions
+            </label>
+            <select
+              id="invite-poste"
+              className="invite-input-single invite-select"
+              value={poste}
+              onChange={(e) => setPoste(e.target.value)}
+              required
+            >
+              {INVITATION_PROFILE_OPTIONS.map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt}
+                </option>
+              ))}
+            </select>
+            <p className="invite-field-hint">
+              L&apos;espace membre s&apos;adapte aux permissions du profil (pas au
+              rôle global).
+            </p>
           </div>
 
           <div className="invite-field">
             <label className="invite-label">
-              Email du membre
+              <FolderKanban size={14} aria-hidden />
+              Projet accessible
             </label>
-            <div
-              className={`invite-emails ${emailError ? 'has-error' : ''}`}
-              onClick={(e) => {
-                const input = (e.currentTarget as HTMLDivElement).querySelector(
-                  'input',
-                ) as HTMLInputElement | null;
-                input?.focus();
-              }}
-            >
-              <Mail size={16} className="invite-emails-icon" />
-              <div className="invite-emails-tags">
-                <AnimatePresence initial={false}>
-                  {emails.map((email) => (
-                    <motion.span
-                      key={email}
-                      className="invite-chip"
-                      initial={{ opacity: 0, scale: 0.85 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.85 }}
-                      transition={{ duration: 0.12 }}
-                    >
-                      <span>{email}</span>
-                      <button
-                        type="button"
-                        onClick={(ev) => {
-                          ev.stopPropagation();
-                          removeEmail(email);
-                        }}
-                        aria-label={`Retirer ${email}`}
-                      >
-                        <X size={12} />
-                      </button>
-                    </motion.span>
-                  ))}
-                </AnimatePresence>
-                <input
-                  type="text"
-                  value={emailDraft}
-                  onChange={(e) => {
-                    setEmailDraft(e.target.value);
-                    if (emailError) setEmailError(null);
-                  }}
-                  onKeyDown={handleEmailKeyDown}
-                  onPaste={handleEmailPaste}
-                  onBlur={() => {
-                    if (emailDraft.trim()) tryCommitEmail(emailDraft);
-                  }}
-                  placeholder="Saisir l'adresse e-mail"
-                  aria-label="Adresses e-mail à inviter"
-                />
-              </div>
-            </div>
-            {emailError && (
+            {projectsLoading ? (
+              <p className="invite-field-hint">Chargement des projets…</p>
+            ) : projects.length === 0 ? (
               <p className="invite-inline-error">
                 <AlertCircle size={14} />
-                <span>{emailError}</span>
+                <span>Aucun projet disponible. Créez un projet d&apos;abord.</span>
               </p>
+            ) : (
+              <div className="invite-project-grid" role="group">
+                {projects.map((p) => {
+                  const selected = projectIds.includes(p.id_projet);
+                  return (
+                    <button
+                      key={p.id_projet}
+                      type="button"
+                      className={`invite-project-chip ${selected ? 'selected' : ''}`}
+                      onClick={() => toggleProject(p.id_projet)}
+                      aria-pressed={selected}
+                    >
+                      {p.nom_p}
+                    </button>
+                  );
+                })}
+              </div>
             )}
           </div>
+
+          <div className="invite-field">
+            <label className="invite-label" htmlFor="invite-expires">
+              <Calendar size={14} aria-hidden />
+              Date d&apos;expiration de l&apos;invitation
+            </label>
+            <input
+              id="invite-expires"
+              type="datetime-local"
+              className="invite-input-single"
+              value={expiresAt}
+              min={new Date().toISOString().slice(0, 16)}
+              onChange={(e) => setExpiresAt(e.target.value)}
+              required
+            />
+          </div>
+
+          {formError && (
+            <p className="invite-inline-error">
+              <AlertCircle size={14} />
+              <span>{formError}</span>
+            </p>
+          )}
 
           {submitError && !smtpSetupError && (
             <div className="invite-banner invite-banner-error">
@@ -556,75 +511,29 @@ const Invite: React.FC = () => {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4 }}
-            transition={{ duration: 0.18 }}
           >
             <header className="invite-results-header">
-              <h2>Résultat de l'envoi</h2>
-              <div className="invite-results-summary">
-                {deliveredCount > 0 && (
-                  <span className="invite-tag tag-success">
-                    <Mail size={12} />
-                    {deliveredCount} email{deliveredCount > 1 ? 's' : ''}{' '}
-                    envoyé{deliveredCount > 1 ? 's' : ''}
-                  </span>
-                )}
-                {failedDeliveryCount > 0 && (
-                  <span className="invite-tag tag-danger">
-                    <AlertCircle size={12} />
-                    {failedDeliveryCount} email
-                    {failedDeliveryCount > 1 ? 's' : ''} non remis
-                  </span>
-                )}
-                {skippedCount > 0 && (
-                  <span className="invite-tag tag-warning">
-                    {skippedCount} ignorée{skippedCount > 1 ? 's' : ''}
-                  </span>
-                )}
-                {errorCount > 0 && (
-                  <span className="invite-tag tag-danger">
-                    <AlertCircle size={12} />
-                    {errorCount} échec{errorCount > 1 ? 's' : ''}
-                  </span>
-                )}
-              </div>
-            </header>
-
-            {responseMeta?.message && (
-              <p
-                className={`invite-results-note ${
-                  deliveredCount > 0 ? 'success' : 'warning'
-                }`}
-              >
-                {deliveredCount > 0 ? (
-                  <CheckCircle2 size={14} />
-                ) : (
-                  <AlertCircle size={14} />
-                )}
-                <span>{responseMeta.message}</span>
-              </p>
-            )}
-
-            {responseMeta &&
-              !responseMeta.email_configured &&
-              sentCount > 0 && (
-                <p className="invite-results-note warning">
-                  <AlertCircle size={14} />
-                  <span>
-                    Le fournisseur d'emails n'est plus disponible. Vérifiez{' '}
-                    <code>BREVO_API_KEY</code> / <code>EMAIL_FROM</code> (ou
-                    votre configuration SMTP) dans{' '}
-                    <code>backend/.env</code> puis redémarrez l'API.
-                  </span>
+              <h2>Résultat</h2>
+              {responseMeta?.message && (
+                <p className="invite-results-note">
+                  {deliveredCount > 0 ? (
+                    <CheckCircle2 size={14} />
+                  ) : (
+                    <AlertCircle size={14} />
+                  )}
+                  <span>{responseMeta.message}</span>
                 </p>
               )}
+            </header>
 
             <ul className="invite-results-list">
               {results.map((res) => {
-                if (res.status === 'sent') {
-                  const delivered = res.email_delivery === 'sent';
+                if (isInvitationCreated(res)) {
+                  const delivered =
+                    res.emailStatus === 'sent' || res.email_delivery === 'sent';
                   return (
                     <li
-                      key={`sent-${res.token}`}
+                      key={`created-${res.token}`}
                       className={`invite-result ${
                         delivered ? 'success' : 'warning'
                       }`}
@@ -636,29 +545,40 @@ const Invite: React.FC = () => {
                           <AlertCircle size={16} />
                         )}
                         <div>
-                          <span className="invite-result-email">
-                            {res.email}
-                          </span>
+                          <span className="invite-result-email">{res.email}</span>
                           <small>
                             {delivered
-                              ? 'Invitation envoyée'
-                              : res.email_delivery === 'failed'
-                              ? `Non remis${
-                                  (res as { delivery_error?: string })
-                                    .delivery_error
-                                    ? ` — ${(res as { delivery_error?: string }).delivery_error}`
-                                    : ''
-                                }`
-                              : "Email en attente"}
+                              ? 'Email envoyé au membre'
+                              : "Invitation créée — copiez le lien si l'email n'est pas arrivé"}
                             {res.expires_at && (
                               <>
-                                {' '}· Lien valide jusqu'au{' '}
-                                {new Date(res.expires_at).toLocaleDateString(
-                                  'fr-FR',
-                                )}
+                                {' '}
+                                · Expire le{' '}
+                                {new Date(res.expires_at).toLocaleString('fr-FR')}
                               </>
                             )}
                           </small>
+                          {!delivered && (
+                            <div className="invite-result-link-row">
+                              <input
+                                className="invite-result-link-input"
+                                readOnly
+                                value={res.link}
+                                aria-label={`Lien pour ${res.email}`}
+                              />
+                              <button
+                                type="button"
+                                className="invite-result-copy-btn"
+                                onClick={() =>
+                                  void handleCopyLink(res.email, res.link)
+                                }
+                              >
+                                {copiedLinkEmail === res.email
+                                  ? 'Copié'
+                                  : "Copier le lien d'invitation"}
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </li>
@@ -674,9 +594,7 @@ const Invite: React.FC = () => {
                     <div className="invite-result-main">
                       <AlertCircle size={16} />
                       <div>
-                        <span className="invite-result-email">
-                          {res.email}
-                        </span>
+                        <span className="invite-result-email">{res.email}</span>
                         <small>{res.reason}</small>
                       </div>
                     </div>

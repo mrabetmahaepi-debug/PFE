@@ -134,6 +134,38 @@ export function getSafeEmailBootstrapDiagnostics() {
   };
 }
 
+/** Safe transport snapshot for invitation / startup logs (no secrets). */
+export function getEmailTransportLogContext() {
+  const smtp = getSmtpConfig();
+  const from = resolveFromAddress();
+  const { brevoApiKey, emailFrom, emailReplyTo } = getEmailTransportEnv();
+  return {
+    provider: getEmailProvider(),
+    from: from.raw,
+    fromEmail: from.email,
+    replyTo: emailReplyTo || env("SMTP_REPLY_TO") || null,
+    brevoApiKeyPresent: brevoApiKey.length > 0,
+    brevoApiKeyPreview:
+      brevoApiKey.length > 13
+        ? `${brevoApiKey.slice(0, 10)}…${brevoApiKey.slice(-3)}`
+        : brevoApiKey.length > 0
+          ? "<present>"
+          : "<empty>",
+    emailFromEnv: emailFrom || null,
+    smtpHost: smtp.host || null,
+    smtpPort: smtp.configured ? smtp.port : null,
+    smtpSecure: smtp.configured ? smtp.secure : null,
+    smtpUser: smtp.user || null,
+    smtpPassPresent: smtp.pass.length > 0,
+    smtpAllowNoAuth: smtp.allowNoAuth,
+    outboundSenderReady: hasOutboundSenderConfigured(),
+  };
+}
+
+export function logEmailProviderDiagnostics(prefix = "[email:config]"): void {
+  console.info(prefix, getEmailTransportLogContext());
+}
+
 export function getEmailProviderInfo() {
   const key = getEmailTransportEnv().brevoApiKey;
   const apiKeyPresent = key.length > 0;
@@ -301,15 +333,17 @@ async function sendViaBrevo(
 
   const timeoutMs = brevoApiTimeoutMs();
   const startedAt = Date.now();
+  const provider = "brevo" as const;
+
+  console.log({
+    provider,
+    from: from.raw,
+    to: params.to,
+    subject: params.subject,
+  });
 
   console.info("[email:brevo] invoking API", {
     endpoint: BREVO_ENDPOINT,
-    to: params.to,
-    senderEmail: from.email,
-    subjectPreview:
-      params.subject.length > 60
-        ? `${params.subject.slice(0, 57)}…`
-        : params.subject,
     timeoutMs,
     apiKeyPreview:
       apiKey.length > 13
@@ -343,6 +377,7 @@ async function sendViaBrevo(
     }
 
     if (!response.ok) {
+      const brevoBody = payload ?? (text || null);
       const msg = extractBrevoErrorMessage(
         payload,
         `Brevo HTTP ${response.status}`
@@ -352,42 +387,77 @@ async function sendViaBrevo(
         ms: elapsedMs,
         to: params.to,
         error: msg,
-        details: sanitizeBrevoLogPayload(payload),
+        brevoResponse: sanitizeBrevoLogPayload(brevoBody),
       });
-      return { delivered: false, mode: "brevo", error: msg };
+      return {
+        delivered: false,
+        mode: "brevo",
+        error: msg,
+        httpStatus: response.status,
+        brevoResponse: brevoBody,
+      };
     }
 
     console.info("[email:brevo] accepted by Brevo", {
       to: params.to,
       ms: elapsedMs,
       messageId: payload?.messageId,
+      httpStatus: response.status,
+      brevoResponse: sanitizeBrevoLogPayload(payload),
     });
 
     return {
       delivered: true,
       mode: "brevo",
       messageId: payload?.messageId,
+      httpStatus: response.status,
+      brevoResponse: payload,
     };
-  } catch (err: any) {
-    const isAbort =
-      err?.name === "AbortError" ||
-      err?.name === "TimeoutError" ||
-      err?.code === "UND_ERR_HEADERS_TIMEOUT"; // undici variants
+  } catch (err: unknown) {
+    const error = err as {
+      message?: string;
+      status?: number;
+      statusCode?: number;
+      code?: string;
+      name?: string;
+      response?: {
+        body?: unknown;
+        data?: unknown;
+        text?: string;
+        status?: number;
+      };
+    };
     const elapsedMs = Date.now() - startedAt;
+    console.error("BREVO SEND ERROR:", {
+      message: error?.message,
+      status: error?.status ?? error?.statusCode ?? error?.response?.status,
+      body: error?.response?.body,
+      data: error?.response?.data,
+      text: error?.response?.text,
+      name: error?.name,
+      code: error?.code,
+      ms: elapsedMs,
+    });
+    const isAbort =
+      error?.name === "AbortError" ||
+      error?.name === "TimeoutError" ||
+      error?.code === "UND_ERR_HEADERS_TIMEOUT";
     const msg = isAbort
       ? `Délai Brevo dépassé (${timeoutMs} ms)`
-      : err?.message || "Erreur réseau lors de l'appel à Brevo";
-    console.error("[email:brevo] request aborted or failed", {
-      to: params.to,
-      ms: elapsedMs,
-      isAbort,
-      message: msg,
-      errName: err?.name,
-    });
+      : error?.message || "Erreur réseau lors de l'appel à Brevo";
     return {
       delivered: false,
       mode: "brevo",
       error: msg,
+      brevoResponse: {
+        message: error?.message,
+        status: error?.status ?? error?.statusCode,
+        body: error?.response?.body,
+        data: error?.response?.data,
+        text: error?.response?.text,
+        name: error?.name,
+        code: error?.code,
+      },
     };
   }
 }
@@ -409,6 +479,10 @@ export interface SendEmailResult {
   mode: EmailProvider;
   messageId?: string;
   error?: string;
+  /** HTTP status from Brevo (when applicable). */
+  httpStatus?: number;
+  /** Raw Brevo JSON/text body — success or error payload. */
+  brevoResponse?: unknown;
 }
 
 /**
@@ -423,11 +497,11 @@ export async function sendEmail(
   const from = resolveFromAddress();
   const replyTo = resolveReplyTo(params.replyTo);
 
-  console.info("[email] sending transactional email", {
-    to: params.to,
-    subject: params.subject,
+  console.log({
     provider,
     from: from.raw,
+    to: params.to,
+    subject: params.subject,
   });
 
   if (provider === "brevo") {
@@ -438,6 +512,16 @@ export async function sendEmail(
   if (provider === "smtp") {
     const smtp = getSmtpConfig();
     const transporter = buildSmtpTransporter(smtp);
+    console.info("[email:smtp] sendMail starting", {
+      to: params.to,
+      subject: params.subject,
+      host: smtp.host,
+      port: smtp.port,
+      secure: smtp.secure,
+      user: smtp.user || "(none)",
+      from: from.raw,
+      replyTo: replyTo ?? null,
+    });
     try {
       const info = await transporter.sendMail({
         from: from.raw,
@@ -447,17 +531,47 @@ export async function sendEmail(
         text: params.text || stripHtml(params.html),
         replyTo,
       });
+      console.info("[email:smtp] sendMail success", {
+        to: params.to,
+        messageId: info.messageId,
+        response: info.response,
+        accepted: info.accepted,
+        rejected: info.rejected,
+      });
       return {
         delivered: true,
         mode: "smtp",
         messageId: info.messageId,
       };
-    } catch (err: any) {
-      console.error("[email:smtp] sendMail failed", err);
+    } catch (err: unknown) {
+      const e = err as {
+        message?: string;
+        code?: string;
+        response?: string;
+        responseCode?: number;
+        command?: string;
+        errno?: number;
+        syscall?: string;
+      };
+      console.error("[email:smtp] sendMail failed", {
+        to: params.to,
+        host: smtp.host,
+        port: smtp.port,
+        user: smtp.user || "(none)",
+        from: from.raw,
+        message: e?.message ?? String(err),
+        code: e?.code,
+        responseCode: e?.responseCode,
+        response: e?.response,
+        command: e?.command,
+        errno: e?.errno,
+        syscall: e?.syscall,
+        stack: err instanceof Error ? err.stack : undefined,
+      });
       return {
         delivered: false,
         mode: "smtp",
-        error: err?.message || "SMTP error",
+        error: e?.message || "SMTP error",
       };
     }
   }

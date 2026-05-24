@@ -1,0 +1,129 @@
+.member-tasks-sidebar {
+  margin: 2px 0 6px;
+  padding: 0;
+}
+
+.member-tasks-sidebar-parent {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 36px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 600;
+  color: #292d34;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.member-tasks-sidebar-parent:hover {
+  background: #f0f1f3;
+}
+
+.member-tasks-sidebar-parent.is-route-active {
+  color: #292d34;
+}
+
+.member-tasks-sidebar-icon {
+  color: #7b68ee;
+  flex-shrink: 0;
+}
+
+.member-tasks-sidebar-parent-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.member-tasks-sidebar-chevron {
+  flex-shrink: 0;
+  color: #87909e;
+  transition: transform 0.15s ease;
+}
+
+.member-tasks-sidebar-chevron.is-open {
+  transform: rotate(180deg);
+}
+
+.member-tasks-sidebar-children {
+  list-style: none;
+  margin: 2px 0 4px;
+  padding: 0 0 0 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.member-tasks-sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #646f79;
+  text-decoration: none;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.member-tasks-sidebar-link:hover {
+  background: #f0f1f3;
+  color: #292d34;
+}
+
+.member-tasks-sidebar-link.is-active {
+  background: #eceef2;
+  color: #111827;
+  font-weight: 600;
+}
+
+.member-tasks-sidebar-link-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: #646f79;
+}
+
+.member-tasks-sidebar-link.is-active .member-tasks-sidebar-link-icon {
+  color: #111827;
+}
+
+.member-tasks-sidebar-link-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.member-tasks-sidebar-badge {
+  flex-shrink: 0;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: #eef0f3;
+  font-size: 11px;
+  font-weight: 600;
+  color: #87909e;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.member-tasks-sidebar-link.is-active .member-tasks-sidebar-badge {
+  background: #e2e5ea;
+  color: #646f79;
+}

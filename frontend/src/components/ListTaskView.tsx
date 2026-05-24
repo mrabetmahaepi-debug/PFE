@@ -1,12 +1,21 @@
 import React from 'react';
 import ListStatusGroupedView from './ListStatusGroupedView';
 import { useListPageContext } from './listPageContext';
+import type { ListViewColumnKey } from '../lib/listViewColumns';
 
 export interface ListTaskViewProps {
   listId: number;
+  searchQuery?: string;
+  showClosed?: boolean;
+  visibleColumns?: Partial<Record<ListViewColumnKey, boolean>>;
 }
 
-const ListTaskView: React.FC<ListTaskViewProps> = ({ listId }) => {
+const ListTaskView: React.FC<ListTaskViewProps> = ({
+  listId,
+  searchQuery = '',
+  showClosed = true,
+  visibleColumns,
+}) => {
   const {
     listName,
     parentCtx,
@@ -17,6 +26,7 @@ const ListTaskView: React.FC<ListTaskViewProps> = ({ listId }) => {
     onTaskClick,
     onStatusesChange,
     canEditTask,
+    canEditTaskStatusFor,
     assigneeOptions,
     projectMembers,
     onTaskFieldChange,
@@ -27,15 +37,20 @@ const ListTaskView: React.FC<ListTaskViewProps> = ({ listId }) => {
   return (
     <ListStatusGroupedView
       variant="clickup"
+      memberStatusBadges
       listId={listId}
       listName={listName}
       tasks={tasks}
+      searchQuery={searchQuery}
+      showClosed={showClosed}
+      visibleColumns={visibleColumns}
       parentCtx={parentCtx}
       canCreateTask={canCreateTask}
       highlightTaskId={highlightTaskId}
-      onAddTask={(ctx, statutKey) => onOpenCreateTask(statutKey)}
+      onAddTask={(_ctx, statutKey) => onOpenCreateTask(statutKey)}
       onTaskClick={onTaskClick}
       onStatusesChange={onStatusesChange}
+      canEditStatusFor={canEditTaskStatusFor}
       canEditStatus={canEditTask}
       canEditFields={canEditTask}
       assigneeOptions={assigneeOptions}

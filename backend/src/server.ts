@@ -1,3 +1,4 @@
+import type { Server } from "http";
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -11,7 +12,10 @@ import {
 import { logger } from "./lib/logger";
 import prisma from "./prisma/prismaClient";
 import { isUsingDefaultJwtSecret } from "./utils/jwt";
-import { getSafeEmailBootstrapDiagnostics } from "./services/email.service";
+import {
+  getSafeEmailBootstrapDiagnostics,
+  logEmailProviderDiagnostics,
+} from "./services/email.service";
 
 // ── Auth & user-profile ────────────────────────────────────────────────────
 import authRoutes from "./modules/auth/routes";
@@ -40,6 +44,7 @@ import folderRoutes from "./modules/folders/routes";
 import sprintRoutes from "./modules/sprints/routes";
 import listRoutes from "./modules/lists/routes";
 import tacheRoutes from "./modules/tasks/routes";
+import commentRoutes from "./routes/commentRoutes";
 import affectationRoutes from "./modules/assignments/routes";
 import superAdminRoutes from "./modules/super-admin/routes";
 import alertRoutes from "./modules/alerts/routes";
@@ -47,6 +52,7 @@ import accessRoutes from "./modules/access/routes";
 import messagingRoutes from "./modules/messaging/routes";
 import activityRoutes from "./modules/activity/routes";
 import uploadRoutes from "./modules/upload/routes";
+import calendarRoutes from "./modules/calendar/routes";
 
 const app = express();
 const PORT = env.port;
@@ -158,6 +164,7 @@ app.use("/api/sprints", sprintRoutes);
 app.use("/api/lists", listRoutes);
 app.use("/api/taches", tacheRoutes);
 app.use("/api/tasks", tacheRoutes);
+app.use("/api/comments", commentRoutes);
 app.use("/api/affectations", affectationRoutes);
 app.use("/api/superadmin", superAdminRoutes);
 app.use("/api/alerts", alertRoutes);
@@ -165,6 +172,7 @@ app.use("/api/access", accessRoutes);
 app.use("/api/messaging", messagingRoutes);
 app.use("/api/activities", activityRoutes);
 app.use("/api/upload", uploadRoutes);
+app.use("/api/calendar", calendarRoutes);
 
 // Register Global Error Handler
 import { errorHandler } from "./middleware/errorHandler";
@@ -173,46 +181,117 @@ app.use(errorHandler);
 const dbUrlPresent = !!trimEnvValue(env.databaseUrl);
 const jwtConfigured = !isUsingDefaultJwtSecret();
 
-if (!dbUrlPresent) {
-  logger.error("[config] DATABASE_URL est manquant ou vide. Arrêt.");
-  process.exit(1);
-}
-if (isProduction && !jwtConfigured) {
-  logger.error(
-    "[config] JWT_SECRET doit être défini en production (pas de secret par défaut)."
-  );
-  process.exit(1);
-}
 if (!isProduction && !jwtConfigured) {
   logger.warn(
     "[config] JWT_SECRET absent — utilisation du secret de développement (ne pas utiliser en production)."
   );
 }
 
-void prisma
-  .$connect()
-  .then(() => {
-    app.listen(PORT, () => {
-      logger.info(`API listening on http://localhost:${PORT}`);
-      logger.info("[config:bootstrap] environment & email (safe)", {
-        databaseReachable: true,
-        jwtSecretConfigured: jwtConfigured,
-        dotenvResolvedPath: DOTENV_LOAD_REPORT.resolvedPath,
-        dotenvFileExists: DOTENV_LOAD_REPORT.fileExists,
-        dotenvEntryCount: DOTENV_LOAD_REPORT.entryCount,
-        ...(DOTENV_LOAD_REPORT.loadErrorMessage
-          ? { dotenvLoadError: DOTENV_LOAD_REPORT.loadErrorMessage }
-          : {}),
-        ...getResolvedEnvEmailFlags(),
-        ...getSafeEmailBootstrapDiagnostics(),
+/** Strong ref — prevents ts-node/Windows from GC'ing the HTTP server in dev. */
+let httpServer: Server | null = null;
+
+declare global {
+  // eslint-disable-next-line no-var
+  var __gestionProjetHttpServer: Server | undefined;
+}
+
+/** True when this file is the Node/ts-node entry (not a side-effect import). */
+export function isServerEntryPoint(): boolean {
+  return process.argv.some((arg) =>
+    /server\.(ts|js)$/i.test(arg.replace(/\\/g, "/"))
+  );
+}
+
+function logBootstrapReady(port: number): void {
+  logger.info(`API listening on http://localhost:${port}`);
+  logger.info("[config:bootstrap] environment & email (safe)", {
+    databaseReachable: true,
+    jwtSecretConfigured: jwtConfigured,
+    dotenvResolvedPath: DOTENV_LOAD_REPORT.resolvedPath,
+    dotenvFileExists: DOTENV_LOAD_REPORT.fileExists,
+    dotenvEntryCount: DOTENV_LOAD_REPORT.entryCount,
+    ...(DOTENV_LOAD_REPORT.loadErrorMessage
+      ? { dotenvLoadError: DOTENV_LOAD_REPORT.loadErrorMessage }
+      : {}),
+    ...getResolvedEnvEmailFlags(),
+    ...getSafeEmailBootstrapDiagnostics(),
+  });
+  logEmailProviderDiagnostics("[config:bootstrap:email]");
+}
+
+/**
+ * Bind HTTP listener and keep it open. Never call server.close() here.
+ */
+function bindHttpServer(port: number): Server {
+  if (httpServer) return httpServer;
+
+  const server = app.listen(port, () => {
+    logBootstrapReady(port);
+  });
+
+  server.once("error", (err: NodeJS.ErrnoException) => {
+    logger.error("[server] listen error — API did not start", {
+      port,
+      message: err.message,
+      code: err.code,
+    });
+    if (err.code === "EADDRINUSE") {
+      logger.error(
+        `[server] Port ${port} is already in use. Stop the other backend instance (or free the port) then restart npm run dev.`
+      );
+    }
+    process.exitCode = 1;
+    setTimeout(() => {
+      process.exit(1);
+    }, 250).unref();
+  });
+
+  httpServer = server;
+  global.__gestionProjetHttpServer = server;
+
+  if (!isProduction && process.stdin.isTTY) {
+    process.stdin.resume();
+  }
+
+  return server;
+}
+
+export async function startServer(): Promise<Server> {
+  if (httpServer) return httpServer;
+
+  if (!dbUrlPresent) {
+    throw new Error("DATABASE_URL est manquant ou vide");
+  }
+  if (isProduction && !jwtConfigured) {
+    throw new Error(
+      "JWT_SECRET doit être défini en production (pas de secret par défaut)"
+    );
+  }
+
+  const port = Number(PORT);
+  if (!Number.isFinite(port) || port < 1 || port > 65535) {
+    throw new Error(`PORT invalide: ${PORT}`);
+  }
+
+  await prisma.$connect();
+  return bindHttpServer(port);
+}
+
+if (isServerEntryPoint()) {
+  if (!dbUrlPresent) {
+    logger.error("[config] DATABASE_URL est manquant ou vide — serveur non démarré");
+  } else if (isProduction && !jwtConfigured) {
+    logger.error(
+      "[config] JWT_SECRET doit être défini en production — serveur non démarré"
+    );
+  } else {
+    void startServer().catch((err) => {
+      logger.error("[server] bootstrap failed", {
+        message: err instanceof Error ? err.message : String(err),
+        stack: err instanceof Error ? err.stack : undefined,
       });
     });
-  })
-  .catch((err) => {
-    logger.error("[config] Connexion à la base de données impossible", {
-      message: err instanceof Error ? err.message : String(err),
-    });
-    process.exit(1);
-  });
+  }
+}
 
 export default app;

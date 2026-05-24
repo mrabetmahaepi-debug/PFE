@@ -14,8 +14,18 @@ export function normalizeCreateTaskPayload(body: Record<string, unknown>) {
       body.description_t ?? body.description ?? body.description_t ?? "",
     statut_t: body.statut_t ?? body.status,
     priorite_t: body.priorite_t ?? body.priority ?? body.priorite,
+    date_debut_t:
+      body.date_debut_t ??
+      body.startDate ??
+      body.date_debut ??
+      body.date_start,
     date_limite_t:
-      body.date_limite_t ?? body.dueDate ?? body.date_limite ?? body.due_date,
+      body.date_limite_t ??
+      body.dueDate ??
+      body.date_limite ??
+      body.due_date ??
+      body.endDate ??
+      body.date_fin,
     id_projet: projectId,
     id_space:
       body.id_space != null
@@ -36,5 +46,11 @@ export function normalizeCreateTaskPayload(body: Record<string, unknown>) {
         ? null
         : Number(assigneeRaw),
     cree_par: body.cree_par != null ? Number(body.cree_par) : undefined,
+    id_parent_tache:
+      body.id_parent_tache != null
+        ? Number(body.id_parent_tache)
+        : body.parentTaskId != null
+          ? Number(body.parentTaskId)
+          : null,
   };
 }

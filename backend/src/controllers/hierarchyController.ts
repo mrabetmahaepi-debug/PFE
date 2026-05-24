@@ -2,6 +2,15 @@ import { Request, Response } from "express";
 import prisma from "../prisma/prismaClient";
 import { isSuperAdmin, userHasPermission } from "../middleware/permissions";
 import {
+  normalizeStatutKey,
+  syncOverdueForTasks,
+} from "../lib/taskStatutWorkflow";
+import {
+  getProjectPermissionContext,
+  requestCanWriteLists,
+} from "../services/projectPermission.service";
+import { filterTasksForProjectContext } from "../lib/sidebarAccessFilter";
+import {
   PROJECT_READ_FORBIDDEN_MESSAGE,
   userCanReadProject,
 } from "../lib/projectAccess";
@@ -11,8 +20,18 @@ import {
   moveListToTrash,
   restoreListFromTrash,
 } from "../lib/spaceHierarchy";
+import { logMemberWorkspaceActivity } from "../services/enterpriseActivity.service";
 
 const db = prisma as any;
+
+function hierarchyActivityUser(user: {
+  prenom?: string | null;
+  nom?: string | null;
+  email?: string | null;
+}): string {
+  const name = `${user.prenom || ""} ${user.nom || ""}`.trim();
+  return name || user.email || "Membre";
+}
 
 function toInt(value: unknown): number | null {
   if (value === undefined || value === null || value === "") return null;
@@ -193,6 +212,19 @@ export const createFolder = async (req: Request, res: Response) => {
         return res.status(403).json({ message: "Permission refusée" });
       }
       const folder = await createFolderInSpace(spaceId, name, user);
+      const projectId = Number(
+        (folder as { id_projet?: number; folderId?: number }).id_projet ??
+          (folder as { folderId?: number }).folderId
+      );
+      if (Number.isFinite(projectId) && projectId > 0) {
+        await logMemberWorkspaceActivity({
+          user: hierarchyActivityUser(user),
+          action: "Projet créé",
+          type: "project",
+          projectId,
+          projectName: name,
+        });
+      }
       return res.status(201).json(folder);
     }
 
@@ -288,8 +320,25 @@ export const createList = async (req: Request, res: Response) => {
     const name = String(req.body.name ?? req.body.nom ?? "").trim();
 
     if (spaceId && name) {
-      const canCreate =
-        isSuperAdmin(user) || (await userHasPermission(req, "LIST_MANAGE"));
+      let targetProjectId = folderId;
+      if (!targetProjectId) {
+        const first = await prisma.projet.findFirst({
+          where: {
+            id_space: spaceId,
+            id_entreprise: user.id_entreprise ?? undefined,
+            deleted_at: null,
+          },
+          orderBy: { id_projet: "asc" },
+          select: { id_projet: true },
+        });
+        targetProjectId = first?.id_projet ?? null;
+      }
+      if (!targetProjectId) {
+        return res.status(400).json({
+          message: "Créez un dossier avant une liste dans cet espace.",
+        });
+      }
+      const canCreate = await requestCanWriteLists(req, targetProjectId);
       if (!canCreate) {
         return res.status(403).json({ message: "Permission refusée" });
       }
@@ -300,6 +349,21 @@ export const createList = async (req: Request, res: Response) => {
           name,
           user
         );
+        const projectId = Number(
+          (list as { folderId?: number }).folderId ?? targetProjectId
+        );
+        const project = await prisma.projet.findUnique({
+          where: { id_projet: projectId },
+          select: { nom_p: true },
+        });
+        await logMemberWorkspaceActivity({
+          user: hierarchyActivityUser(user),
+          action: "Liste créée",
+          type: "project",
+          projectId,
+          projectName: project?.nom_p?.trim() || "Projet",
+          taskTitle: name,
+        });
         return res.status(201).json(list);
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
@@ -400,7 +464,9 @@ export const trashList = async (req: Request, res: Response) => {
     const current = await db.list_pm.findUnique({ where: { id_list } });
     if (!current) return res.status(404).json({ message: "Liste introuvable" });
     await getAccessibleProject(req, current.id_projet);
-    await moveListToTrash(id_list);
+    const user = (req as any).user;
+    const deletedBy = Number(user?.id_utilisateur ?? user?.id) || null;
+    await moveListToTrash(id_list, deletedBy);
     return res.json({ message: "Liste déplacée vers la corbeille" });
   } catch (err) {
     return handleHierarchyError(res, err);
@@ -444,20 +510,23 @@ export const getSprintsByProject = async (req: Request, res: Response) => {
     const project = await getAccessibleProject(req, id_projet);
     if (!project) return res.status(404).json({ message: "Projet introuvable" });
 
-    const [sprints, lists, tasks] = await Promise.all([
+    const [sprints, lists] = await Promise.all([
       prisma.sprint.findMany({
-        where: { id_projet },
+        where: { id_projet, deleted_at: null },
         orderBy: [{ id_sprint: "asc" }],
       }),
       db.list_pm.findMany({
-        where: { id_projet },
+        where: { id_projet, deleted_at: null },
         orderBy: [{ position: "asc" }, { id_list: "asc" }],
       }),
-      prisma.tache.findMany({
-        where: { id_projet },
-        select: { id_tache: true, id_list: true, id_sprint: true },
-      }),
     ]);
+    const sprintIds = sprints.map((s) => s.id_sprint);
+    const listIds = lists.map((l: { id_list: number }) => l.id_list);
+    const { buildProjectTasksWhere } = await import("../lib/projectTaskStats");
+    const tasks = await prisma.tache.findMany({
+      where: buildProjectTasksWhere([id_projet], sprintIds, listIds),
+      select: { id_tache: true, id_list: true, id_sprint: true },
+    });
 
     const payload = sprints.map((s) => {
       const sprintLists = (lists as any[]).filter(
@@ -537,7 +606,7 @@ export const getListById = async (req: Request, res: Response) => {
           })
         : Promise.resolve(null),
       prisma.tache.findMany({
-        where: { id_list },
+        where: { id_list, deleted_at: null },
         select: { statut_t: true },
       }),
     ]);
@@ -546,9 +615,9 @@ export const getListById = async (req: Request, res: Response) => {
     let inProgress = 0;
     let done = 0;
     for (const t of tasks) {
-      const s = String(t.statut_t ?? "").toUpperCase();
-      if (s === "DONE" || s === "TERMINEE") done++;
-      else if (s === "IN_PROGRESS" || s === "EN_COURS") inProgress++;
+      const k = normalizeStatutKey(t.statut_t);
+      if (k === "terminee") done++;
+      else if (k === "en_cours" || k === "en_retard") inProgress++;
       else todo++;
     }
 
@@ -593,8 +662,10 @@ export const getTasksByList = async (req: Request, res: Response) => {
     const project = await getAccessibleProject(req, list.id_projet);
     if (!project) return res.status(404).json({ message: "Projet introuvable" });
 
-    const tasks = await prisma.tache.findMany({
-      where: { id_list },
+    const user = (req as any).user;
+    const ctx = await getProjectPermissionContext(user, list.id_projet);
+    const tasksRaw = await prisma.tache.findMany({
+      where: { id_list, deleted_at: null },
       include: {
         utilisateur: {
           select: {
@@ -607,7 +678,14 @@ export const getTasksByList = async (req: Request, res: Response) => {
       },
       orderBy: [{ id_tache: "asc" }],
     });
-    return res.json({ id_list, tasks });
+    const userId = Number(user?.id);
+    const tasks = filterTasksForProjectContext(
+      ctx,
+      tasksRaw,
+      Number.isFinite(userId) ? userId : 0
+    );
+    const synced = await syncOverdueForTasks(tasks);
+    return res.json({ id_list, tasks: synced });
   } catch (err) {
     return handleHierarchyError(res, err);
   }

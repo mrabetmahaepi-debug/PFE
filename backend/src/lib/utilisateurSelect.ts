@@ -56,6 +56,7 @@ export const utilisateurMinimalAuthSelect = {
   id_role: true,
   id_entreprise: true,
   statut: true,
+  poste: true,
   role: { select: roleNomSelect },
 } as const;
 

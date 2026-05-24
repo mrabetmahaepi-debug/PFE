@@ -27,13 +27,23 @@ import {
   findListInSpaces,
   parseWorkspacePath,
 } from '../lib/workspaceRoutes';
-import { WORKSPACE_REFRESH_EVENT } from '../lib/workspaceEvents';
+import {
+  dispatchTaskDeleted,
+  dispatchWorkspaceRefresh,
+  PROJECT_TASK_STATS_CHANGED_EVENT,
+  WORKSPACE_REFRESH_EVENT,
+} from '../lib/workspaceEvents';
 import { projectService } from '../services/project.service';
 import { hierarchyService } from '../services/hierarchy.service';
 import { taskService } from '../services/task.service';
 import { useAuth } from '../hooks/useAuth';
 import { usePermission } from '../hooks/usePermission';
-import { getRoleKey } from '../lib/permissions';
+import { getRoleKey, isGlobalMember } from '../lib/permissions';
+import { canCreateSprintInProject } from '../lib/projectPermissions';
+import { isMonEspaceSpaceName, MON_ESPACE_NAME } from '../lib/monEspaceRoute';
+import { useMemberTopbarTitle } from '../context/MemberTopbarTitleContext';
+import MemberSpaceOverview from '../components/MemberSpaceOverview';
+import ProjectLandingPage from '../components/ProjectLandingPage';
 import type { Projet } from '../types/project';
 import type {
   ProjectTree,
@@ -50,6 +60,7 @@ import type {
 import type { TreeTaskMenuAction } from '../components/TreeTaskContextMenu';
 import type { ListPageTab } from '../components/ListPageView';
 import TaskDeleteConfirmModal from '../components/TaskDeleteConfirmModal';
+import DeleteConfirmModal from '../components/DeleteConfirmModal';
 import {
   TaskStatus,
   type Tache,
@@ -65,6 +76,7 @@ import KanbanBoard, {
 import WorkspaceTaskDetailPanel from '../components/WorkspaceTaskDetailPanel';
 import ListPageView from '../components/ListPageView';
 import './Workspace.css';
+import './MemberMonEspace.css';
 
 type ProjectManagerDisplay = {
   name: string;
@@ -273,6 +285,8 @@ const Workspace: React.FC = () => {
   const [listPageRefreshKey, setListPageRefreshKey] = useState(0);
   const [pendingDeleteTask, setPendingDeleteTask] = useState<Tache | null>(null);
   const [deletingTask, setDeletingTask] = useState(false);
+  const [pendingDeleteList, setPendingDeleteList] = useState<TreeListNode | null>(null);
+  const [deletingList, setDeletingList] = useState(false);
   const [detailTaskSnapshot, setDetailTaskSnapshot] = useState<Tache | null>(
     null
   );
@@ -293,6 +307,10 @@ const Workspace: React.FC = () => {
   const [activeProjectDetail, setActiveProjectDetail] = useState<Projet | null>(null);
   const [teamPanelOpen, setTeamPanelOpen] = useState(false);
   const [loadingProjectDetail, setLoadingProjectDetail] = useState(false);
+  const [projectProgression, setProjectProgression] = useState<number | null>(
+    null
+  );
+  const [loadingProjectStats, setLoadingProjectStats] = useState(false);
   const [projectMenuOpen, setProjectMenuOpen] = useState(false);
   const [assigneeFilter, setAssigneeFilter] =
     useState<AssigneeFilter>('all');
@@ -329,21 +347,50 @@ const Workspace: React.FC = () => {
   }, [isSuperAdmin, user, tree]);
 
   const canCreateSprint = useMemo(() => {
+    if (isSuperAdmin || getRoleKey(user) === 'ADMIN') return true;
+    const pp = Array.isArray(tree?.currentUserPermissions)
+      ? tree.currentUserPermissions
+      : [];
+    if (canCreateSprintInProject(pp)) return true;
+    return can('SPRINT_CREATE');
+  }, [isSuperAdmin, user, tree, can]);
+
+  const canCreateList = useMemo(() => {
     const pp = Array.isArray(tree?.currentUserPermissions)
       ? tree.currentUserPermissions
       : [];
     return (
       isSuperAdmin ||
       getRoleKey(user) === 'ADMIN' ||
+      pp.includes('create_tasks') ||
       pp.includes('create_sprints') ||
       pp.includes('manage_sprints')
     );
   }, [isSuperAdmin, user, tree]);
 
-  const canCreateList = can('LIST_MANAGE') || isSuperAdmin;
-  const canManageList = can('LIST_MANAGE') || isSuperAdmin;
-  const canDeleteTask = can('TASK_DELETE') || isSuperAdmin;
-  const canEditTask = can('TASK_EDIT') || isSuperAdmin;
+  const canManageList = canCreateList;
+  const canDeleteTask = useMemo(() => {
+    const pp = Array.isArray(tree?.currentUserPermissions)
+      ? tree.currentUserPermissions
+      : [];
+    return (
+      isSuperAdmin ||
+      getRoleKey(user) === 'ADMIN' ||
+      pp.includes('delete_tasks')
+    );
+  }, [isSuperAdmin, user, tree]);
+
+  const canEditTask = useMemo(() => {
+    const pp = Array.isArray(tree?.currentUserPermissions)
+      ? tree.currentUserPermissions
+      : [];
+    return (
+      isSuperAdmin ||
+      getRoleKey(user) === 'ADMIN' ||
+      pp.includes('edit_all_tasks') ||
+      pp.includes('edit_assigned_tasks')
+    );
+  }, [isSuperAdmin, user, tree]);
 
   const hydrateTreeFromSpaces = (
     projectId: number,
@@ -600,6 +647,7 @@ const Workspace: React.FC = () => {
     if (spaceId) {
       const space = spaces.find((s) => s.id_space === spaceId);
       if (!space) return;
+      setActiveProjectId(null);
       setActiveListId(null);
       setTreeSelection({
         level: 'space',
@@ -705,6 +753,51 @@ const Workspace: React.FC = () => {
   }, [activeProjectId]);
 
   useEffect(() => {
+    if (!activeProjectId) {
+      setProjectProgression(null);
+      setLoadingProjectStats(false);
+      return;
+    }
+    let cancelled = false;
+    setLoadingProjectStats(true);
+    void projectService
+      .getStats(activeProjectId)
+      .then((stats) => {
+        if (!cancelled) {
+          setProjectProgression(
+            stats.avancement ?? stats.progressPercent ?? null
+          );
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setProjectProgression(null);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingProjectStats(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeProjectId]);
+
+  useEffect(() => {
+    if (!activeProjectId) return;
+    const refresh = () => {
+      void projectService
+        .getStats(activeProjectId)
+        .then((stats) => {
+          setProjectProgression(
+            stats.avancement ?? stats.progressPercent ?? null
+          );
+        })
+        .catch(() => setProjectProgression(null));
+    };
+    window.addEventListener(PROJECT_TASK_STATS_CHANGED_EVENT, refresh);
+    return () =>
+      window.removeEventListener(PROJECT_TASK_STATS_CHANGED_EVENT, refresh);
+  }, [activeProjectId]);
+
+  useEffect(() => {
     setTeamPanelOpen(false);
   }, [activeProjectId]);
 
@@ -734,6 +827,85 @@ const Workspace: React.FC = () => {
   );
 
   const hasAnyProject = allProjects.length > 0;
+
+  const workspacePathIds = useMemo(
+    () => parseWorkspacePath(location.pathname),
+    [location.pathname]
+  );
+
+  const showMemberMonEspaceOverview = useMemo(() => {
+    if (!isGlobalMember(user)) return false;
+    const { spaceId, folderId, listId } = workspacePathIds;
+    if (spaceId == null || folderId != null || listId != null) return false;
+    const space = spaces.find((s) => s.id_space === spaceId);
+    return !!space && isMonEspaceSpaceName(space.nom);
+  }, [user, workspacePathIds, spaces]);
+
+  const { setTitle: setMemberTopbarTitle } = useMemberTopbarTitle();
+  useEffect(() => {
+    if (!isGlobalMember(user)) return;
+    const { spaceId, folderId, listId } = workspacePathIds;
+    const onSpaceRoot =
+      spaceId != null && folderId == null && listId == null;
+    if (!onSpaceRoot) return;
+
+    if (showMemberMonEspaceOverview) {
+      setMemberTopbarTitle(MON_ESPACE_NAME);
+      return () => setMemberTopbarTitle(null);
+    }
+
+    if (loadingProjects || spaces.length === 0) {
+      setMemberTopbarTitle(MON_ESPACE_NAME);
+      return () => setMemberTopbarTitle(null);
+    }
+  }, [
+    user,
+    workspacePathIds,
+    showMemberMonEspaceOverview,
+    loadingProjects,
+    spaces.length,
+    setMemberTopbarTitle,
+  ]);
+
+  const showProjectLanding = useMemo(() => {
+    if (!activeProjectId || activeListId) return false;
+    if (showMemberMonEspaceOverview) return false;
+    return true;
+  }, [activeProjectId, activeListId, showMemberMonEspaceOverview]);
+
+  const activeSpaceIdForProject = useMemo(() => {
+    if (workspacePathIds.spaceId != null) return workspacePathIds.spaceId;
+    const project = spaces
+      .flatMap((s) => s.projects || [])
+      .find((p) => p.id_projet === activeProjectId);
+    return project?.id_space ?? tree?.id_space ?? null;
+  }, [
+    workspacePathIds.spaceId,
+    spaces,
+    activeProjectId,
+    tree?.id_space,
+  ]);
+
+  useEffect(() => {
+    if (!showProjectLanding) return;
+    const name =
+      tree?.nom_p ??
+      spaces
+        .flatMap((s) => s.projects || [])
+        .find((p) => p.id_projet === activeProjectId)?.nom_p ??
+      'Projet';
+    if (isGlobalMember(user)) {
+      setMemberTopbarTitle(name);
+      return () => setMemberTopbarTitle(null);
+    }
+  }, [
+    showProjectLanding,
+    tree?.nom_p,
+    spaces,
+    activeProjectId,
+    user,
+    setMemberTopbarTitle,
+  ]);
 
   const filteredSpaces = useMemo(() => {
     const q = search.toLowerCase().trim();
@@ -1311,9 +1483,14 @@ const Workspace: React.FC = () => {
     );
   };
 
-  const handleDeleteList = async (list: TreeListNode) => {
+  const handleDeleteList = (list: TreeListNode) => {
     if (!canManageList) return;
-    if (!window.confirm(`Supprimer la liste "${list.nom}" ?`)) return;
+    setPendingDeleteList(list);
+  };
+
+  const executeDeleteList = async (list: TreeListNode) => {
+    if (!canManageList) return;
+    setDeletingList(true);
     try {
       await hierarchyService.deleteList(list.id_list);
       if (activeListId === list.id_list) {
@@ -1327,9 +1504,13 @@ const Workspace: React.FC = () => {
           fetchTasks(activeProjectId),
         ]);
       }
+      setPendingDeleteList(null);
       setSuccessMessage('Liste supprimée');
-    } catch (err: any) {
-      alert(err?.response?.data?.message || 'Suppression impossible');
+    } catch (err: unknown) {
+      const ax = err as { response?: { data?: { message?: string } } };
+      setError(ax?.response?.data?.message || 'Suppression impossible');
+    } finally {
+      setDeletingList(false);
     }
   };
 
@@ -1431,6 +1612,8 @@ const Workspace: React.FC = () => {
     setTasks((prev) => prev.filter((t) => t.id_tache !== task.id_tache));
     try {
       await taskService.delete(String(task.id_tache));
+      dispatchTaskDeleted(task.id_tache);
+      dispatchWorkspaceRefresh();
       if (detailTaskId === task.id_tache) {
         setDetailOpen(false);
         setDetailTaskId(null);
@@ -1458,7 +1641,7 @@ const Workspace: React.FC = () => {
         await fetchTasks(activeProjectId);
         await fetchSpacesHierarchy(activeProjectId);
       }
-      alert(err?.response?.data?.message || 'Suppression impossible');
+      setError(err?.response?.data?.message || 'Suppression impossible');
     } finally {
       setDeletingTask(false);
       setPendingDeleteTask(null);
@@ -1471,60 +1654,30 @@ const Workspace: React.FC = () => {
   };
 
   const handleBoardMove = async (taskId: number, target: BoardColumnId) => {
-    const task = tasks.find((t) => t.id_tache === taskId);
-    if (!task || !activeProjectId) return;
-
-    const optimistic = tasks.map((t) => {
-      if (t.id_tache !== taskId) return t;
-      if (target === TaskStatus.DONE)
-        return { ...t, statut_t: TaskStatus.DONE };
-      if (target === 'OVERDUE')
-        return {
-          ...t,
-          date_limite_t: pastDueIso(),
-          statut_t:
-            t.statut_t === TaskStatus.DONE ? TaskStatus.TODO : t.statut_t,
-        };
-      if (target === TaskStatus.TODO)
-        return {
-          ...t,
-          statut_t: TaskStatus.TODO,
-          date_limite_t: futureDueIso(),
-        };
-      if (target === TaskStatus.IN_PROGRESS)
-        return {
-          ...t,
-          statut_t: TaskStatus.IN_PROGRESS,
-          date_limite_t: futureDueIso(),
-        };
-      return t;
-    });
-    setTasks(optimistic);
-
+    if (!activeProjectId) return;
+    const previous = tasks;
+    setTasks((prev) =>
+      prev.map((t) =>
+        t.id_tache === taskId ? { ...t, statut_t: target } : t
+      )
+    );
     try {
-      if (target === 'OVERDUE') {
-        await taskService.update(String(taskId), {
-          date_limite_t: pastDueIso(),
-          ...(task.statut_t === TaskStatus.DONE
-            ? { statut_t: TaskStatus.TODO }
-            : {}),
-        });
-      } else if (target === TaskStatus.DONE) {
-        await taskService.updateStatus(String(taskId), TaskStatus.DONE);
-      } else if (isTaskOverdue(task)) {
-        await taskService.update(String(taskId), {
-          statut_t: target,
-          date_limite_t: futureDueIso(),
-        });
-      } else {
-        await taskService.updateStatus(String(taskId), target);
-      }
-      await fetchTasks(activeProjectId);
-    } catch (err: any) {
-      await fetchTasks(activeProjectId);
-      alert(
-        err?.response?.data?.message || 'Impossible de déplacer la tâche'
+      const updated = await taskService.patchStatus(String(taskId), target);
+      setTasks((prev) =>
+        prev.map((t) => (t.id_tache === taskId ? updated : t))
       );
+    } catch (err: unknown) {
+      setTasks(previous);
+      const ax = err as {
+        response?: { data?: { message?: string } };
+        message?: string;
+      };
+      alert(
+        ax?.response?.data?.message ||
+          ax?.message ||
+          'Impossible de déplacer la tâche'
+      );
+      throw err;
     }
   };
 
@@ -1729,7 +1882,11 @@ const Workspace: React.FC = () => {
   return (
     <>
       <motion.div
-        className={`workspace-page${activeListId ? ' workspace-page--clickup' : ''}`}
+        className={`workspace-page${
+          activeListId ? ' workspace-page--clickup' : ''
+        }${showMemberMonEspaceOverview ? ' workspace-page--member-overview mon-espace-page' : ''}${
+          showProjectLanding ? ' workspace-page--project-landing' : ''
+        }`}
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
       >
@@ -1783,23 +1940,66 @@ const Workspace: React.FC = () => {
               </div>
             )}
 
-            {!activeListId &&
-              activeProjectId &&
-              !loadingProjects &&
-              !error && (
-              <div className="empty-state">
-                <div className="empty-state-icon">
-                  <ListTodo size={22} />
-                </div>
-                <h3>Sélectionnez une liste</h3>
-                <p>
-                  Développez un espace dans le menu de gauche, puis sélectionnez
-                  une liste pour ouvrir sa page.
-                </p>
-              </div>
+            {showProjectLanding && !error && (
+              <ProjectLandingPage
+                tree={tree}
+                project={activeProjectDetail}
+                tasks={tasks}
+                loading={loadingTree || loadingProjects}
+                statsLoading={loadingProjectStats}
+                progressionPercent={projectProgression}
+                userId={Number(user?.id_utilisateur ?? user?.id ?? 0) || undefined}
+                canCreateSprint={canCreateSprint}
+                canCreateList={canCreateList}
+                canCreateTask={canCreateTasksWorkspace}
+                onCreateSprint={() => {
+                  if (activeProjectId == null) return;
+                  openCreate('sprint', { id_projet: activeProjectId });
+                }}
+                onCreateList={() => {
+                  if (activeProjectId == null) return;
+                  const firstSprint = tree?.sprints?.[0];
+                  if (!firstSprint) {
+                    showErrorToast('Créez d’abord un sprint.');
+                    return;
+                  }
+                  openCreate('list', {
+                    id_projet: activeProjectId,
+                    id_sprint: firstSprint.id_sprint,
+                  });
+                }}
+                onCreateTask={() => {
+                  if (activeProjectId == null) return;
+                  const firstList = (tree?.sprints ?? [])
+                    .flatMap((s) => s.lists ?? [])
+                    .find((l) => l.id_list);
+                  if (!firstList) {
+                    showErrorToast(
+                      'Créez d’abord une liste dans un sprint.'
+                    );
+                    return;
+                  }
+                  openCreate('task', {
+                    id_projet: activeProjectId,
+                    id_list: firstList.id_list,
+                    id_sprint: firstList.id_sprint ?? undefined,
+                    id_space: activeSpaceIdForProject ?? undefined,
+                  });
+                }}
+                onOpenTask={(taskId) => navigate(appPaths.task(taskId))}
+                onViewMyTasks={() => navigate('/tasks')}
+              />
             )}
 
-            {!activeListId && !activeProjectId && hasAnyProject && !error && (
+            {showMemberMonEspaceOverview && !error && (
+              <MemberSpaceOverview />
+            )}
+
+            {!showMemberMonEspaceOverview &&
+              !activeListId &&
+              !activeProjectId &&
+              hasAnyProject &&
+              !error && (
               <div className="empty-state">
                 <div className="empty-state-icon">
                   <Briefcase size={22} />
@@ -1853,6 +2053,17 @@ const Workspace: React.FC = () => {
         onCancel={() => !deletingTask && setPendingDeleteTask(null)}
         onConfirm={() => {
           if (pendingDeleteTask) void executeDeleteTask(pendingDeleteTask);
+        }}
+      />
+
+      <DeleteConfirmModal
+        open={!!pendingDeleteList}
+        itemName={pendingDeleteList?.nom ?? ''}
+        entityKind="list"
+        loading={deletingList}
+        onCancel={() => !deletingList && setPendingDeleteList(null)}
+        onConfirm={() => {
+          if (pendingDeleteList) void executeDeleteList(pendingDeleteList);
         }}
       />
 

@@ -12,13 +12,13 @@ import {
   Briefcase,
   ShieldAlert,
   Building2,
-  ArrowRight,
   AlertTriangle,
   X,
   Calendar,
   Flag,
   Trash2,
   Pencil,
+  Archive,
   ChevronDown,
   ArrowUpDown,
 } from 'lucide-react';
@@ -36,8 +36,10 @@ import {
   formatProjectStatus,
   getProjectStatusColor,
   normalizeProjectStatus,
+  isArchivedProject,
   projectMatchesStatusFilter,
 } from '../lib/projectStatus';
+import { dispatchProjectsUpdated } from '../lib/workspaceEvents';
 import type { User } from '../types/auth.types';
 import CreateProjectModal from '../components/CreateProjectModal';
 import EditProjectModal from '../components/EditProjectModal';
@@ -46,6 +48,7 @@ import BackButton from '../components/BackButton';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { teamService } from '../services/team.service';
 import { useAuth } from '../hooks/useAuth';
+import DeleteConfirmModal from '../components/DeleteConfirmModal';
 import './Projects.css';
 
 const LOW_PROGRESS_THRESHOLD = 35;
@@ -198,6 +201,14 @@ const Projects: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editProjectId, setEditProjectId] = useState<number | null>(null);
   const [saveSuccessMessage, setSaveSuccessMessage] = useState<string | null>(null);
+  const [pendingDeleteProject, setPendingDeleteProject] = useState<{
+    id_projet: number;
+    nom_p?: string;
+    project: ProjectManageContext;
+  } | null>(null);
+  const [deletingProject, setDeletingProject] = useState(false);
+  const [archivingProjectId, setArchivingProjectId] = useState<number | null>(null);
+  const isTenantAdmin = isEnterpriseAdmin(user);
 
   useEffect(() => {
     if (searchParams.get('create') !== '1') return;
@@ -236,15 +247,18 @@ const Projects: React.FC = () => {
       setDropdownOpenId(null);
       setToolbarMenuOpen(null);
     };
+    document.addEventListener('click', handleClickOutside);
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, []);
+
+  useEffect(() => {
     const handleProjectsUpdated = () => {
       void fetchProjects();
     };
-    document.addEventListener('click', handleClickOutside);
     window.addEventListener('projects:updated', handleProjectsUpdated);
-    return () => {
-      document.removeEventListener('click', handleClickOutside);
-      window.removeEventListener('projects:updated', handleProjectsUpdated);
-    };
+    return () => window.removeEventListener('projects:updated', handleProjectsUpdated);
   }, []);
 
   useEffect(() => {
@@ -337,6 +351,7 @@ const Projects: React.FC = () => {
   const filteredProjects = useMemo(() => {
     const searchLower = searchQuery.trim().toLowerCase();
     return projects
+      .filter((p) => !isArchivedProject(p))
       .filter((p) => {
         const matchesSearch =
           !searchLower ||
@@ -373,7 +388,7 @@ const Projects: React.FC = () => {
   );
 
   const CARD_MENU_WIDTH = 220;
-  const CARD_MENU_EST_HEIGHT = 132;
+  const CARD_MENU_EST_HEIGHT = 188;
 
   const toggleCardMenu = (e: React.MouseEvent<HTMLButtonElement>, projectId: number) => {
     e.stopPropagation();
@@ -400,27 +415,56 @@ const Projects: React.FC = () => {
   const toProjectCtx = (p: ProjectManageContext & { id_projet?: number }) =>
     normalizeProjectManageContext(p);
 
-  const menuCanManage =
-    cardMenuProject != null ? canManageProject(user, cardMenuProject) : false;
+  const handleArchiveProject = async (
+    project: ProjectManageContext & { id_projet: number; nom_p?: string }
+  ) => {
+    if (!isTenantAdmin) return;
+    setCardMenuAnchor(null);
+    setArchivingProjectId(project.id_projet);
+    try {
+      await projectService.archive(project.id_projet);
+      setSaveSuccessMessage(
+        `« ${project.nom_p || 'Projet'} » a été archivé et retiré de la liste active.`
+      );
+      await fetchProjects();
+      dispatchProjectsUpdated();
+    } catch (err) {
+      console.error(err);
+      setFetchError('Impossible d\'archiver ce projet.');
+    } finally {
+      setArchivingProjectId(null);
+    }
+  };
 
-  const handleDeleteProject = async (
+  const handleDeleteProject = (
     e: React.MouseEvent,
     project: ProjectManageContext & { id_projet: number; nom_p?: string }
   ) => {
     e.stopPropagation();
-    if (!canManageProject(user, project)) return;
-    const projectId = project.id_projet;
-    const projectName = project.nom_p;
-    if (!window.confirm(`Supprimer le projet « ${projectName || projectId} » ? Cette action est irréversible.`)) {
-      return;
-    }
+    if (!isTenantAdmin) return;
+    setCardMenuAnchor(null);
+    setPendingDeleteProject({
+      id_projet: project.id_projet,
+      nom_p: project.nom_p,
+      project: toProjectCtx(project),
+    });
+  };
+
+  const executeDeleteProject = async () => {
+    if (!pendingDeleteProject) return;
+    setDeletingProject(true);
     try {
-      await projectService.delete(projectId, { project: toProjectCtx(project) });
-      setCardMenuAnchor(null);
+      await projectService.delete(pendingDeleteProject.id_projet, {
+        project: pendingDeleteProject.project,
+      });
+      setPendingDeleteProject(null);
       await fetchProjects();
+      dispatchProjectsUpdated();
     } catch (err) {
       console.error(err);
-      alert('Impossible de supprimer ce projet.');
+      setFetchError('Impossible de supprimer ce projet.');
+    } finally {
+      setDeletingProject(false);
     }
   };
 
@@ -578,14 +622,15 @@ const Projects: React.FC = () => {
                       {project.description_p || 'Aucune description fournie.'}
                     </p>
                   </div>
-                  {!isSuperAdmin && (
+                  {isTenantAdmin && (
                     <div className="project-card-menu-wrap">
-                      <button 
+                      <button
                         type="button"
-                        className={`card-action-btn${cardMenuAnchor?.projectId === project.id_projet ? ' is-active' : ''}`} 
+                        className={`card-action-btn${cardMenuAnchor?.projectId === project.id_projet ? ' is-active' : ''}`}
                         aria-label="Actions du projet"
                         aria-expanded={cardMenuAnchor?.projectId === project.id_projet}
                         aria-haspopup="menu"
+                        disabled={archivingProjectId === project.id_projet}
                         onClick={(e) => toggleCardMenu(e, project.id_projet)}
                       >
                         <MoreVertical size={16} />
@@ -851,29 +896,32 @@ const Projects: React.FC = () => {
       )}
 
       {!isSuperAdmin && (
-        <>
-          <CreateProjectModal
-            isOpen={isModalOpen}
-            onClose={() => setIsModalOpen(false)}
-            onSuccess={fetchProjects}
-          />
-          <EditProjectModal
-            isOpen={editProjectId != null}
-            projectId={editProjectId}
-            onClose={() => setEditProjectId(null)}
-            onSuccess={() => {
-              void fetchProjects();
-              setSaveSuccessMessage('Projet modifié avec succès.');
-              window.dispatchEvent(new CustomEvent('projects:updated'));
-            }}
-          />
-        </>
+        <CreateProjectModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          onSuccess={() => {
+            void fetchProjects();
+            dispatchProjectsUpdated();
+          }}
+        />
+      )}
+      {isTenantAdmin && (
+        <EditProjectModal
+          isOpen={editProjectId != null}
+          projectId={editProjectId}
+          onClose={() => setEditProjectId(null)}
+          onSuccess={() => {
+            void fetchProjects();
+            setSaveSuccessMessage('Projet modifié avec succès.');
+            dispatchProjectsUpdated();
+          }}
+        />
       )}
 
       {typeof document !== 'undefined' &&
         createPortal(
           <AnimatePresence>
-            {cardMenuAnchor && cardMenuProject && (
+            {isTenantAdmin && cardMenuAnchor && cardMenuProject && (
               <>
                 <motion.button
                   type="button"
@@ -899,42 +947,38 @@ const Projects: React.FC = () => {
                   onClick={(e) => e.stopPropagation()}
                   onMouseDown={(e) => e.stopPropagation()}
                 >
-                  {menuCanManage && (
-                    <>
-                      <button
-                        type="button"
-                        role="menuitem"
-                        className="project-menu-item"
-                        onClick={() => {
-                          closeCardMenu();
-                          setEditProjectId(cardMenuProject.id_projet);
-                        }}
-                      >
-                        <Pencil size={14} aria-hidden />
-                        Modifier
-                      </button>
-                      <button
-                        type="button"
-                        role="menuitem"
-                        className="project-menu-item project-menu-item--danger"
-                        onClick={(ev) => handleDeleteProject(ev, cardMenuProject)}
-                      >
-                        <Trash2 size={14} aria-hidden />
-                        Supprimer
-                      </button>
-                    </>
-                  )}
                   <button
                     type="button"
                     role="menuitem"
                     className="project-menu-item"
                     onClick={() => {
                       closeCardMenu();
-                      navigate(`/projects/${cardMenuProject.id_projet}`);
+                      setEditProjectId(cardMenuProject.id_projet);
                     }}
                   >
-                    <ArrowRight size={14} aria-hidden />
-                    Voir détails
+                    <Pencil size={14} aria-hidden />
+                    Modifier le projet
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="project-menu-item project-menu-item--archive"
+                    disabled={archivingProjectId === cardMenuProject.id_projet}
+                    onClick={() => void handleArchiveProject(cardMenuProject)}
+                  >
+                    <Archive size={14} aria-hidden />
+                    {archivingProjectId === cardMenuProject.id_projet
+                      ? 'Archivage…'
+                      : 'Archiver projet'}
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="project-menu-item project-menu-item--danger"
+                    onClick={(ev) => handleDeleteProject(ev, cardMenuProject)}
+                  >
+                    <Trash2 size={14} aria-hidden />
+                    Supprimer projet
                   </button>
                 </motion.div>
               </>
@@ -942,6 +986,17 @@ const Projects: React.FC = () => {
           </AnimatePresence>,
           document.body,
         )}
+
+      <DeleteConfirmModal
+        open={!!pendingDeleteProject}
+        itemName={pendingDeleteProject?.nom_p ?? `Projet #${pendingDeleteProject?.id_projet ?? ''}`}
+        title="Voulez-vous supprimer ce projet ?"
+        descriptionLine="Le projet, ses sprints, listes et associations de tâches seront supprimés. Les comptes utilisateurs de l'entreprise ne seront pas supprimés."
+        showIrreversibleNote
+        loading={deletingProject}
+        onCancel={() => !deletingProject && setPendingDeleteProject(null)}
+        onConfirm={() => void executeDeleteProject()}
+      />
     </div>
   );
 };

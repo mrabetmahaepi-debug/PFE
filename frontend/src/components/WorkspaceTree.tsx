@@ -17,6 +17,7 @@ import type {
   HierarchyLevel,
 } from '../types/hierarchy';
 import type { HierarchyParentContext } from './CreateHierarchyItemModal';
+import DeleteConfirmModal from './DeleteConfirmModal';
 import './WorkspaceTree.css';
 
 export interface WorkspaceSelection {
@@ -142,6 +143,11 @@ const WorkspaceTree: React.FC<WorkspaceTreeProps> = ({
   expanded: controlledExpanded,
   onToggleExpand,
 }) => {
+  const [pendingDeleteList, setPendingDeleteList] = useState<{
+    id: number;
+    nom: string;
+  } | null>(null);
+
   const isControlled = !!controlledExpanded && !!onToggleExpand;
   const [internalExpanded, setInternalExpanded] = useState<Set<string>>(
     new Set([`project:${tree.id_projet}`])
@@ -242,9 +248,7 @@ const WorkspaceTree: React.FC<WorkspaceTreeProps> = ({
               title="Plus d'options"
               onClick={(e) => {
                 e.stopPropagation();
-                if (window.confirm(`Supprimer la liste "${list.nom}" ?`)) {
-                  onDelete('list', list.id_list);
-                }
+                setPendingDeleteList({ id: list.id_list, nom: list.nom });
               }}
             >
               <MoreHorizontal size={14} />
@@ -385,6 +389,19 @@ const WorkspaceTree: React.FC<WorkspaceTreeProps> = ({
           </div>
         )}
       </div>
+
+      <DeleteConfirmModal
+        open={!!pendingDeleteList}
+        itemName={pendingDeleteList?.nom ?? ''}
+        entityKind="list"
+        onCancel={() => setPendingDeleteList(null)}
+        onConfirm={() => {
+          if (pendingDeleteList && onDelete) {
+            onDelete('list', pendingDeleteList.id);
+            setPendingDeleteList(null);
+          }
+        }}
+      />
     </div>
   );
 };

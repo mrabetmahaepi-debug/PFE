@@ -32,7 +32,6 @@
 .member-stats-card--clickable:hover {
   border-color: #d1d5db;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  transform: none;
 }
 
 .member-stats-card--clickable:focus-visible {

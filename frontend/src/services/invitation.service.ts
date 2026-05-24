@@ -1,12 +1,20 @@
 import api from './api';
 
+export interface InvitationProjectPreview {
+  id_projet: number;
+  nom: string;
+}
+
 export interface InvitationLookup {
   email: string;
   prenom?: string | null;
   nom?: string | null;
   role: string | null;
+  poste?: string | null;
+  profile?: string | null;
   entreprise: string | null;
   expires_at: string | null;
+  projects?: InvitationProjectPreview[];
   inviter?: { name: string; email: string | null } | null;
 }
 
@@ -59,24 +67,29 @@ export interface AssignableRole {
 
 export interface TeamInvitationPayload {
   emails: string[];
-  /** @deprecated ignoré par le backend — toujours « Membre » */
-  id_role?: number;
-  prenom?: string;
-  nom?: string;
+  /** Profil de permissions : Chef de projet ou Développeur */
+  poste: string;
+  prenom: string;
+  nom: string;
+  project_ids: number[];
+  /** ISO 8601 — date d'expiration de l'invitation */
+  expires_at: string;
 }
 
 export type TeamInvitationDelivery = 'sent' | 'skipped' | 'failed';
+export type InvitationEmailStatus = 'pending' | 'sent' | 'failed';
 
 export type TeamInvitationResult =
   | {
       email: string;
-      status: 'sent';
+      /** Invitation row persisted in DB */
+      status: 'created' | 'sent';
       token: string;
       link: string;
       expires_at: string | null;
       id_utilisateur: number;
+      emailStatus: InvitationEmailStatus;
       email_delivery: TeamInvitationDelivery;
-      /** Returned when delivery failed — Brevo/SMTP error text. */
       delivery_error?: string;
     }
   | {
@@ -87,6 +100,7 @@ export type TeamInvitationResult =
 
 export interface TeamInvitationResponse {
   message: string;
+  warning?: string;
   role: { id_role: number; nom: string };
   workspace: string;
   inviter: string;
@@ -98,7 +112,8 @@ export interface TeamInvitationResponse {
     failed: number;
     email_delivered: number;
     email_failed: number;
-    email_skipped: number;
+    email_pending?: number;
+    email_skipped?: number;
   };
   results: TeamInvitationResult[];
 }

@@ -10,6 +10,7 @@
  * (`backend/src/modules/permissions/permissions.catalog.ts`).
  */
 import type { User } from "../types/auth.types";
+import { permissionSetHas } from "./permissionCheck";
 
 export type RoleKey =
   | "SUPERADMIN"
@@ -91,12 +92,14 @@ export const PERM = {
   ENTERPRISE_EDIT: "ENTERPRISE_EDIT",
   ENTERPRISE_STATS: "ENTERPRISE_STATS",
   // Projects
+  PROJECT_VIEW: "PROJECT_VIEW",
   PROJECT_VIEW_ALL: "PROJECT_VIEW_ALL",
   PROJECT_CREATE: "PROJECT_CREATE",
   PROJECT_EDIT: "PROJECT_EDIT",
   PROJECT_DELETE: "PROJECT_DELETE",
   PROJECT_MANAGE_ACCESS: "PROJECT_MANAGE_ACCESS",
   // Tasks
+  TASK_VIEW: "TASK_VIEW",
   TASK_VIEW_ALL: "TASK_VIEW_ALL",
   TASK_CREATE: "TASK_CREATE",
   TASK_EDIT: "TASK_EDIT",
@@ -108,6 +111,7 @@ export const PERM = {
   // Teams
   TEAM_VIEW: "TEAM_VIEW",
   TEAM_INVITE: "TEAM_INVITE",
+  TEAM_MANAGE: "TEAM_MANAGE",
   TEAM_MANAGE_ROLES: "TEAM_MANAGE_ROLES",
   TEAM_REMOVE_MEMBER: "TEAM_REMOVE_MEMBER",
   // Invitations
@@ -143,7 +147,5 @@ export function checkPermission(
   superAdmin: boolean
 ): boolean {
   if (superAdmin) return true;
-  if (!permissions) return false;
-  if (permissions instanceof Set) return permissions.has(permission);
-  return permissions.includes(permission);
+  return permissionSetHas(permissions, permission);
 }

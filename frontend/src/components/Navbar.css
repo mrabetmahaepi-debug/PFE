@@ -20,6 +20,593 @@
   width: 100%;
 }
 
+/* Member top bar — title + actions in one row */
+.navbar.navbar--member-topbar {
+  margin: 0;
+  background: #ffffff;
+  border-bottom: 1px solid #ececf3;
+  border-radius: 0;
+  box-shadow: none;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.navbar.navbar--member-assigned {
+  height: 52px;
+  min-height: 52px;
+  padding: 0 20px 0 40px;
+}
+
+.navbar.navbar--member-inbox {
+  height: 56px;
+  min-height: 56px;
+  padding: 0 20px 0 16px;
+}
+
+.navbar.navbar--admin-inbox {
+  height: 56px;
+  min-height: 56px;
+  margin: 0;
+  padding: 0 20px 0 16px;
+  background: #ffffff;
+  border-bottom: 1px solid #ececf3;
+  border-radius: 0;
+  box-shadow: none;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.navbar.navbar--admin-inbox .header-right {
+  width: auto;
+  flex-shrink: 0;
+}
+
+.navbar.navbar--member-settings {
+  height: 56px;
+  min-height: 56px;
+  padding: 0 20px 0 16px;
+  background: #ffffff;
+  border: none;
+  border-bottom: 1px solid #ececf3;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* Member task details — back on the left, actions on the right */
+.navbar.navbar--member-task-detail {
+  height: 52px;
+  min-height: 52px;
+  margin: 0;
+  padding: 0 20px 0 16px;
+  background: #ffffff;
+  border: none;
+  border-bottom: 1px solid #ececf3;
+  border-radius: 0;
+  box-shadow: none;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.navbar-member-back-wrap {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.navbar-member-back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 10px;
+  margin: 0;
+  border: 1px solid #e8eaed;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  color: #646464;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.navbar-member-back:hover {
+  background: #fafbfc;
+  border-color: #d8dce3;
+  color: #292d34;
+}
+
+.navbar.navbar--member-task-detail .header-right {
+  width: auto;
+  flex-shrink: 0;
+}
+
+/* Member Mes tâches sub-views — back + breadcrumb stacked on the left */
+.navbar.navbar--member-tasks-sub {
+  height: auto;
+  min-height: 52px;
+  margin: 0;
+  padding: 10px 20px 10px 16px;
+  background: #ffffff;
+  border: none;
+  border-bottom: 1px solid #ececf3;
+  border-radius: 0;
+  box-shadow: none;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.navbar-member-tasks-header {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.navbar-member-tasks-breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  font-size: 12px;
+  line-height: 1.2;
+  color: #87909e;
+}
+
+.navbar-member-tasks-crumb-muted {
+  color: #87909e;
+  font-weight: 400;
+}
+
+.navbar-member-tasks-crumb-sep {
+  color: #c4c9d2;
+  font-weight: 400;
+  flex-shrink: 0;
+}
+
+.navbar-member-tasks-crumb-current {
+  color: #292d34;
+  font-weight: 600;
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.navbar.navbar--member-tasks-sub .header-right {
+  width: auto;
+  flex-shrink: 0;
+  align-self: center;
+}
+
+.navbar.navbar--member-topbar .header-right,
+.navbar.navbar--member-greeting .header-right,
+.navbar.navbar--admin-greeting .header-right {
+  width: auto;
+  flex-shrink: 0;
+}
+
+/* Admin greeting — compact bar (dashboard home) */
+.navbar.navbar--admin-greeting {
+  height: auto;
+  min-height: 56px;
+  margin: 0;
+  background: #ffffff;
+  border-bottom: 1px solid #ececf3;
+  border-radius: 0;
+  box-shadow: none;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 20px;
+}
+
+.navbar-admin-greeting {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0;
+  margin: 0;
+  padding-left: 0;
+}
+
+.navbar-admin-greeting-title {
+  margin: 0;
+  font-size: clamp(18px, 1.35vw, 20px);
+  font-weight: 700;
+  color: #1a1d24;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.navbar-admin-greeting-wave {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.92em;
+  line-height: 1;
+}
+
+.navbar-admin-greeting-sub {
+  margin: 1px 0 0;
+  font-size: 11px;
+  font-weight: 500;
+  color: #8f95a3;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.navbar-admin-greeting-date {
+  margin: 1px 0 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: #a8adb8;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+@media (max-width: 900px) {
+  .navbar.navbar--admin-greeting {
+    padding: 0 16px 0 20px;
+  }
+
+  .navbar-admin-greeting-title {
+    font-size: clamp(18px, 2.5vw, 20px);
+  }
+
+  .navbar-admin-greeting-sub,
+  .navbar-admin-greeting-date {
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 640px) {
+  .navbar.navbar--admin-greeting {
+    padding: 8px 12px 8px 16px;
+    min-height: 56px;
+    gap: 10px;
+  }
+
+  .navbar-admin-greeting-title {
+    font-size: 17px;
+  }
+
+  .navbar-admin-greeting-sub,
+  .navbar-admin-greeting-date {
+    font-size: 10px;
+  }
+
+  .navbar.navbar--admin-greeting .header-user-name {
+    display: none;
+  }
+}
+
+.navbar.navbar--admin-recommendations {
+  height: auto;
+  min-height: 56px;
+  margin: 0;
+  padding: 8px 20px 8px 16px;
+  background: #ffffff;
+  border-bottom: 1px solid #ececf3;
+  border-radius: 0;
+  box-shadow: none;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.navbar.navbar--admin-recommendations .header-right {
+  width: auto;
+  flex-shrink: 0;
+}
+
+.navbar.navbar--admin-recommendations .navbar-page-sub {
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  max-width: min(52ch, 100%);
+}
+
+@media (max-width: 640px) {
+  .navbar.navbar--admin-recommendations {
+    padding: 8px 12px 8px 16px;
+  }
+
+  .navbar.navbar--admin-recommendations .navbar-page-heading {
+    font-size: 17px;
+  }
+
+  .navbar.navbar--admin-recommendations .navbar-page-sub {
+    font-size: 11px;
+  }
+}
+
+/* Member greeting — compact bar (dashboard home) */
+.navbar.navbar--member-greeting {
+  height: 52px;
+  min-height: 52px;
+  margin: 0;
+  background: #ffffff;
+  border-bottom: 1px solid #ececf3;
+  border-radius: 0;
+  box-shadow: none;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 0 20px;
+}
+
+.navbar.navbar--member-mon-espace {
+  height: 52px;
+  min-height: 52px;
+  padding: 0 20px;
+}
+
+.navbar.navbar--member-mon-espace .navbar-member-workspace-title {
+  font-size: clamp(20px, 1.45vw, 22px);
+  font-weight: 700;
+  color: #1a1d24;
+  line-height: 1.2;
+}
+
+.navbar-member-greeting {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0;
+  margin: 0;
+  padding-left: 0;
+}
+
+.navbar-member-greeting-title {
+  margin: 0;
+  font-size: clamp(18px, 1.35vw, 20px);
+  font-weight: 700;
+  color: #1a1d24;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.navbar-member-greeting-wave {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.92em;
+  line-height: 1;
+}
+
+.navbar-member-greeting-date {
+  margin: 1px 0 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: #8f95a3;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+@media (max-width: 900px) {
+  .navbar.navbar--member-greeting {
+    padding: 0 16px 0 20px;
+  }
+
+  .navbar-member-greeting-title {
+    font-size: clamp(18px, 2.5vw, 20px);
+  }
+
+  .navbar-member-greeting-date {
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 640px) {
+  .navbar.navbar--member-greeting {
+    padding: 0 12px 0 16px;
+    min-height: 52px;
+    gap: 10px;
+  }
+
+  .navbar-member-greeting-title {
+    font-size: 18px;
+    line-height: 1.15;
+  }
+
+  .navbar-member-greeting-date {
+    font-size: 12px;
+    margin-top: 1px;
+  }
+
+  .navbar.navbar--member-greeting .header-user-name {
+    display: none;
+  }
+}
+
+.navbar.navbar--member-workspace {
+  height: 48px;
+  min-height: 48px;
+  margin: 0;
+  padding: 0 20px 0 24px;
+  background: #ffffff;
+  border: none;
+  border-bottom: 1px solid #ececf3;
+  border-radius: 0;
+  box-shadow: none;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.navbar-page-title--workspace {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+}
+
+.navbar-member-workspace-title {
+  margin: 0;
+  font-size: clamp(18px, 1.6vw, 22px);
+  font-weight: 600;
+  color: #292d34;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.navbar.navbar--member-workspace .header-right {
+  width: auto;
+  flex-shrink: 0;
+}
+
+@media (max-width: 900px) {
+  .navbar.navbar--member-workspace {
+    height: 44px;
+    min-height: 44px;
+    padding: 0 16px 0 20px;
+  }
+
+  .navbar.navbar--member-mon-espace {
+    height: 52px;
+    min-height: 52px;
+    padding: 0 16px 0 20px;
+  }
+
+  .navbar-member-workspace-title {
+    font-size: clamp(18px, 3.5vw, 20px);
+  }
+
+  .navbar.navbar--member-mon-espace .navbar-member-workspace-title {
+    font-size: clamp(20px, 2.6vw, 22px);
+  }
+}
+
+.navbar-page-title {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+}
+
+.navbar-page-breadcrumb {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.navbar-page-breadcrumb-muted {
+  color: #646f79;
+  font-weight: 500;
+}
+
+.navbar-page-breadcrumb-sep {
+  margin: 0 5px;
+  color: #c4c9d0;
+  font-weight: 400;
+}
+
+.navbar-page-breadcrumb-current {
+  color: #111827;
+  font-weight: 700;
+}
+
+.navbar-page-title--stacked {
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0;
+}
+
+.navbar-page-heading {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: #111827;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.navbar-page-sub {
+  margin: 1px 0 0;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.25;
+  color: #87909e;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+@media (max-width: 900px) {
+  .navbar.navbar--member-tasks-sub {
+    padding: 10px 16px 10px 12px;
+  }
+
+  .navbar.navbar--member-assigned {
+    padding-left: 28px;
+    padding-right: 16px;
+  }
+
+  .navbar.navbar--member-inbox {
+    padding-left: 12px;
+    padding-right: 16px;
+  }
+}
+
 .header-user-name {
   font-size: 0.875rem;
   font-weight: 600;

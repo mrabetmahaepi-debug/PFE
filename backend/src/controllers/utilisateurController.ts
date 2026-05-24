@@ -8,6 +8,9 @@ import {
   utilisateurPresenceSelect,
 } from "../lib/utilisateurSelect";
 import { createUtilisateurSafe } from "../lib/createUtilisateurSafe";
+import { provisionDefaultRolePermissions } from "../services/defaultRoleAccess.service";
+import { resolveProjectPosteLabel } from "../lib/projectRoleLabels";
+import { logRoleAssignment } from "../lib/roleAssignmentLog";
 
 export const createUtilisateur = async (req: Request, res: Response) => {
   try {
@@ -15,6 +18,14 @@ export const createUtilisateur = async (req: Request, res: Response) => {
 
     if (!email || !password || !id_role || !id_entreprise)
       return res.status(400).json({ error: "Champs obligatoires manquants" });
+
+    const selectedRole =
+      poste != null && String(poste).trim() !== ""
+        ? String(poste).trim()
+        : null;
+    const resolvedPoste = selectedRole
+      ? resolveProjectPosteLabel(selectedRole)
+      : null;
 
     const hashedPassword = await hashPassword(password);
 
@@ -25,15 +36,44 @@ export const createUtilisateur = async (req: Request, res: Response) => {
       password: hashedPassword,
       id_role,
       id_entreprise,
-      poste,
+      poste: resolvedPoste,
       telephone,
       statut: "ACTIVE",
     });
 
+    const loadedPoste =
+      (utilisateur as { poste?: string | null }).poste?.trim() || resolvedPoste;
+
+    logRoleAssignment("createUtilisateur", {
+      selectedRole,
+      savedRole: resolvedPoste,
+      loadedRole: loadedPoste,
+      globalRoleNom: utilisateur.role?.nom ?? null,
+      poste: loadedPoste,
+      userId: utilisateur.id_utilisateur,
+      email: utilisateur.email,
+    });
+
+    if (id_entreprise) {
+      const authUser = (req as any).user;
+      await provisionDefaultRolePermissions({
+        userId: utilisateur.id_utilisateur,
+        enterpriseId: Number(id_entreprise),
+        poste: loadedPoste ?? "Membre",
+        grantedById: authUser?.id ?? null,
+      });
+    }
+
     // Auto-add to Admin Meeting group if they are an Admin
     await MessagingService.addUserToAdminMeetingGroup(utilisateur.id_utilisateur);
 
-    res.status(201).json({ message: "Utilisateur créé", utilisateur });
+    res.status(201).json({
+      message: "Utilisateur créé",
+      utilisateur: {
+        ...utilisateur,
+        poste: loadedPoste ?? (utilisateur as { poste?: string }).poste,
+      },
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Erreur création utilisateur" });
@@ -162,6 +202,7 @@ export const getAllUtilisateurs = async (req: Request, res: Response) => {
       };
       return {
         ...rest,
+        poste: rest.poste ? resolveProjectPosteLabel(String(rest.poste)) : rest.poste,
         entreprise,
         isOnline: computePresenceOnline(!!u.isOnline, u.lastSeen ?? null),
         projects,
@@ -225,7 +266,11 @@ export const updateUtilisateur = async (req: Request, res: Response) => {
     if (prenom !== undefined) data.prenom = prenom;
     if (email !== undefined) data.email = email;
     if (id_role !== undefined) data.id_role = id_role;
-    if (poste !== undefined) data.poste = poste;
+    if (poste !== undefined) {
+      data.poste = poste != null && String(poste).trim()
+        ? resolveProjectPosteLabel(String(poste))
+        : null;
+    }
     if (telephone !== undefined) data.telephone = telephone;
 
     if (Object.keys(data).length === 0) {

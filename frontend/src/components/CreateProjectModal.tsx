@@ -14,6 +14,7 @@ import { projectService, buildCreateProjectRequestBody } from '../services/proje
 import { teamService } from '../services/team.service';
 import type { User } from '../types/auth.types';
 import { PROJECT_MEMBER_ROLE_OPTIONS } from '../types/project';
+import { dispatchProjectTeamChanged } from '../lib/workspaceEvents';
 import './CreateProjectModal.css';
 
 interface CreateProjectModalProps {
@@ -26,7 +27,7 @@ interface CreateProjectModalProps {
 
 const today = () => new Date().toISOString().split('T')[0];
 
-const DEFAULT_MEMBER_ROLE = PROJECT_MEMBER_ROLE_OPTIONS[0];
+const DEFAULT_MEMBER_ROLE = 'Membre';
 
 function userNumericId(u: User): number {
   return Number(u.id_utilisateur ?? u.id);
@@ -165,6 +166,13 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
         console.log('[CreateProjectModal] create payload', payload);
       }
       const created = await projectService.create(payload);
+      const createdId = Number(
+        (created as { id_projet?: number })?.id_projet ??
+          (created as { id?: number })?.id
+      );
+      if (Number.isFinite(createdId) && createdId > 0) {
+        dispatchProjectTeamChanged({ projectId: createdId });
+      }
       onSuccess(created);
       onClose();
     } catch (err: any) {

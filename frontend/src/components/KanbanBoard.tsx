@@ -34,20 +34,27 @@ import {
 } from 'lucide-react';
 import {
   TASK_PRIORITY_LABELS,
-  TaskStatus,
   normalizeTaskPriority,
   type Tache,
 } from '../types/task';
-/** Includes synthetic overdue bucket (derived from due date + status). */
-export type BoardColumnId = TaskStatus | 'OVERDUE';
+import { normalizeTaskStatutKey } from '../lib/listStatusGroups';
+import {
+  KANBAN_WORKFLOW_COLUMNS,
+  KANBAN_WORKFLOW_COLUMN_IDS,
+  groupTasksByKanbanWorkflow,
+  emptyKanbanColumns,
+  type KanbanWorkflowColumnId,
+  type KanbanColumnsMap,
+} from '../lib/kanbanWorkflowColumns';
+
+export type BoardColumnId = KanbanWorkflowColumnId;
 
 interface KanbanBoardProps {
   tasks: Tache[];
   listLookup: Record<number, string>;
   canCreateTask: boolean;
-  /** When false, cards are not draggable (RBAC / read-only). */
   canReorderTasks?: boolean;
-  onAddTask: (status: TaskStatus) => void;
+  onAddTask: (status: BoardColumnId) => void;
   onMoveTask: (taskId: number, targetColumn: BoardColumnId) => void | Promise<void>;
   highlightTaskId?: number | null;
   onTaskClick?: (task: Tache) => void;
@@ -61,28 +68,13 @@ interface ColumnDef {
 }
 
 const COLUMN_DEFS: ColumnDef[] = [
-  { id: TaskStatus.TODO, label: 'À faire', accent: '#94a3b8', tone: 'slate' },
-  {
-    id: TaskStatus.IN_PROGRESS,
-    label: 'En cours',
-    accent: '#6366f1',
-    tone: 'indigo',
-  },
-  {
-    id: TaskStatus.DONE,
-    label: 'Terminées',
-    accent: '#10b981',
-    tone: 'emerald',
-  },
-  {
-    id: 'OVERDUE',
-    label: 'En retard',
-    accent: '#f59e0b',
-    tone: 'amber',
-  },
+  { id: 'todo', label: 'À FAIRE', accent: '#94a3b8', tone: 'slate' },
+  { id: 'en_cours', label: 'EN COURS', accent: '#6366f1', tone: 'indigo' },
+  { id: 'en_retard', label: 'EN RETARD', accent: '#f59e0b', tone: 'amber' },
+  { id: 'terminee', label: 'TERMINÉ', accent: '#10b981', tone: 'emerald' },
 ];
 
-const COLUMN_IDS = COLUMN_DEFS.map((c) => c.id);
+const COLUMN_IDS = KANBAN_WORKFLOW_COLUMN_IDS;
 
 const startOfToday = () => {
   const d = new Date();
@@ -91,49 +83,27 @@ const startOfToday = () => {
 };
 
 export const isTaskOverdue = (t: Tache): boolean => {
-  if (t.statut_t === TaskStatus.DONE) return false;
+  if (normalizeTaskStatutKey(t.statut_t) === 'terminee') return false;
+  if (normalizeTaskStatutKey(t.statut_t) === 'en_retard') return true;
   if (!t.date_limite_t) return false;
   const due = new Date(t.date_limite_t);
   due.setHours(0, 0, 0, 0);
   return due.getTime() < startOfToday().getTime();
 };
 
-type ColumnsMap = Record<BoardColumnId, Tache[]>;
-
-const emptyColumns = (): ColumnsMap => ({
-  [TaskStatus.TODO]: [],
-  [TaskStatus.IN_PROGRESS]: [],
-  [TaskStatus.DONE]: [],
-  OVERDUE: [],
-});
+type ColumnsMap = KanbanColumnsMap;
 
 const taskKey = (id: number | string) => `task:${id}`;
 const columnKey = (id: BoardColumnId) => `col:${id}`;
 const isColumnKey = (id: UniqueIdentifier) =>
   typeof id === 'string' && id.startsWith('col:');
-const parseColumnKey = (id: UniqueIdentifier): BoardColumnId => {
-  const raw = String(id).replace('col:', '');
-  if (raw === 'OVERDUE') return 'OVERDUE';
-  return raw as TaskStatus;
-};
+const parseColumnKey = (id: UniqueIdentifier): BoardColumnId =>
+  String(id).replace('col:', '') as BoardColumnId;
 const parseTaskKey = (id: UniqueIdentifier) =>
   Number(String(id).replace('task:', ''));
 
-export const groupTasksByBoardColumns = (tasks: Tache[]): ColumnsMap => {
-  const map = emptyColumns();
-  for (const t of tasks) {
-    if (t.statut_t === TaskStatus.DONE) {
-      map[TaskStatus.DONE].push(t);
-    } else if (isTaskOverdue(t)) {
-      map.OVERDUE.push(t);
-    } else if (t.statut_t === TaskStatus.IN_PROGRESS) {
-      map[TaskStatus.IN_PROGRESS].push(t);
-    } else {
-      map[TaskStatus.TODO].push(t);
-    }
-  }
-  return map;
-};
+export const groupTasksByBoardColumns = (tasks: Tache[]): ColumnsMap =>
+  groupTasksByKanbanWorkflow(tasks);
 
 const formatDate = (raw?: string | null) => {
   if (!raw) return null;
@@ -154,10 +124,11 @@ const initials = (label?: string) => {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 };
 
-const STATUS_BADGE: Record<TaskStatus, string> = {
-  [TaskStatus.TODO]: 'À faire',
-  [TaskStatus.IN_PROGRESS]: 'En cours',
-  [TaskStatus.DONE]: 'Terminée',
+const STATUS_BADGE: Record<string, string> = {
+  todo: 'À faire',
+  en_cours: 'En cours',
+  en_retard: 'En retard',
+  terminee: 'Terminé',
 };
 
 interface TaskCardProps {
@@ -202,8 +173,9 @@ const TaskCard: React.FC<TaskCardProps> = ({
           <span className="kanban-card-grip-spacer" aria-hidden />
         )}
         <div className="kanban-card-title">{task.nom_t}</div>
-        <span className={`kanban-status-badge st-${task.statut_t}`}>
-          {STATUS_BADGE[task.statut_t] || task.statut_t}
+        <span className={`kanban-status-badge st-${normalizeTaskStatutKey(task.statut_t)}`}>
+          {STATUS_BADGE[normalizeTaskStatutKey(task.statut_t)] ||
+            normalizeTaskStatutKey(task.statut_t)}
         </span>
       </div>
       {task.description_t && (
@@ -358,7 +330,7 @@ const Column: React.FC<ColumnProps> = ({
           <span className="kanban-column-label">{column.label}</span>
           <span className="kanban-column-count">{tasks.length}</span>
         </div>
-        {column.id !== 'OVERDUE' && canCreateTask && (
+        {canCreateTask && (
           <button
             type="button"
             className="kanban-add-btn"
@@ -377,7 +349,7 @@ const Column: React.FC<ColumnProps> = ({
               key={t.id_tache}
               id={taskKey(t.id_tache)}
               task={t}
-              overdue={column.id === 'OVERDUE'}
+              overdue={column.id === 'en_retard' || isTaskOverdue(t)}
               listLabel={
                 t.id_list && listLookup[t.id_list]
                   ? listLookup[t.id_list]
@@ -390,11 +362,7 @@ const Column: React.FC<ColumnProps> = ({
           ))}
           {tasks.length === 0 && (
             <div className="kanban-column-empty">
-              {canCreateTask && column.id !== 'OVERDUE'
-                ? 'Glissez une tâche ici'
-                : column.id === 'OVERDUE'
-                  ? 'Aucune tâche en retard'
-                  : 'Aucune tâche'}
+              {canCreateTask ? 'Glissez une tâche ici' : 'Aucune tâche'}
             </div>
           )}
         </div>
@@ -437,11 +405,12 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
   const draggingRef = useRef(false);
+  const syncLockedRef = useRef(false);
   const sourceColumnRef = useRef<BoardColumnId | null>(null);
   const lastOverColumnRef = useRef<BoardColumnId | null>(null);
 
   useEffect(() => {
-    if (draggingRef.current) return;
+    if (draggingRef.current || syncLockedRef.current) return;
     setColumns(groupTasksByBoardColumns(tasks));
   }, [tasks]);
 
@@ -454,6 +423,34 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
       if (snapshot[col].some((t) => taskKey(t.id_tache) === id)) return col;
     }
     return null;
+  };
+
+  const applyCrossColumnMove = (
+    current: ColumnsMap,
+    activeItemId: UniqueIdentifier,
+    overItemId: UniqueIdentifier,
+    destCol: BoardColumnId
+  ): ColumnsMap => {
+    const fromCol = findColumnByItemId(activeItemId, current);
+    if (!fromCol || fromCol === destCol) return current;
+
+    const fromItems = [...current[fromCol]];
+    const activeIdx = fromItems.findIndex(
+      (t) => taskKey(t.id_tache) === activeItemId
+    );
+    if (activeIdx === -1) return current;
+
+    const overIsContainer = isColumnKey(overItemId);
+    const toItems = [...current[destCol]];
+    let insertAt = overIsContainer
+      ? toItems.length
+      : toItems.findIndex((t) => taskKey(t.id_tache) === overItemId);
+    if (insertAt < 0) insertAt = toItems.length;
+
+    const moving = { ...fromItems[activeIdx], statut_t: destCol };
+    fromItems.splice(activeIdx, 1);
+    toItems.splice(insertAt, 0, moving);
+    return { ...current, [fromCol]: fromItems, [destCol]: toItems };
   };
 
   const collisionDetection: CollisionDetection = (args) => {
@@ -501,23 +498,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
         insertAt = overIdx >= 0 ? overIdx : toItems.length;
       }
 
-      const moving = { ...fromItems[activeIdx] };
-      if (toCol === TaskStatus.DONE) moving.statut_t = TaskStatus.DONE;
-      else if (toCol === 'OVERDUE') {
-        const y = new Date();
-        y.setDate(y.getDate() - 1);
-        moving.date_limite_t = y.toISOString();
-      } else if (toCol === TaskStatus.TODO) {
-        moving.statut_t = TaskStatus.TODO;
-        const nx = new Date();
-        nx.setDate(nx.getDate() + 7);
-        moving.date_limite_t = nx.toISOString();
-      } else if (toCol === TaskStatus.IN_PROGRESS) {
-        moving.statut_t = TaskStatus.IN_PROGRESS;
-        const nx = new Date();
-        nx.setDate(nx.getDate() + 7);
-        moving.date_limite_t = nx.toISOString();
-      }
+      const moving = { ...fromItems[activeIdx], statut_t: toCol };
 
       const newFrom = [...fromItems];
       newFrom.splice(activeIdx, 1);
@@ -527,20 +508,19 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
     });
   };
 
-  const handleDragEnd = (e: DragEndEvent) => {
+  const handleDragEnd = async (e: DragEndEvent) => {
     const { active, over } = e;
     draggingRef.current = false;
     setActiveId(null);
 
-    if (!over) {
-      setColumns(groupTasksByBoardColumns(tasks));
-      sourceColumnRef.current = null;
-      lastOverColumnRef.current = null;
-      return;
-    }
-
     const sourceCol = sourceColumnRef.current;
     sourceColumnRef.current = null;
+
+    if (!over) {
+      lastOverColumnRef.current = null;
+      setColumns(groupTasksByBoardColumns(tasks));
+      return;
+    }
 
     const snap = columnsRef.current;
     const targetFromOver =
@@ -567,12 +547,27 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
       return current;
     });
 
-    if (!canReorderTasks) return;
-    if (!finalCol || !sourceCol) return;
+    if (!canReorderTasks || !finalCol || !sourceCol) return;
     if (finalCol === sourceCol) return;
 
     const taskId = parseTaskKey(active.id);
-    onMoveTask(taskId, finalCol);
+    const stillInSource = snap[sourceCol]?.some(
+      (t) => taskKey(t.id_tache) === active.id
+    );
+    const nextColumns = stillInSource
+      ? applyCrossColumnMove(snap, active.id, over.id, finalCol)
+      : snap;
+
+    syncLockedRef.current = true;
+    setColumns(nextColumns);
+
+    try {
+      await onMoveTask(taskId, finalCol);
+    } catch {
+      setColumns(groupTasksByBoardColumns(tasks));
+    } finally {
+      syncLockedRef.current = false;
+    }
   };
 
   const handleDragCancel = () => {
@@ -616,8 +611,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
             highlightTaskId={highlightTaskId}
             canCreateTask={canCreateTask}
             onAdd={() => {
-              if (col.id === 'OVERDUE') return;
-              onAddTask(col.id as TaskStatus);
+              onAddTask(col.id);
             }}
             isActiveColumn={activeColumn === col.id}
             onTaskClick={onTaskClick}

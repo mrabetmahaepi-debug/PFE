@@ -3,7 +3,8 @@ export const ProjectStatus = {
   IN_PROGRESS: 'IN_PROGRESS',
   COMPLETED: 'COMPLETED',
   ON_HOLD: 'ON_HOLD',
-  DELAYED: 'DELAYED'
+  DELAYED: 'DELAYED',
+  ARCHIVED: 'ARCHIVED',
 } as const;
 
 export type ProjectStatus = (typeof ProjectStatus)[keyof typeof ProjectStatus];
@@ -20,6 +21,14 @@ export interface Projet {
     nom: string;
   };
   avancement?: number;
+  totalTasks?: number;
+  completedTasks?: number;
+  inProgressTasks?: number;
+  lateTasks?: number;
+  todoTasks?: number;
+  tachesCount?: number;
+  progressPercent?: number;
+  membresCount?: number;
   createdAt?: string;
   updatedAt?: string;
   _count?: {
@@ -74,13 +83,5 @@ export interface CreateProjetData {
 }
 
 /** Rôles proposés dans les modals projet (libellés français). */
-export const PROJECT_MEMBER_ROLE_OPTIONS = [
-  'Membre',
-  'Développeur',
-  'Designer',
-  'Testeur',
-  'Analyste',
-  'Responsable Backend',
-  'Responsable Frontend',
-  'Autre',
-] as const;
+export { PROJECT_POSTE_OPTIONS as PROJECT_MEMBER_ROLE_OPTIONS } from '../lib/projectRoleLabels';
+export type { ProjectPosteOption as ProjectMemberRoleOption } from '../lib/projectRoleLabels';

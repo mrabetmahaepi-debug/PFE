@@ -12,6 +12,8 @@ export interface ListPageContextValue {
   tasks: Tache[];
   canCreateTask: boolean;
   canEditTask: boolean;
+  /** Member list — status column (includes change_task_status / change_own_task_status). */
+  canEditTaskStatusFor: (task: Tache) => boolean;
   highlightTaskId?: number | null;
   onOpenCreateTask: (statutKey?: string, dueDateIso?: string) => void;
   onTaskClick?: (task: Tache) => void;

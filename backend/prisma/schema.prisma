@@ -98,6 +98,7 @@ model invitation {
   token         String?     @unique(map: "invitation_token_key") @db.VarChar(128)
   expires_at    DateTime?
   accepted_at   DateTime?
+  email_status  String?     @db.VarChar(20)
   id_invited_by Int?
   createdAt     DateTime    @default(now())
   entreprise    entreprise? @relation(fields: [id_entreprise], references: [id_entreprise], onDelete: Cascade, onUpdate: Restrict)
@@ -144,6 +145,27 @@ model notification {
   utilisateur      utilisateur? @relation(fields: [id_utilisateur], references: [id_utilisateur], onDelete: Cascade, onUpdate: Restrict)
 
   @@index([id_utilisateur])
+}
+
+/// Admin-managed grants/denials for projects, sprints, lists, tasks, and platform features.
+model utilisateur_access_grant {
+  id_grant       Int         @id @default(autoincrement())
+  id_utilisateur Int
+  id_entreprise  Int
+  resource_type  String      @db.VarChar(32)
+  resource_id    Int?
+  feature_key    String?     @db.VarChar(80)
+  effect         String      @default("GRANT") @db.VarChar(10)
+  role_projet    String?     @db.VarChar(120)
+  granted_by_id  Int?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  utilisateur    utilisateur @relation("UserAccessGrants", fields: [id_utilisateur], references: [id_utilisateur], onDelete: Cascade, onUpdate: Restrict)
+  granted_by     utilisateur? @relation("UserAccessGrantedBy", fields: [granted_by_id], references: [id_utilisateur], onDelete: SetNull, onUpdate: Restrict)
+
+  @@index([id_utilisateur, id_entreprise])
+  @@index([resource_type, resource_id])
+  @@map("utilisateur_access_grants")
 }
 
 /// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
@@ -222,6 +244,7 @@ model list_pm {
   description String?    @db.Text
   position    Int        @default(0)
   deleted_at  DateTime?
+  deleted_by  Int?
   id_projet   Int
   id_group    Int?
   id_folder   Int?
@@ -278,6 +301,8 @@ model sprint {
   date_debut_s DateTime?  @db.Date
   date_fin_s   DateTime?  @db.Date
   statut_s     String?    @db.VarChar(50)
+  deleted_at   DateTime?
+  deleted_by   Int?
   id_projet    Int?
   id_group     Int?
   id_folder    Int?
@@ -290,6 +315,7 @@ model sprint {
   @@index([id_projet])
   @@index([id_group])
   @@index([id_folder])
+  @@index([deleted_at])
 }
 
 enum TaskPriority {
@@ -316,6 +342,12 @@ model tache {
   assigne_a     Int?
   /// Utilisateur qui a créé la tâche (chef de projet / admin).
   cree_par      Int?
+  /// Parent task for subtasks (sidebar tree + task detail).
+  id_parent_tache Int?
+  deleted_at      DateTime?
+  deleted_by      Int?
+  parent          tache?          @relation("TacheSubtasks", fields: [id_parent_tache], references: [id_tache], onDelete: Cascade, onUpdate: Restrict)
+  subtasks        tache[]         @relation("TacheSubtasks")
   affectation   affectation[]
   projet        projet?       @relation(fields: [id_projet], references: [id_projet], onDelete: Cascade, onUpdate: Restrict)
   group_pm      group_pm?     @relation(fields: [id_group], references: [id_group], onDelete: Cascade, onUpdate: Restrict)
@@ -324,6 +356,8 @@ model tache {
   list_pm       list_pm?      @relation(fields: [id_list], references: [id_list], onDelete: Cascade, onUpdate: Restrict)
   utilisateur   utilisateur?  @relation("TacheAssignee", fields: [assigne_a], references: [id_utilisateur], onUpdate: Restrict)
   createur      utilisateur?  @relation("TacheCreateur", fields: [cree_par], references: [id_utilisateur], onDelete: SetNull, onUpdate: Restrict)
+  comments      tache_comment[]
+  history       tache_history[]
 
   @@index([assigne_a])
   @@index([id_projet])
@@ -331,6 +365,36 @@ model tache {
   @@index([id_folder])
   @@index([id_sprint])
   @@index([id_list])
+  @@index([id_parent_tache])
+  @@index([deleted_at])
+}
+
+model tache_comment {
+  id_comment     Int         @id @default(autoincrement())
+  id_tache       Int
+  id_utilisateur Int
+  contenu        String      @db.Text
+  createdAt      DateTime    @default(now())
+  tache          tache       @relation(fields: [id_tache], references: [id_tache], onDelete: Cascade, onUpdate: Restrict)
+  utilisateur    utilisateur @relation(fields: [id_utilisateur], references: [id_utilisateur], onDelete: Cascade, onUpdate: Restrict)
+
+  @@index([id_tache])
+  @@index([id_utilisateur])
+}
+
+model tache_history {
+  id_history     Int          @id @default(autoincrement())
+  id_tache       Int
+  id_utilisateur Int?
+  field_key      String       @db.VarChar(50)
+  old_value      String?      @db.Text
+  new_value      String?      @db.Text
+  createdAt      DateTime     @default(now())
+  tache          tache        @relation(fields: [id_tache], references: [id_tache], onDelete: Cascade, onUpdate: Restrict)
+  utilisateur    utilisateur? @relation(fields: [id_utilisateur], references: [id_utilisateur], onDelete: SetNull, onUpdate: Restrict)
+
+  @@index([id_tache])
+  @@index([createdAt])
 }
 
 model utilisateur {
@@ -354,6 +418,8 @@ model utilisateur {
   /// Secure token for team invite until password is set (null when not pending invite).
   invitation_token   String?   @unique(map: "utilisateur_invitation_token_key") @db.VarChar(128)
   invitation_expires DateTime?
+  /// pending | sent | failed — last transactional email attempt for team invite.
+  invitation_email_status String? @db.VarChar(20)
   invited_by_id      Int?
   password_reset_token   String?   @unique(map: "utilisateur_password_reset_token_key") @db.VarChar(128)
   password_reset_expires DateTime?
@@ -369,14 +435,38 @@ model utilisateur {
   conversations_created conversation[] @relation("ConversationCreatedBy")
   taches_assignees tache[]       @relation("TacheAssignee")
   taches_creees    tache[]       @relation("TacheCreateur")
+  tache_comments   tache_comment[]
+  tache_history    tache_history[]
   role           role?           @relation(fields: [id_role], references: [id_role], onUpdate: Restrict)
   entreprise     entreprise?     @relation("EntrepriseUsers", fields: [id_entreprise], references: [id_entreprise])
   invitedBy      utilisateur?    @relation("UtilisateurInvitedBy", fields: [invited_by_id], references: [id_utilisateur], onDelete: SetNull, onUpdate: Restrict)
   invitedMembers utilisateur[]   @relation("UtilisateurInvitedBy")
+  calendar_integrations calendar_integration[]
+  access_grants          utilisateur_access_grant[] @relation("UserAccessGrants")
+  access_grants_granted  utilisateur_access_grant[] @relation("UserAccessGrantedBy")
 
   @@index([invited_by_id])
   @@index([id_entreprise])
   @@index([id_role])
+}
+
+/// Member calendar OAuth (Google / Outlook) — one row per user per provider.
+model calendar_integration {
+  id               Int         @id @default(autoincrement())
+  id_utilisateur   Int
+  provider         String      @db.VarChar(20)
+  access_token     String      @db.Text
+  refresh_token    String?     @db.Text
+  expires_at       DateTime?
+  account_email    String?     @db.VarChar(255)
+  calendar_id      String?     @db.VarChar(255)
+  connected_at     DateTime    @default(now())
+  updated_at       DateTime    @updatedAt
+  utilisateur      utilisateur @relation(fields: [id_utilisateur], references: [id_utilisateur], onDelete: Cascade, onUpdate: Restrict)
+
+  @@unique([id_utilisateur, provider], map: "calendar_integration_user_provider_key")
+  @@index([id_utilisateur])
+  @@map("calendar_integration")
 }
 
 model activity {
@@ -388,6 +478,24 @@ model activity {
   type       String   @default("info") @db.VarChar(50)
   entityId   Int?
   date       DateTime @default(now())
+}
+
+/// Applied or dismissed admin AI recommendations (enterprise-scoped archive).
+model admin_recommendation_state {
+  id                Int      @id @default(autoincrement())
+  id_entreprise     Int
+  id_utilisateur    Int
+  recommendation_id String   @db.VarChar(120)
+  status            String   @db.VarChar(20)
+  action_type       String?  @db.VarChar(50)
+  title             String?  @db.VarChar(255)
+  result_summary    String?  @db.Text
+  metadata          Json?
+  createdAt         DateTime @default(now())
+
+  @@unique([id_entreprise, recommendation_id], map: "admin_rec_state_ent_rec_key")
+  @@index([id_entreprise], map: "admin_rec_state_ent_idx")
+  @@map("admin_recommendation_state")
 }
 
 model conversation {

@@ -17,7 +17,6 @@ import {
   Users,
   Zap,
 } from 'lucide-react';
-import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
 import { useNavigate } from 'react-router-dom';
 import HeroTimeWidget from '../components/HeroTimeWidget';
 import MemberStatsCard from '../components/MemberStatsCard';
@@ -34,24 +33,27 @@ import {
   isSuperAdminDashboardActivityVisible,
   normalizeSuperAdminAction,
 } from '../lib/superAdminActivityFilter';
-import { getRoleKey, isEnterpriseAdmin } from '../lib/permissions';
+import { getRoleKey, isEnterpriseAdmin, isGlobalMember } from '../lib/permissions';
 import TenantAdminDashboard from './TenantAdminDashboard';
+import MemberClickUpDashboard from './MemberClickUpDashboard';
 import type { EnterpriseActivityType } from '../services/activity.service';
 import { projectService } from '../services/project.service';
 import { taskService } from '../services/task.service';
 import { teamService } from '../services/team.service';
 import { alertService } from '../services/alert.service';
+import { shouldRunAlertCheck } from '../lib/alertCheckThrottle';
+import { dispatchNotificationsRefresh } from '../lib/workspaceEvents';
 import { superAdminService } from '../services/superadmin.service';
 import { useAuth } from '../hooks/useAuth';
 import api from '../services/api';
 import { TaskPriority, TaskStatus, type Tache } from '../types/task';
 import { ProjectStatus } from '../types/project';
+import { isArchivedProject } from '../lib/projectStatus';
 import type { Projet } from '../types/project';
 import type { User } from '../types/auth.types';
 import './Dashboard.css';
 import './Dashboard.clean.css';
-
-const DONUT_COLORS = ['#7B68EE', '#A8A0E8', '#86EFAC', '#FCD34D'];
+import './MemberSpaceDashboard.css';
 
 function normalizeTaskStatusValue(statut: string | undefined | null): TaskStatus | null {
   const raw = String(statut ?? '').trim();
@@ -209,7 +211,8 @@ const Dashboard: React.FC = () => {
   const roleName = typeof user?.role === 'object' ? user.role?.nom : user?.role;
   const isSuperAdmin = roleName === 'SuperAdmin';
   const isTenantAdmin = getRoleKey(user) === 'ADMIN';
-  const showTaskAnalytics = !isSuperAdmin && !isTenantAdmin;
+  const globalMember = isGlobalMember(user);
+  const showTaskAnalytics = globalMember && !isSuperAdmin && !isTenantAdmin;
   const showProjectProgress = !isSuperAdmin && !isTenantAdmin;
   const showProjectsPanel = isTenantAdmin;
 
@@ -281,7 +284,12 @@ const Dashboard: React.FC = () => {
   const fetchDashboardData = async () => {
     const tenantAdmin = getRoleKey(user) === 'ADMIN';
     try {
-      alertService.triggerCheck().catch((e) => console.error('Alert check failed:', e));
+      if (shouldRunAlertCheck()) {
+        alertService
+          .triggerCheck()
+          .then(() => dispatchNotificationsRefresh())
+          .catch((e) => console.error('Alert check failed:', e));
+      }
 
       const [projects, members, myTasks] = await Promise.all([
         projectService.getAll(),
@@ -410,6 +418,7 @@ const Dashboard: React.FC = () => {
 
     const searchLower = adminProjectSearch.trim().toLowerCase();
     const filtered = adminProjects.filter((project) => {
+      if (isArchivedProject(project)) return false;
       if (!searchLower) return true;
       return (
         project.nom_p?.toLowerCase().includes(searchLower) ||
@@ -448,11 +457,6 @@ const Dashboard: React.FC = () => {
     return partitionMemberTaskAnalytics(taskAnalyticsSource);
   }, [showTaskAnalytics, taskAnalyticsSource]);
 
-  const donutData =
-    taskAnalytics && taskAnalytics.donutSegments.length > 0
-      ? taskAnalytics.donutSegments
-      : [{ name: 'Aucune', value: 1 }];
-
   const memberRisksCount = useMemo(() => {
     if (!taskAnalytics) return 0;
     return taskAnalytics.lateCount;
@@ -486,6 +490,10 @@ const Dashboard: React.FC = () => {
 
   if (isEnterpriseAdmin(user) && !isSuperAdmin) {
     return <TenantAdminDashboard />;
+  }
+
+  if (globalMember && !isSuperAdmin) {
+    return <MemberClickUpDashboard />;
   }
 
   return (
@@ -538,10 +546,20 @@ const Dashboard: React.FC = () => {
             )}
           </h1>
           <p className="cu-hero-date">{heroDateLabel}</p>
-          {!isSuperAdmin && (
+          {globalMember ? (
             <p className="cu-hero-sub">
-              Actions rapides, priorités et équipe — tout ce dont vous avez besoin pour avancer.
+              {stats.projectsCount} projet{stats.projectsCount !== 1 ? 's' : ''}{' '}
+              {stats.projectsCount !== 1 ? 'accessibles' : 'accessible'}
+              {' · '}
+              {stats.tasksCount} tâche{stats.tasksCount !== 1 ? 's' : ''} assignée
+              {stats.tasksCount !== 1 ? 's' : ''} à vous
             </p>
+          ) : (
+            !isSuperAdmin && (
+              <p className="cu-hero-sub">
+                Actions rapides, priorités et équipe — tout ce dont vous avez besoin pour avancer.
+              </p>
+            )
           )}
         </div>
 
@@ -622,77 +640,6 @@ const Dashboard: React.FC = () => {
             companies={superAdminCompanies}
             loading={loading}
           />
-        )}
-
-        {showTaskAnalytics && taskAnalytics && (
-          <section className="cu-panel cu-panel--task-analytics" aria-label="Analytique des tâches">
-            <div className="cu-panel-head">
-              <h3 className="cu-title-gradient">Analytique des tâches</h3>
-            </div>
-
-            <div className="cu-task-analytics-layout">
-              <div className="cu-task-analytics-donut">
-                <motion.div className="cu-donut-stage">
-                  <ResponsiveContainer width="100%" height={220}>
-                    <PieChart>
-                      <Pie
-                        data={donutData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={58}
-                        outerRadius={82}
-                        paddingAngle={4}
-                        dataKey="value"
-                        stroke="none"
-                      >
-                        {donutData.map((_, index) => (
-                          <Cell key={index} fill={DONUT_COLORS[index % DONUT_COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <RechartsTooltip />
-                    </PieChart>
-                  </ResponsiveContainer>
-                  <div className="cu-donut-center" aria-hidden>
-                    <span className="cu-donut-center-val">{taskAnalytics.total}</span>
-                    <span className="cu-donut-center-lbl">Tâches</span>
-                  </div>
-                </motion.div>
-                <div className="cu-donut-legend">
-                  {donutData.map((segment, index) => (
-                    <span key={segment.name} className="cu-donut-legend-item">
-                      <span
-                        className="cu-donut-legend-dot"
-                        style={{ background: DONUT_COLORS[index % DONUT_COLORS.length] }}
-                      />
-                      {segment.name}
-                      <strong>{segment.value}</strong>
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              <div className="cu-task-analytics-foot">
-                <div className="cu-analytics-stat cu-analytics-stat--todo cu-analytics-stat--static">
-                  <span className="cu-analytics-stat-label">À faire</span>
-                  <strong className="cu-analytics-stat-value">{taskAnalytics.todoCount}</strong>
-                </div>
-                <div className="cu-analytics-stat cu-analytics-stat--in-progress cu-analytics-stat--static">
-                  <span className="cu-analytics-stat-label">En cours</span>
-                  <strong className="cu-analytics-stat-value">{taskAnalytics.inProgressCount}</strong>
-                </div>
-                <div className="cu-analytics-stat cu-analytics-stat--done cu-analytics-stat--static">
-                  <span className="cu-analytics-stat-label">Terminées</span>
-                  <strong className="cu-analytics-stat-value">{taskAnalytics.doneCount}</strong>
-                </div>
-                <div
-                  className={`cu-analytics-stat cu-analytics-stat--late cu-analytics-stat--static${taskAnalytics.lateCount > 0 ? ' cu-analytics-stat--danger' : ''}`}
-                >
-                  <span className="cu-analytics-stat-label">En retard</span>
-                  <strong className="cu-analytics-stat-value">{taskAnalytics.lateCount}</strong>
-                </div>
-              </div>
-            </div>
-          </section>
         )}
 
         {showProjectProgress && (

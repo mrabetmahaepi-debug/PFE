@@ -1,0 +1,64 @@
+/* Badge notifications non lues — Boîte de réception (sidebar) */
+.sidebar-inbox-nav-item {
+  position: relative;
+}
+
+.sidebar-inbox-badge {
+  flex-shrink: 0;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  margin-left: auto;
+  border-radius: 999px;
+  background: #f97316;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.08);
+}
+
+.sidebar-inbox-badge--compact {
+  position: absolute;
+  top: -5px;
+  right: -7px;
+  margin-left: 0;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  font-size: 10px;
+  box-shadow: 0 0 0 2px #1e1f25;
+}
+
+.sidebar-inbox-badge--admin {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+.sidebar-inbox-badge--admin.sidebar-inbox-badge--compact {
+  box-shadow: 0 0 0 2px #ffffff;
+}
+
+nav a:hover .sidebar-inbox-badge--admin,
+nav a[class*='navItemActive'] .sidebar-inbox-badge--admin {
+  background: #dc2626;
+  color: #ffffff;
+}
+
+.cu-sidebar--member-dark .sidebar-inbox-badge {
+  background: #f97316;
+  color: #ffffff;
+}
+
+.cu-sidebar--member-dark .sidebar-inbox-badge--compact {
+  box-shadow: 0 0 0 2px var(--msb-bg, #1e1f25);
+}
+
+.cu-sidebar--member-dark nav a:hover .sidebar-inbox-badge,
+.cu-sidebar--member-dark nav a[class*='navItemActive'] .sidebar-inbox-badge {
+  background: #ea580c;
+  color: #ffffff;
+}

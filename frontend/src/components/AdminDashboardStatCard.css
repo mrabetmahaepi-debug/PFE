@@ -1,0 +1,94 @@
+.tadb-stat-card {
+  background: #ffffff;
+  border: 1px solid #ececf3;
+  border-radius: 16px;
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.05);
+  padding: 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-height: 92px;
+  font: inherit;
+  text-align: left;
+  width: 100%;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+}
+
+.tadb-stat-card.is-clickable {
+  cursor: pointer;
+}
+
+.tadb-stat-card.is-clickable:hover {
+  border-color: #ddd6fe;
+  box-shadow: 0 6px 18px rgba(124, 58, 237, 0.1);
+  transform: translateY(-1px);
+}
+
+.tadb-stat-card.is-clickable:focus-visible {
+  outline: 2px solid #7c3aed;
+  outline-offset: 2px;
+}
+
+.tadb-stat-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  flex-shrink: 0;
+  color: #6b7280;
+  background: #f3f4f6;
+}
+
+.tadb-stat-card--violet .tadb-stat-icon {
+  color: #7c3aed;
+  background: #f3eeff;
+}
+
+.tadb-stat-card--amber .tadb-stat-icon {
+  color: #d97706;
+  background: #fff7ed;
+}
+
+.tadb-stat-card--rose .tadb-stat-icon {
+  color: #e11d48;
+  background: #fff1f2;
+}
+
+.tadb-stat-card--teal .tadb-stat-icon {
+  color: #0d9488;
+  background: #ecfdf5;
+}
+
+.tadb-stat-body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tadb-stat-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #646f79;
+  line-height: 1.25;
+}
+
+.tadb-stat-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: #292d34;
+  line-height: 1.1;
+}
+
+.tadb-stat-card--amber .tadb-stat-value {
+  color: #c2410c;
+}
+
+.tadb-stat-card--rose .tadb-stat-value {
+  color: #be123c;
+}

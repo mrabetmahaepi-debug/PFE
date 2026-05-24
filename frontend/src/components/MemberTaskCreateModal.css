@@ -1,0 +1,441 @@
+/* Member « Nouvelle tâche » — ClickUp-style (UI only, shared by task create modals) */
+
+/* ---- ClickUpTaskNameModal ------------------------------------------------ */
+.cu-member-task-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 11000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(41, 45, 52, 0.4);
+}
+
+.cu-member-task-modal {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  padding: 0;
+  background: #ffffff;
+  border: 1px solid #e8eaed;
+  border-radius: 12px;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.04),
+    0 8px 24px rgba(0, 0, 0, 0.08);
+  text-align: left;
+}
+
+.cu-member-task-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 1rem 1.125rem;
+  border-bottom: 1px solid #e8eaed;
+}
+
+.cu-member-task-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #292d34;
+  letter-spacing: -0.01em;
+}
+
+.cu-member-task-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #87909e;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.cu-member-task-close:hover:not(:disabled) {
+  background: #f4f5f7;
+  color: #292d34;
+}
+
+.cu-member-task-close:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.cu-member-task-subtitle {
+  margin: 0;
+  padding: 0.5rem 1.125rem 0;
+  font-size: 0.75rem;
+  color: #87909e;
+}
+
+.cu-member-task-form {
+  padding: 0.875rem 1.125rem 1.125rem;
+}
+
+.cu-member-task-field {
+  margin-bottom: 0.75rem;
+}
+
+.cu-member-task-field:last-of-type {
+  margin-bottom: 0;
+}
+
+.cu-member-task-label {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #646f79;
+}
+
+.cu-member-task-input {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.5rem 0.625rem;
+  font-size: 0.875rem;
+  line-height: 1.35;
+  color: #292d34;
+  background: #ffffff;
+  border: 1px solid #e8eaed;
+  border-radius: 8px;
+  outline: none;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.cu-member-task-input::placeholder {
+  color: #b0b7c3;
+}
+
+.cu-member-task-input:hover:not(:disabled) {
+  border-color: #d1d5db;
+}
+
+.cu-member-task-input:focus {
+  border-color: #7b68ee;
+  box-shadow: 0 0 0 1px #7b68ee;
+}
+
+.cu-member-task-input:disabled {
+  background: #f9fafb;
+  color: #87909e;
+  cursor: not-allowed;
+}
+
+.cu-member-task-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.625rem;
+  margin-bottom: 0.75rem;
+}
+
+.cu-member-task-select-wrap {
+  position: relative;
+}
+
+.cu-member-task-select {
+  appearance: none;
+  padding-right: 1.75rem;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%2387909e' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 10px;
+}
+
+.cu-member-task-select--high {
+  color: #ef4444;
+  font-weight: 600;
+}
+
+.cu-member-task-select--medium {
+  color: #3b82f6;
+  font-weight: 600;
+}
+
+.cu-member-task-select--low {
+  color: #22c55e;
+  font-weight: 600;
+}
+
+.cu-member-task-error {
+  margin: 0 0 0.75rem;
+  font-size: 0.75rem;
+  color: #dc2626;
+  line-height: 1.4;
+}
+
+.cu-member-task-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding-top: 0.25rem;
+}
+
+.cu-member-task-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 0.4rem 0.875rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.cu-member-task-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.cu-member-task-btn--cancel {
+  background: #ffffff;
+  color: #292d34;
+  border: 1px solid #e8eaed;
+}
+
+.cu-member-task-btn--cancel:hover:not(:disabled) {
+  background: #f9fafb;
+  border-color: #d1d5db;
+}
+
+.cu-member-task-btn--submit {
+  background: #7b68ee;
+  color: #ffffff;
+  border: 1px solid #7b68ee;
+}
+
+.cu-member-task-btn--submit:hover:not(:disabled) {
+  background: #6f5ce8;
+  border-color: #6f5ce8;
+}
+
+.cu-member-task-assignee {
+  margin-bottom: 0.75rem;
+}
+
+.cu-member-task-required {
+  color: #dc2626;
+}
+
+/* ---- CreateListModal ------------------------------------------------------ */
+.cu-create-list-modal {
+  max-width: 440px;
+  border-radius: 20px;
+  box-shadow:
+    0 24px 48px rgba(15, 23, 42, 0.12),
+    0 8px 16px rgba(15, 23, 42, 0.06);
+  animation: cu-create-list-modal-in 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes cu-create-list-modal-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.cu-create-list-overlay {
+  background: rgba(15, 23, 42, 0.52);
+  animation: cu-create-list-overlay-in 0.2s ease;
+}
+
+@keyframes cu-create-list-overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.cu-create-list-subtitle {
+  line-height: 1.5;
+  max-width: 36em;
+}
+
+/* ---- CreateHierarchyItemModal (member task only) ------------------------- */
+.modal-overlay.compact-modal-overlay:has(.member-task-create-modal) {
+  background: rgba(41, 45, 52, 0.4);
+}
+
+.modal-container.hierarchy-create-modal.member-task-create-modal {
+  max-width: 420px;
+  background: #ffffff;
+  border: 1px solid #e8eaed;
+  border-radius: 12px;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.04),
+    0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+.modal-container.member-task-create-modal .compact-modal-header {
+  padding: 1rem 1.125rem;
+  border-bottom: 1px solid #e8eaed;
+  background: #ffffff;
+}
+
+.modal-container.member-task-create-modal .compact-modal-header h2 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #292d34;
+  background: none;
+  -webkit-text-fill-color: #292d34;
+  letter-spacing: -0.01em;
+}
+
+.modal-container.member-task-create-modal .compact-modal-header .close-btn {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 6px;
+  color: #87909e;
+}
+
+.modal-container.member-task-create-modal .compact-modal-header .close-btn:hover {
+  background: #f4f5f7;
+  color: #292d34;
+}
+
+.modal-container.member-task-create-modal .compact-modal-body {
+  padding: 0.875rem 1.125rem;
+  gap: 0.75rem;
+  scrollbar-color: #d1d5db transparent;
+}
+
+.modal-container.member-task-create-modal .compact-modal-body .cu-member-task-field {
+  margin-bottom: 0;
+}
+
+.modal-container.member-task-create-modal .compact-modal-body .cu-member-task-label {
+  margin-bottom: 0.35rem;
+}
+
+.modal-container.member-task-create-modal .compact-modal-body::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+}
+
+.modal-container.member-task-create-modal .form-group label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #646f79;
+}
+
+.modal-container.member-task-create-modal .input-wrapper > .input-icon,
+.modal-container.member-task-create-modal .input-wrapper > .input-icon-top {
+  display: none;
+}
+
+.modal-container.member-task-create-modal .input-wrapper input,
+.modal-container.member-task-create-modal .themed-date-field .input-wrapper input,
+.modal-container.member-task-create-modal .themed-date-field__control input {
+  background: #ffffff !important;
+  border: 1px solid #e8eaed !important;
+  border-radius: 8px !important;
+  color: #292d34 !important;
+  box-shadow: none !important;
+}
+
+.modal-container.member-task-create-modal .input-wrapper input:hover,
+.modal-container.member-task-create-modal .themed-date-field .input-wrapper input:hover {
+  border-color: #d1d5db !important;
+}
+
+.modal-container.member-task-create-modal .input-wrapper input:focus,
+.modal-container.member-task-create-modal .themed-date-field .input-wrapper input:focus,
+.modal-container.member-task-create-modal .themed-date-field.is-open .input-wrapper input {
+  border-color: #7b68ee !important;
+  box-shadow: 0 0 0 1px #7b68ee !important;
+}
+
+.modal-container.member-task-create-modal .themed-date-field__open-btn {
+  color: #87909e;
+  border-color: transparent;
+  background: transparent;
+}
+
+.modal-container.member-task-create-modal .themed-date-field__open-btn:hover {
+  background: #f4f5f7;
+  color: #292d34;
+}
+
+.modal-container.member-task-create-modal .compact-modal-form input[type='date'] {
+  accent-color: #7b68ee;
+}
+
+.modal-container.member-task-create-modal
+  .compact-modal-form
+  input[type='date']::-webkit-calendar-picker-indicator {
+  filter: none;
+  opacity: 0.55;
+}
+
+.modal-container.member-task-create-modal .form-error {
+  font-size: 0.75rem;
+  color: #dc2626;
+}
+
+.modal-container.member-task-create-modal .hierarchy-create-modal-footer {
+  padding: 0 1.125rem 1.125rem;
+  border-top: none;
+}
+
+.modal-container.member-task-create-modal .hierarchy-create-modal-footer .secondary-btn {
+  min-height: 32px;
+  padding: 0.4rem 0.875rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  background: #ffffff;
+  color: #292d34;
+  border: 1px solid #e8eaed;
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+.modal-container.member-task-create-modal .hierarchy-create-modal-footer .secondary-btn:hover:not(:disabled) {
+  background: #f9fafb;
+  border-color: #d1d5db;
+}
+
+.modal-container.member-task-create-modal .hierarchy-create-modal-footer .primary-btn {
+  min-height: 32px;
+  padding: 0.4rem 0.875rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  background: #7b68ee;
+  color: #ffffff;
+  border: 1px solid #7b68ee;
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+.modal-container.member-task-create-modal .hierarchy-create-modal-footer .primary-btn:hover:not(:disabled) {
+  background: #6f5ce8;
+  border-color: #6f5ce8;
+}
+
+@media (max-width: 480px) {
+  .cu-member-task-row {
+    grid-template-columns: 1fr;
+  }
+}

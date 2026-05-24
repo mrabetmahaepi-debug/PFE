@@ -86,9 +86,14 @@ export const cu = {
   navbarDashboard:
     'absolute top-4 right-9 z-[31] h-auto border-0 bg-transparent p-0 shadow-none',
 
+  /* ClickUp press interaction */
+  pressable: 'cu-pressable rounded-md',
+  pressableRow:
+    'cu-pressable flex min-h-9 w-full items-center gap-2 rounded-md border border-transparent px-2 py-1.5 text-left text-sm text-cu-text',
+
   /* Task list */
   taskRow:
-    'flex min-h-9 cursor-pointer items-center gap-2 rounded-md border border-transparent px-2 py-1.5 text-sm text-cu-text transition-colors hover:bg-cu-hover',
+    'cu-pressable flex min-h-9 cursor-pointer items-center gap-2 rounded-md border border-transparent px-2 py-1.5 text-sm text-cu-text',
   taskRowActive: 'bg-cu-primary-soft text-cu-primary',
 
   /* Section */

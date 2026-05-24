@@ -139,16 +139,15 @@ const SidebarCorbeille: React.FC<SidebarCorbeilleProps> = ({ onRefreshTree }) =>
 
       <HierarchyItemConfirmModal
         open={!!deleteTarget}
-        title="Supprimer définitivement ?"
-        message={
-          deleteTarget ? (
-            <>
-              <strong>{deleteTarget.name}</strong> sera supprimé(e) de façon
-              permanente. Cette action est irréversible.
-            </>
-          ) : null
+        itemName={deleteTarget?.name ?? ''}
+        entityKind={
+          deleteTarget?.type === 'space'
+            ? 'space'
+            : deleteTarget?.type === 'project'
+              ? 'folder'
+              : 'list'
         }
-        confirmLabel="Supprimer définitivement"
+        confirmLabel="Supprimer"
         loading={deleting}
         onCancel={() => !deleting && setDeleteTarget(null)}
         onConfirm={() => void handlePermanentDelete()}

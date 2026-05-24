@@ -26,12 +26,6 @@ const KanbanBoardView: React.FC<KanbanBoardViewProps> = ({ listId }) => {
 
   return (
     <>
-      <div className="cu-board-group-row">
-        <span className="cu-board-group-chip">
-          <span className="cu-board-group-chip-muted">Groupe :</span>
-          Statut
-        </span>
-      </div>
       <ClickUpKanbanBoard
         tasks={listTasks}
         listName={listName}

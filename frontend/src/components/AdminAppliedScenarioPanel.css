@@ -1,0 +1,151 @@
+.admin-rec-scenario {
+  margin-top: 4px;
+}
+
+.admin-rec-scenario-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6d28d9;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.admin-rec-scenario-toggle:hover {
+  color: #5b21b6;
+}
+
+.admin-rec-scenario-toggle-icon {
+  transition: transform 0.2s ease;
+}
+
+.admin-rec-scenario-toggle--open .admin-rec-scenario-toggle-icon {
+  transform: rotate(180deg);
+}
+
+.admin-rec-scenario-panel {
+  overflow: hidden;
+}
+
+.admin-rec-scenario-timeline {
+  margin-top: 10px;
+  padding: 12px 12px 4px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #faf8ff 0%, #f8fafc 100%);
+  border: 1px solid #ececf3;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.admin-rec-scenario-step {
+  display: grid;
+  grid-template-columns: 10px 1fr;
+  gap: 10px;
+  position: relative;
+}
+
+.admin-rec-scenario-step:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 14px;
+  bottom: -12px;
+  width: 1px;
+  background: #e4e7ef;
+}
+
+.admin-rec-scenario-step-marker {
+  width: 10px;
+  height: 10px;
+  margin-top: 4px;
+  border-radius: 999px;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px #ddd6fe;
+}
+
+.admin-rec-scenario-step--before .admin-rec-scenario-step-marker {
+  background: #f97316;
+  box-shadow: 0 0 0 1px #fed7aa;
+}
+
+.admin-rec-scenario-step--explain .admin-rec-scenario-step-marker {
+  background: #8b5cf6;
+  box-shadow: 0 0 0 1px #ddd6fe;
+}
+
+.admin-rec-scenario-step--action .admin-rec-scenario-step-marker {
+  background: #6366f1;
+  box-shadow: 0 0 0 1px #c7d2fe;
+}
+
+.admin-rec-scenario-step--modify .admin-rec-scenario-step-marker {
+  background: #0ea5e9;
+  box-shadow: 0 0 0 1px #bae6fd;
+}
+
+.admin-rec-scenario-step--result .admin-rec-scenario-step-marker {
+  background: #10b981;
+  box-shadow: 0 0 0 1px #a7f3d0;
+}
+
+.admin-rec-scenario-step--time .admin-rec-scenario-step-marker {
+  background: #64748b;
+  box-shadow: 0 0 0 1px #cbd5e1;
+}
+
+.admin-rec-scenario-step-body {
+  min-width: 0;
+}
+
+.admin-rec-scenario-step-title {
+  margin: 0 0 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #87909e;
+}
+
+.admin-rec-scenario-step-text {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: #4b5563;
+  line-height: 1.45;
+}
+
+.admin-rec-scenario-step-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.admin-rec-scenario-step-list li {
+  position: relative;
+  padding-left: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #292d34;
+  line-height: 1.4;
+}
+
+.admin-rec-scenario-step-list li::before {
+  content: '•';
+  position: absolute;
+  left: 0;
+  color: #a78bfa;
+  font-weight: 700;
+}
+
+.admin-rec-scenario-step--result .admin-rec-scenario-step-list li::before {
+  color: #34d399;
+}

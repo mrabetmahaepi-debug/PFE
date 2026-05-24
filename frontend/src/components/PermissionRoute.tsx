@@ -5,7 +5,11 @@ import { usePermission } from "../hooks/usePermission";
 import { isEnterpriseAdmin } from "../lib/permissions";
 
 /** Routes liste / workspace : l’admin d’entreprise doit y accéder même si le JWT des permissions est incomplet. */
-const TENANT_PROJECT_ROUTE_ANY = new Set(["PROJECT_VIEW_ALL", "WORKSPACE_VIEW"]);
+const TENANT_PROJECT_ROUTE_ANY = new Set([
+  "PROJECT_VIEW",
+  "PROJECT_VIEW_ALL",
+  "WORKSPACE_VIEW",
+]);
 
 interface PermissionRouteProps {
   children: React.ReactNode;

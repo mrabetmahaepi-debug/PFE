@@ -1,13 +1,28 @@
+import type { Request } from "express";
 import prisma from "../prisma/prismaClient";
 import type { AuthedUser } from "../middleware/permissions";
-import { isSuperAdmin } from "../middleware/permissions";
+import { getUserPermissions, isSuperAdmin } from "../middleware/permissions";
 import { isGlobalMembreUser, isTenantAdminUser } from "../lib/projectAccess";
 import {
   ALL_PROJECT_PERMISSIONS_SET,
-  getDefaultPermissionsForProjectRole,
-  normalizeProjectRoleBucket,
 } from "../lib/projectRolePermissions";
-import { resolvePermissionsForProjectRoleLabel } from "./enterpriseProjectRoleConfig.service";
+import { permissionSetHas } from "../lib/permissionProfiles";
+import {
+  isChefDeProjetMemberRole,
+  normalizeProjectLocalRole,
+  resolveProjectPosteLabel,
+} from "../lib/projectRoleLabels";
+import { resolvePermissionsForUserProfile } from "./permissionProfile.service";
+import {
+  loadMemberPermissionOverrides,
+  mergePermissionOverrides,
+} from "../lib/memberProjectPermissionResolution";
+import {
+  assertCanChangeTaskStatusByLocalRole,
+  bodyChangesTaskStatus,
+} from "../lib/projectLocalRolePermissions";
+
+const CHEF_DE_PROJET_ROLE_LABEL = "Chef de projet";
 
 export type ProjectPermissionContext = {
   projectId: number;
@@ -23,35 +38,56 @@ export function hasProjectPermission(
   permission: string
 ): boolean {
   if (ctx.fullAccess) return true;
-  return ctx.permissions.has(permission);
+  return permissionSetHas(ctx.permissions, permission);
 }
 
-/** Permissions returned to the workspace UI for global « Membre » non-chef (hide management bundle). */
-const WORKSPACE_PRIVILEGED_KEYS = new Set([
+/** Project permissions that allow creating/editing lists (aligned with task/sprint work). */
+export const PROJECT_LIST_WRITE_PERMISSIONS = [
+  "TASK_CREATE",
+  "SPRINT_CREATE",
+  "SPRINT_MANAGE",
   "create_tasks",
-  "manage_sprints",
   "create_sprints",
-  "view_project",
-]);
+  "manage_sprints",
+] as const;
 
-/**
- * Serializes project role + permission list for GET /projets/:id and /tree.
- * Global tenant members who are not « Chef de projet » in this project do not
- * receive workspace management slugs in the payload (actual ACL stays full ctx).
- */
-export function serializeWorkspaceProjectAuth(
+export async function userCanWriteListsOnProject(
   user: AuthedUser & { id: number },
+  projectId: number
+): Promise<boolean> {
+  if (!Number.isFinite(projectId) || projectId < 1) return false;
+  const ctx = await getProjectPermissionContext(user, projectId);
+  if (ctx.fullAccess) return true;
+  return PROJECT_LIST_WRITE_PERMISSIONS.some((p) => hasProjectPermission(ctx, p));
+}
+
+/** Global LIST_MANAGE or project-scoped list/task/sprint write permissions. */
+export async function requestCanWriteLists(
+  req: Request,
+  projectId: number
+): Promise<boolean> {
+  const user = (req as any).user as (AuthedUser & { id: number }) | undefined;
+  if (!user?.id) return false;
+  if (isSuperAdmin(user)) return true;
+  const global = await getUserPermissions(req);
+  if (global === null) return true;
+  if (global.has("LIST_MANAGE")) return true;
+  return userCanWriteListsOnProject(user, projectId);
+}
+
+/** French message returned on permission denial (API + thrown errors). */
+export const PERMISSION_DENIED_MESSAGE =
+  "Vous n'avez pas l'autorisation nécessaire.";
+
+/** Serializes project role + permission list for GET /projets/:id and /tree. */
+export function serializeWorkspaceProjectAuth(
+  _user: AuthedUser & { id: number },
   ctx: ProjectPermissionContext
 ): { currentUserProjectRole: string | null; currentUserPermissions: string[] } {
-  const role = ctx.roleProjet;
-  let perms = Array.from(ctx.permissions);
-  if (!ctx.fullAccess && isGlobalMembreUser(user)) {
-    const bucket = normalizeProjectRoleBucket(role);
-    if (bucket !== "CHEF") {
-      perms = perms.filter((p) => !WORKSPACE_PRIVILEGED_KEYS.has(p));
-    }
-  }
-  return { currentUserProjectRole: role, currentUserPermissions: perms };
+  return {
+    currentUserProjectRole: ctx.roleProjet,
+    currentUserPermissions: Array.from(ctx.permissions),
+  };
 }
 
 export async function getProjectPermissionContext(
@@ -110,30 +146,51 @@ export async function getProjectPermissionContext(
   });
 
   if (!row) {
-    return {
-      projectId: pid,
-      fullAccess: false,
-      roleProjet: null,
-      permissions: new Set(),
-    };
+    const isChefResponsible =
+      projet.chef_de_projet_id != null &&
+      projet.chef_de_projet_id === user.id;
+    if (!isChefResponsible) {
+      return {
+        projectId: pid,
+        fullAccess: false,
+        roleProjet: null,
+        permissions: new Set(),
+      };
+    }
   }
 
-  let roleLabel = row.role_projet?.trim() || "Membre";
-  if (projet.chef_de_projet_id != null && projet.chef_de_projet_id === user.id) {
-    roleLabel = "Chef de Projet";
-  }
+  /** Local project role only — never global utilisateur.poste. */
+  const localRoleRaw =
+    row?.role_projet?.trim() ||
+    (projet.chef_de_projet_id === user.id ? CHEF_DE_PROJET_ROLE_LABEL : null);
+
+  const localRoleLabel =
+    localRoleRaw && isChefDeProjetMemberRole(localRoleRaw)
+      ? CHEF_DE_PROJET_ROLE_LABEL
+      : localRoleRaw
+        ? normalizeProjectLocalRole(localRoleRaw)
+        : resolveProjectPosteLabel(localRoleRaw ?? "Membre");
 
   const entrepriseId =
     projet.id_entreprise != null ? Number(projet.id_entreprise) : null;
+
+  const profilePermissions =
+    entrepriseId != null && Number.isFinite(entrepriseId) && localRoleRaw
+      ? await resolvePermissionsForUserProfile(entrepriseId, localRoleRaw)
+      : [];
+
+  const basePermissions = new Set(profilePermissions);
+
+  const overrides = await loadMemberPermissionOverrides(user.id, pid);
   const permissions =
-    entrepriseId != null && Number.isFinite(entrepriseId)
-      ? await resolvePermissionsForProjectRoleLabel(entrepriseId, roleLabel)
-      : getDefaultPermissionsForProjectRole(roleLabel);
+    overrides.length > 0
+      ? mergePermissionOverrides(basePermissions, overrides)
+      : basePermissions;
 
   return {
     projectId: pid,
     fullAccess: false,
-    roleProjet: roleLabel,
+    roleProjet: localRoleLabel,
     permissions,
   };
 }
@@ -143,41 +200,137 @@ export function assertProjectPermission(
   permission: string
 ): void {
   if (!hasProjectPermission(ctx, permission)) {
-    const err = new Error("Permission projet insuffisante");
-    (err as any).status = 403;
-    (err as any).code = "PROJECT_PERMISSION_DENIED";
-    (err as any).requiredPermission = permission;
-    throw err;
+    denyProjectPermission();
   }
+}
+
+function denyProjectPermission(): never {
+  const err = new Error(PERMISSION_DENIED_MESSAGE);
+  (err as any).status = 403;
+  (err as any).code = "PROJECT_PERMISSION_DENIED";
+  throw err;
 }
 
 function meaningfulTaskUpdateKeys(body: Record<string, unknown>): string[] {
   return Object.keys(body || {}).filter((k) => body[k] !== undefined);
 }
 
+function isPriorityOnlyPatch(body: Record<string, unknown>): boolean {
+  const keys = meaningfulTaskUpdateKeys(body);
+  return (
+    keys.length > 0 &&
+    keys.every((k) => ["priorite_t", "priorite", "priority"].includes(k))
+  );
+}
+
+/** Global « Membre » assignee — priority-only patch (Mes tâches → Assigné à moi). */
+export function canGlobalMemberUpdateOwnTaskPriority(
+  user: AuthedUser & { id: number },
+  task: { assigne_a: number | null },
+  body: Record<string, unknown>
+): boolean {
+  if (!isGlobalMembreUser(user)) return false;
+  if (task.assigne_a == null || Number(task.assigne_a) !== user.id) return false;
+  return isPriorityOnlyPatch(body);
+}
+
 export function assertCanCreateTask(ctx: ProjectPermissionContext): void {
-  assertProjectPermission(ctx, "create_tasks");
+  assertProjectPermission(ctx, "TASK_CREATE");
 }
 
 export function assertCanViewTasks(ctx: ProjectPermissionContext): void {
-  if (hasProjectPermission(ctx, "view_tasks")) return;
-  assertProjectPermission(ctx, "view_project");
+  if (hasProjectPermission(ctx, "TASK_VIEW")) return;
+  assertProjectPermission(ctx, "PROJECT_VIEW");
 }
 
 export function assertCanDeleteTask(ctx: ProjectPermissionContext): void {
-  assertProjectPermission(ctx, "delete_tasks");
+  assertProjectPermission(ctx, "TASK_DELETE");
+}
+
+/** Delete a subtask — parent task must remain; broader than root task delete for assignees. */
+export function assertCanDeleteSubtask(
+  ctx: ProjectPermissionContext,
+  subtask: { assigne_a: number | null },
+  userId: number,
+  parentTask?: { assigne_a: number | null } | null
+): void {
+  if (ctx.fullAccess) return;
+  if (hasProjectPermission(ctx, "TASK_DELETE")) return;
+  if (hasProjectPermission(ctx, "TASK_EDIT_ALL")) return;
+
+  const subAssignee =
+    subtask.assigne_a != null && Number(subtask.assigne_a) === userId;
+  const parentAssignee =
+    parentTask?.assigne_a != null &&
+    Number(parentTask.assigne_a) === userId;
+
+  if (
+    hasProjectPermission(ctx, "TASK_EDIT_ASSIGNED") &&
+    (subAssignee || parentAssignee)
+  ) {
+    return;
+  }
+
+  if (hasProjectPermission(ctx, "TASK_CREATE")) return;
+
+  denyProjectPermission();
 }
 
 export function assertCanAssignTask(ctx: ProjectPermissionContext): void {
-  assertProjectPermission(ctx, "assign_tasks");
+  assertProjectPermission(ctx, "TASK_ASSIGN");
+}
+
+/** Task comments — project members, assignees, or explicit comment_tasks permission. */
+export async function assertCanCommentOnTask(
+  ctx: ProjectPermissionContext,
+  userId: number,
+  task: { assigne_a: number | null },
+  projectId: number
+): Promise<void> {
+  if (ctx.fullAccess) return;
+  if (hasProjectPermission(ctx, "comment_tasks")) return;
+  if (hasProjectPermission(ctx, "edit_all_tasks")) return;
+  if (
+    hasProjectPermission(ctx, "edit_assigned_tasks") &&
+    task.assigne_a != null &&
+    Number(task.assigne_a) === userId
+  ) {
+    return;
+  }
+  if (task.assigne_a != null && Number(task.assigne_a) === userId) return;
+
+  const membership = await prisma.membre_projet.findFirst({
+    where: {
+      id_projet: projectId,
+      id_utilisateur: userId,
+    },
+    select: { id_membre_projet: true },
+  });
+  if (membership) return;
+
+  denyProjectPermission();
+}
+
+/** Delete task comment — author, or project managers (fullAccess / edit_all_tasks). */
+export function assertCanDeleteTaskComment(
+  ctx: ProjectPermissionContext,
+  userId: number,
+  commentAuthorId: number
+): void {
+  if (ctx.fullAccess) return;
+  if (hasProjectPermission(ctx, "edit_all_tasks")) return;
+  if (hasProjectPermission(ctx, "delete_tasks")) return;
+  if (Number(commentAuthorId) === userId) return;
+
+  denyProjectPermission();
 }
 
 /**
- * Rules:
- * - fullAccess or edit_all_tasks → any field (assignee change needs assign_tasks unless covered by edit_all + assign bundled for chef).
- * - assignee change → assign_tasks (always enforced except when caller has no assign change).
- * - status-only → change_task_status OR (change_own_task_status && assignee is current user).
- * - assignee is current user + edit_assigned_tasks → other field updates allowed.
+ * Task update rules (UML permissions only):
+ * - TASK_ASSIGN → change assignee
+ * - TASK_EDIT_ALL → edit any other field
+ * - TASK_EDIT_ASSIGNED → edit fields on tasks assigned to the current user
+ * - TASK_STATUS_ALL / TASK_STATUS_OWN → status-only updates when edit rights are narrower
  */
 export function assertCanUpdateTask(
   ctx: ProjectPermissionContext,
@@ -185,6 +338,12 @@ export function assertCanUpdateTask(
   body: Record<string, unknown>,
   userId: number
 ): void {
+  if (ctx.fullAccess) return;
+
+  if (bodyChangesTaskStatus(body)) {
+    assertCanChangeTaskStatusByLocalRole(ctx, task, userId);
+  }
+
   const assigneeId =
     task.assigne_a == null ? null : Number(task.assigne_a);
   const isAssignee = assigneeId === userId;
@@ -200,50 +359,38 @@ export function assertCanUpdateTask(
     nextAssignee !== undefined &&
     (nextAssignee ?? null) !== (assigneeId ?? null);
 
-  if (ctx.fullAccess || hasProjectPermission(ctx, "edit_all_tasks")) {
-    return;
-  }
-
-  if (assigneeChanges && !hasProjectPermission(ctx, "assign_tasks")) {
-    const err = new Error(
-      "Vous ne pouvez pas réassigner cette tâche (permission assign_tasks requise)."
-    );
-    (err as any).status = 403;
-    (err as any).code = "PROJECT_PERMISSION_DENIED";
-    throw err;
-  }
-
   const keys = meaningfulTaskUpdateKeys(body);
-  const onlyStatus =
-    keys.length > 0 &&
-    keys.every((k) =>
-      ["statut_t", "statut_tache", "statut"].includes(k)
-    );
+  const otherKeys = keys.filter(
+    (k) =>
+      !["assigne_a", "assignee", "assigneeId"].includes(k) &&
+      !["statut_t", "statut_tache", "statut", "status"].includes(k)
+  );
 
-  if (onlyStatus && keys.some((k) => k.startsWith("statut"))) {
-    if (hasProjectPermission(ctx, "change_task_status")) return;
-    if (
-      isAssignee &&
-      hasProjectPermission(ctx, "change_own_task_status")
-    ) {
+  if (assigneeChanges && !hasProjectPermission(ctx, "TASK_ASSIGN")) {
+    denyProjectPermission();
+  }
+
+  if (otherKeys.length > 0) {
+    if (hasProjectPermission(ctx, "TASK_EDIT_ALL")) {
       return;
     }
-    const err = new Error(
-      "Vous ne pouvez pas modifier le statut de cette tâche."
-    );
-    (err as any).status = 403;
-    (err as any).code = "PROJECT_PERMISSION_DENIED";
-    throw err;
+    if (isAssignee && hasProjectPermission(ctx, "TASK_EDIT_ASSIGNED")) {
+      return;
+    }
+    denyProjectPermission();
   }
 
-  if (isAssignee && hasProjectPermission(ctx, "edit_assigned_tasks")) {
+  if (assigneeChanges && hasProjectPermission(ctx, "TASK_ASSIGN")) {
     return;
   }
 
-  const err = new Error("Vous ne pouvez pas modifier cette tâche.");
-  (err as any).status = 403;
-  (err as any).code = "PROJECT_PERMISSION_DENIED";
-  throw err;
+  if (keys.length === 0) return;
+
+  if (bodyChangesTaskStatus(body)) {
+    return;
+  }
+
+  denyProjectPermission();
 }
 
 export async function getProjectIdForTask(taskId: number): Promise<number | null> {
@@ -264,6 +411,15 @@ export async function getProjectIdForSprint(sprintId: number): Promise<number | 
   return Number(s.id_projet);
 }
 
+export async function getProjectIdForList(listId: number): Promise<number | null> {
+  const l = await (prisma as any).list_pm.findUnique({
+    where: { id_list: listId },
+    select: { id_projet: true },
+  });
+  if (!l?.id_projet) return null;
+  return Number(l.id_projet);
+}
+
 /** PATCH /mes-taches/:id/statut — caller must be assignee; project perms apply. */
 export function assertCanUpdateAssignedTaskStatus(
   ctx: ProjectPermissionContext,
@@ -275,15 +431,7 @@ export function assertCanUpdateAssignedTaskStatus(
     (err as any).status = 400;
     throw err;
   }
-  if (ctx.fullAccess) return;
-  if (hasProjectPermission(ctx, "change_task_status")) return;
-  if (hasProjectPermission(ctx, "change_own_task_status")) return;
-  if (hasProjectPermission(ctx, "edit_assigned_tasks")) return;
-  if (hasProjectPermission(ctx, "edit_all_tasks")) return;
-  const err = new Error("Vous ne pouvez pas modifier le statut de cette tâche.");
-  (err as any).status = 403;
-  (err as any).code = "PROJECT_PERMISSION_DENIED";
-  throw err;
+  assertCanChangeTaskStatusByLocalRole(ctx, task, userId);
 }
 
 async function loadUserForProjectAuth(

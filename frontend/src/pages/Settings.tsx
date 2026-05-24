@@ -14,11 +14,15 @@ import {
   Trash2,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
-import { isSuperAdmin as detectSuperAdmin } from '../lib/permissions';
+import {
+  isGlobalMember,
+  isSuperAdmin as detectSuperAdmin,
+} from '../lib/permissions';
 import { resolveProfilePhotoUrl, getUserInitials } from '../lib/profilePhoto';
 import { userProfileService } from '../services/userProfile.service';
 import BackButton from '../components/BackButton';
 import './Settings.css';
+import './MemberSettings.css';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ACCEPTED_IMAGE_TYPES = [
@@ -35,6 +39,8 @@ type ProfileForm = {
   email: string;
   notifications: boolean;
   securityEmails: boolean;
+  taskOverdueNotifications: boolean;
+  commentNotifications: boolean;
 };
 
 function formFromUser(
@@ -49,6 +55,7 @@ function formFromUser(
 
 const Settings: React.FC = () => {
   const { user, updateUser, refreshUser } = useAuth();
+  const isMember = isGlobalMember(user);
   const superAdmin = detectSuperAdmin(user);
   const roleStr =
     typeof user?.role === 'string' ? user.role : user?.role?.nom;
@@ -62,6 +69,8 @@ const Settings: React.FC = () => {
     ...formFromUser(user),
     notifications: true,
     securityEmails: true,
+    taskOverdueNotifications: true,
+    commentNotifications: true,
   }));
 
   const [passwords, setPasswords] = useState({
@@ -134,6 +143,11 @@ const Settings: React.FC = () => {
 
   const handleModifyPhoto = () => {
     setPhotoMenuOpen(false);
+    setUploadError(null);
+    fileInputRef.current?.click();
+  };
+
+  const handleChangePhotoClick = () => {
     setUploadError(null);
     fileInputRef.current?.click();
   };
@@ -279,6 +293,353 @@ const Settings: React.FC = () => {
   };
 
   const initials = getUserInitials(user);
+
+  if (isMember) {
+    return (
+      <div className="member-settings-page">
+        <div className="member-settings-layout">
+          <aside className="member-settings-nav" aria-label="Sections des paramètres">
+            <button
+              type="button"
+              className={`member-settings-nav-item ${activeTab === 'profile' ? 'is-active' : ''}`}
+              onClick={() => setActiveTab('profile')}
+            >
+              <User size={18} aria-hidden />
+              <span>Profil</span>
+            </button>
+            <button
+              type="button"
+              className={`member-settings-nav-item ${activeTab === 'security' ? 'is-active' : ''}`}
+              onClick={() => setActiveTab('security')}
+            >
+              <Lock size={18} aria-hidden />
+              <span>Sécurité</span>
+            </button>
+            <button
+              type="button"
+              className={`member-settings-nav-item ${activeTab === 'notifications' ? 'is-active' : ''}`}
+              onClick={() => setActiveTab('notifications')}
+            >
+              <Bell size={18} aria-hidden />
+              <span>Notifications</span>
+            </button>
+          </aside>
+
+          <div className="member-settings-main">
+            {activeTab === 'profile' && (
+              <section className="member-settings-card">
+                <h2 className="member-settings-card-title">
+                  Informations personnelles
+                </h2>
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
+                  className="member-settings-file-input"
+                  onChange={handleFileChange}
+                />
+
+                <div className="member-settings-profile-row">
+                  <div
+                    className={`member-settings-avatar ${uploading || deletingPhoto ? 'is-loading' : ''}`}
+                    aria-hidden
+                  >
+                    {uploading || deletingPhoto ? (
+                      <Loader size={22} className="member-settings-spin" />
+                    ) : photoPreview ? (
+                      <img src={photoPreview} alt="" />
+                    ) : (
+                      <span>{initials}</span>
+                    )}
+                  </div>
+                  <div className="member-settings-photo-actions">
+                    <button
+                      type="button"
+                      className="member-settings-btn-outline"
+                      onClick={handleChangePhotoClick}
+                      disabled={uploading || deletingPhoto}
+                    >
+                      Changer la photo
+                    </button>
+                    {hasProfilePhoto && (
+                      <button
+                        type="button"
+                        className="member-settings-btn-outline member-settings-btn-outline--danger"
+                        onClick={handleRequestDeletePhoto}
+                        disabled={uploading || deletingPhoto}
+                      >
+                        Supprimer
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {uploadError && (
+                  <p
+                    className="member-settings-feedback member-settings-feedback--error"
+                    role="alert"
+                  >
+                    <AlertCircle size={14} aria-hidden />
+                    {uploadError}
+                  </p>
+                )}
+                {uploadSuccess && (
+                  <p
+                    className="member-settings-feedback member-settings-feedback--success"
+                    role="status"
+                  >
+                    <CheckCircle2 size={14} aria-hidden />
+                    {uploadSuccess}
+                  </p>
+                )}
+
+                <div className="member-settings-form-grid">
+                  <div className="member-settings-field">
+                    <label htmlFor="member-settings-prenom">Prénom</label>
+                    <input
+                      id="member-settings-prenom"
+                      type="text"
+                      name="prenom"
+                      value={formData.prenom}
+                      onChange={handleChange}
+                      autoComplete="given-name"
+                    />
+                  </div>
+                  <div className="member-settings-field">
+                    <label htmlFor="member-settings-nom">Nom</label>
+                    <input
+                      id="member-settings-nom"
+                      type="text"
+                      name="nom"
+                      value={formData.nom}
+                      onChange={handleChange}
+                      autoComplete="family-name"
+                    />
+                  </div>
+                </div>
+                <div className="member-settings-field">
+                  <label htmlFor="member-settings-email">E-mail</label>
+                  <input
+                    id="member-settings-email"
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    autoComplete="email"
+                  />
+                </div>
+
+                {saveError && (
+                  <p
+                    className="member-settings-feedback member-settings-feedback--error"
+                    role="alert"
+                  >
+                    <AlertCircle size={14} aria-hidden />
+                    {saveError}
+                  </p>
+                )}
+                {saveSuccess && (
+                  <p
+                    className="member-settings-feedback member-settings-feedback--success"
+                    role="status"
+                  >
+                    <CheckCircle2 size={14} aria-hidden />
+                    {saveSuccess}
+                  </p>
+                )}
+
+                <div className="member-settings-form-actions">
+                  <button
+                    type="button"
+                    className="member-settings-btn-cancel"
+                    onClick={handleCancelProfile}
+                    disabled={saving || uploading}
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="button"
+                    className="member-settings-btn-primary"
+                    onClick={handleSaveProfile}
+                    disabled={saving || uploading}
+                  >
+                    {saving ? (
+                      <>
+                        <Loader size={16} className="member-settings-spin" />
+                        Enregistrement…
+                      </>
+                    ) : (
+                      'Enregistrer les modifications'
+                    )}
+                  </button>
+                </div>
+              </section>
+            )}
+
+            {activeTab === 'security' && (
+              <section className="member-settings-card">
+                <h2 className="member-settings-card-title">Sécurité</h2>
+                <p className="member-settings-card-sub">
+                  Mettez à jour votre mot de passe pour sécuriser votre compte.
+                </p>
+                <div className="member-settings-security-form">
+                  <div className="member-settings-field">
+                    <label htmlFor="member-settings-pwd-current">
+                      Mot de passe actuel
+                    </label>
+                    <input
+                      id="member-settings-pwd-current"
+                      type="password"
+                      name="current"
+                      value={passwords.current}
+                      onChange={handlePasswordChange}
+                      placeholder="••••••••"
+                      autoComplete="current-password"
+                    />
+                  </div>
+                  <div className="member-settings-field">
+                    <label htmlFor="member-settings-pwd-new">
+                      Nouveau mot de passe
+                    </label>
+                    <input
+                      id="member-settings-pwd-new"
+                      type="password"
+                      name="new"
+                      value={passwords.new}
+                      onChange={handlePasswordChange}
+                      placeholder="••••••••"
+                      autoComplete="new-password"
+                    />
+                  </div>
+                  <div className="member-settings-field">
+                    <label htmlFor="member-settings-pwd-confirm">
+                      Confirmer mot de passe
+                    </label>
+                    <input
+                      id="member-settings-pwd-confirm"
+                      type="password"
+                      name="confirm"
+                      value={passwords.confirm}
+                      onChange={handlePasswordChange}
+                      placeholder="••••••••"
+                      autoComplete="new-password"
+                    />
+                  </div>
+                  <div className="member-settings-form-actions">
+                    <button type="button" className="member-settings-btn-primary">
+                      <Key size={16} aria-hidden />
+                      Mettre à jour
+                    </button>
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {activeTab === 'notifications' && (
+              <section className="member-settings-card">
+                <h2 className="member-settings-card-title">Notifications</h2>
+                <p className="member-settings-card-sub">
+                  Choisissez les alertes que vous souhaitez recevoir.
+                </p>
+                <div className="member-settings-pref-list">
+                  <div className="member-settings-pref-row">
+                    <div className="member-settings-pref-info">
+                      <h4>Notifications par e-mail</h4>
+                      <p>Recevoir des récapitulatifs et mises à jour par e-mail.</p>
+                    </div>
+                    <label className="member-settings-switch">
+                      <input
+                        type="checkbox"
+                        checked={formData.notifications}
+                        name="notifications"
+                        onChange={handleChange}
+                      />
+                      <span className="member-settings-switch-slider" />
+                    </label>
+                  </div>
+                  <div className="member-settings-pref-row">
+                    <div className="member-settings-pref-info">
+                      <h4>Notifications des tâches en retard</h4>
+                      <p>Être alerté lorsqu&apos;une tâche assignée dépasse sa date limite.</p>
+                    </div>
+                    <label className="member-settings-switch">
+                      <input
+                        type="checkbox"
+                        checked={formData.taskOverdueNotifications}
+                        name="taskOverdueNotifications"
+                        onChange={handleChange}
+                      />
+                      <span className="member-settings-switch-slider" />
+                    </label>
+                  </div>
+                  <div className="member-settings-pref-row">
+                    <div className="member-settings-pref-info">
+                      <h4>Notifications des commentaires</h4>
+                      <p>Recevoir une alerte lors de nouveaux commentaires sur vos tâches.</p>
+                    </div>
+                    <label className="member-settings-switch">
+                      <input
+                        type="checkbox"
+                        checked={formData.commentNotifications}
+                        name="commentNotifications"
+                        onChange={handleChange}
+                      />
+                      <span className="member-settings-switch-slider" />
+                    </label>
+                  </div>
+                </div>
+              </section>
+            )}
+          </div>
+        </div>
+
+        {deletePhotoModalOpen && (
+          <div
+            className="member-settings-modal-overlay"
+            role="presentation"
+            onClick={() => !deletingPhoto && setDeletePhotoModalOpen(false)}
+          >
+            <div
+              className="member-settings-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="member-delete-photo-title"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 id="member-delete-photo-title">Supprimer la photo</h3>
+              <p>Voulez-vous supprimer votre photo de profil ?</p>
+              <div className="member-settings-modal-actions">
+                <button
+                  type="button"
+                  className="member-settings-btn-cancel"
+                  onClick={() => setDeletePhotoModalOpen(false)}
+                  disabled={deletingPhoto}
+                >
+                  Annuler
+                </button>
+                <button
+                  type="button"
+                  className="member-settings-btn-danger"
+                  onClick={handleConfirmDeletePhoto}
+                  disabled={deletingPhoto}
+                >
+                  {deletingPhoto ? (
+                    <>
+                      <Loader size={16} className="member-settings-spin" aria-hidden />
+                      Suppression…
+                    </>
+                  ) : (
+                    'Supprimer'
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="settings-page">

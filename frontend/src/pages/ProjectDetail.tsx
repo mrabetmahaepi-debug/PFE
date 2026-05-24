@@ -1,7 +1,17 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Calendar, Building2, Users, CheckSquare, Clock, Search, Pencil } from 'lucide-react';
+import {
+  ArrowLeft,
+  Calendar,
+  Building2,
+  Users,
+  CheckSquare,
+  Clock,
+  Search,
+  Pencil,
+  Trash2,
+} from 'lucide-react';
 import { projectService } from '../services/project.service';
 import { teamService } from '../services/team.service';
 import { usePermission } from '../hooks/usePermission';
@@ -15,9 +25,15 @@ import type { Projet } from '../types/project';
 import type { User } from '../types/auth.types';
 import { projectCan } from '../lib/projectPermissions';
 import EditProjectTeamModal from '../components/EditProjectTeamModal';
+import DeleteConfirmModal from '../components/DeleteConfirmModal';
+import {
+  dispatchProjectTeamChanged,
+  PROJECTS_UPDATED_EVENT,
+  PROJECT_TASK_STATS_CHANGED_EVENT,
+  WORKSPACE_REFRESH_EVENT,
+} from '../lib/workspaceEvents';
+import { isChefDeProjetMemberRole } from '../lib/projectRoleLabels';
 import './ProjectDetail.css';
-
-const PROJECTS_UPDATED_EVENT = 'projects:updated';
 
 function toDateInputValue(iso: string | undefined | null): string {
   if (!iso) return '';
@@ -102,6 +118,19 @@ const ProjectDetail: React.FC = () => {
   const [editDateFin, setEditDateFin] = useState('');
   const [editDateError, setEditDateError] = useState('');
   const [savingInfo, setSavingInfo] = useState(false);
+  const [memberToRemove, setMemberToRemove] = useState<
+    NonNullable<Projet['projectTeam']>[number] | null
+  >(null);
+  const [removingMember, setRemovingMember] = useState(false);
+  const [removeMemberError, setRemoveMemberError] = useState<string | null>(null);
+  const [taskStats, setTaskStats] = useState<{
+    totalTasks: number;
+    completedTasks: number;
+    inProgressTasks: number;
+    lateTasks: number;
+    todoTasks: number;
+    avancement: number;
+  } | null>(null);
 
   const pp = useMemo(
     () => project?.currentUserPermissions ?? [],
@@ -120,6 +149,14 @@ const ProjectDetail: React.FC = () => {
       (projectCan(pp, 'manage_project_members') ||
         canManageProjectTeam(user, project)));
   const canEditProjectInfo = canManageProjectActions;
+  const chefDeProjetId =
+    project?.chef_id ?? project?.chef_de_projet_id ?? null;
+
+  const canRemoveTeamMember = (row: NonNullable<Projet['projectTeam']>[number]) => {
+    if (!canManageMembers || !project) return false;
+    if (chefDeProjetId != null && row.userId === chefDeProjetId) return false;
+    return true;
+  };
 
   const resetEditForm = () => {
     if (!project) return;
@@ -161,20 +198,38 @@ const ProjectDetail: React.FC = () => {
     }
   };
 
-  const fetchProject = async (projectId: number) => {
+  const fetchTaskStats = async (projectId: number) => {
     try {
-      setLoading(true);
+      const stats = await projectService.getStats(projectId);
+      setTaskStats({
+        totalTasks: stats.totalTasks ?? stats.tachesCount ?? 0,
+        completedTasks: stats.completedTasks ?? 0,
+        inProgressTasks: stats.inProgressTasks ?? 0,
+        lateTasks: stats.lateTasks ?? 0,
+        todoTasks: stats.todoTasks ?? 0,
+        avancement: stats.avancement ?? stats.progressPercent ?? 0,
+      });
+    } catch (error) {
+      console.error('Failed to fetch project task stats:', error);
+    }
+  };
+
+  const fetchProject = async (projectId: number, options?: { silent?: boolean }) => {
+    try {
+      if (!options?.silent) setLoading(true);
       setForbidden(false);
       const data = await projectService.getById(projectId);
       setProject(data);
+      void fetchTaskStats(projectId);
     } catch (error: unknown) {
       const status = (error as { response?: { status?: number } })?.response?.status;
       if (status === 403) {
         setForbidden(true);
         setProject(null);
+        setTaskStats(null);
       } else {
         console.error('Failed to fetch project:', error);
-        setProject(null);
+        if (!options?.silent) setProject(null);
       }
     } finally {
       setLoading(false);
@@ -188,6 +243,28 @@ const ProjectDetail: React.FC = () => {
         void fetchProject(pid);
       }
     }
+  }, [id]);
+
+  useEffect(() => {
+    if (!id) return;
+    const pid = parseInt(id, 10);
+    if (!Number.isFinite(pid) || pid <= 0) return;
+    const refreshStats = (e?: Event) => {
+      const detail = (e as CustomEvent<{ projectId?: number }> | undefined)?.detail;
+      if (detail?.projectId != null && detail.projectId !== pid) return;
+      void fetchTaskStats(pid);
+    };
+    const refreshAll = () => {
+      void fetchProject(pid, { silent: true });
+    };
+    window.addEventListener(PROJECT_TASK_STATS_CHANGED_EVENT, refreshStats);
+    window.addEventListener(PROJECTS_UPDATED_EVENT, refreshStats);
+    window.addEventListener(WORKSPACE_REFRESH_EVENT, refreshAll);
+    return () => {
+      window.removeEventListener(PROJECT_TASK_STATS_CHANGED_EVENT, refreshStats);
+      window.removeEventListener(PROJECTS_UPDATED_EVENT, refreshStats);
+      window.removeEventListener(WORKSPACE_REFRESH_EVENT, refreshAll);
+    };
   }, [id]);
 
   const handleSaveProjectInfo = async () => {
@@ -219,6 +296,47 @@ const ProjectDetail: React.FC = () => {
       console.error(e);
     } finally {
       setSavingInfo(false);
+    }
+  };
+
+  const handleConfirmRemoveMember = async () => {
+    if (!project?.id_projet || !memberToRemove || !projectCtx) return;
+    setRemovingMember(true);
+    setRemoveMemberError(null);
+    try {
+      const result = await projectService.removeTeamMember(
+        project.id_projet,
+        memberToRemove.userId,
+        { project: projectCtx, user },
+      );
+      setProject((prev) =>
+        prev
+          ? {
+              ...prev,
+              projectTeam: result.projectTeam,
+              membre_projet: result.projectTeam.map((m) => ({
+                id_utilisateur: m.userId,
+                role_projet: m.roleProjet,
+              })),
+              _count: {
+                ...prev._count,
+                tache: prev._count?.tache ?? 0,
+                membres: result.memberCount,
+              },
+            }
+          : prev,
+      );
+      dispatchProjectTeamChanged({ projectId: project.id_projet });
+      window.dispatchEvent(new CustomEvent(PROJECTS_UPDATED_EVENT));
+      setMemberToRemove(null);
+    } catch (err: unknown) {
+      const msg =
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message ||
+        "Impossible de retirer ce membre du projet.";
+      setRemoveMemberError(msg);
+    } finally {
+      setRemovingMember(false);
     }
   };
 
@@ -480,20 +598,65 @@ const ProjectDetail: React.FC = () => {
                       <th>Membre</th>
                       <th>Email</th>
                       <th>Rôle dans le projet</th>
+                      {canManageMembers && <th className="project-detail-team-actions-th">Actions</th>}
                     </tr>
                   </thead>
                   <tbody>
-                    {project.projectTeam.map((row) => (
+                    {project.projectTeam.map((row) => {
+                      const memberLabel =
+                        `${row.prenom || ''} ${row.nom || ''}`.trim() || row.email;
+                      const isProjectChef =
+                        chefDeProjetId != null && row.userId === chefDeProjetId;
+                      const isLastChef =
+                        isChefDeProjetMemberRole(row.roleProjet) &&
+                        project.projectTeam!.filter(
+                          (m) =>
+                            m.userId !== row.userId &&
+                            isChefDeProjetMemberRole(m.roleProjet),
+                        ).length === 0;
+                      const removeBlocked = isProjectChef || isLastChef;
+                      return (
                       <tr key={`${row.userId}-${row.email}`}>
                         <td className="project-detail-team-name">
-                          {(row.prenom || '')} {(row.nom || '')}
+                          {memberLabel}
+                          {isProjectChef && (
+                            <span className="project-detail-team-responsable-tag">
+                              Responsable
+                            </span>
+                          )}
                         </td>
                         <td className="project-detail-team-email">{row.email}</td>
                         <td>
                           <span className="project-detail-role-badge">{row.roleProjet}</span>
                         </td>
+                        {canManageMembers && (
+                          <td className="project-detail-team-actions">
+                            {canRemoveTeamMember(row) ? (
+                              <button
+                                type="button"
+                                className="project-detail-team-remove-btn"
+                                aria-label={`Retirer ${memberLabel} du projet`}
+                                title={
+                                  removeBlocked
+                                    ? 'Assignez un autre Chef de projet avant de retirer ce membre'
+                                    : 'Retirer du projet'
+                                }
+                                disabled={removeBlocked}
+                                onClick={() => {
+                                  setRemoveMemberError(null);
+                                  setMemberToRemove(row);
+                                }}
+                              >
+                                <Trash2 size={16} aria-hidden />
+                              </button>
+                            ) : (
+                              <span className="project-detail-team-actions-muted">—</span>
+                            )}
+                          </td>
+                        )}
                       </tr>
-                    ))}
+                    );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -535,15 +698,28 @@ const ProjectDetail: React.FC = () => {
             <div className="project-detail-stats-strip">
               <div className="project-detail-mini-stat project-detail-mini-stat--tasks">
                 <CheckSquare size={18} className="project-detail-mini-stat-icon" aria-hidden />
-                <span>{project._count?.tache || 0} Tâches</span>
+                <span>
+                  {taskStats?.totalTasks ??
+                    project.totalTasks ??
+                    project.tachesCount ??
+                    project._count?.tache ??
+                    0}{' '}
+                  Tâches
+                </span>
               </div>
               <div className="project-detail-mini-stat project-detail-mini-stat--members">
                 <Users size={18} className="project-detail-mini-stat-icon" aria-hidden />
-                <span>{project.membre_projet?.length || 0} Membres</span>
+                <span>{project.projectTeam?.length ?? project.membre_projet?.length ?? 0} Membres</span>
               </div>
               <div className="project-detail-mini-stat project-detail-mini-stat--progress">
                 <Clock size={18} className="project-detail-mini-stat-icon" aria-hidden />
-                <span>{project.avancement || 0}% Avancement</span>
+                <span>
+                  {taskStats?.avancement ??
+                    project.avancement ??
+                    project.progressPercent ??
+                    0}
+                  % Avancement
+                </span>
               </div>
             </div>
           </section>
@@ -559,6 +735,29 @@ const ProjectDetail: React.FC = () => {
         project={project}
         onClose={() => setTeamModalOpen(false)}
         onSuccess={() => void fetchProject(project.id_projet)}
+      />
+
+      <DeleteConfirmModal
+        open={memberToRemove != null}
+        itemName={
+          memberToRemove
+            ? `${memberToRemove.prenom || ''} ${memberToRemove.nom || ''}`.trim() ||
+              memberToRemove.email
+            : ''
+        }
+        title="Retirer du projet"
+        descriptionLine="Voulez-vous retirer ce membre du projet ?"
+        showIrreversibleNote={false}
+        confirmLabel="Retirer"
+        loading={removingMember}
+        errorMessage={removeMemberError}
+        onCancel={() => {
+          if (!removingMember) {
+            setMemberToRemove(null);
+            setRemoveMemberError(null);
+          }
+        }}
+        onConfirm={() => void handleConfirmRemoveMember()}
       />
     </motion.div>
   );

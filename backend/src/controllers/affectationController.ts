@@ -5,7 +5,9 @@ import {
   getProjectPermissionContext,
 } from "../services/projectPermission.service";
 
-const CHEF_ROLE_LABEL = "Chef de Projet";
+import { resolveProjectPosteLabel } from "../lib/projectRoleLabels";
+
+const CHEF_ROLE_LABEL = "Chef de projet";
 
 async function upsertMembreProjetStandalone(
   projetId: number,
@@ -219,8 +221,9 @@ export const assignMembersToProjet = async (req: Request, res: Response) => {
 
     const users = await prisma.utilisateur.findMany({
       where: {
-        id_utilisateur: { in: usersIds }
-      }
+        id_utilisateur: { in: usersIds },
+      },
+      select: { id_utilisateur: true, poste: true },
     });
 
     if (users.length !== usersIds.length) {
@@ -251,11 +254,13 @@ export const assignMembersToProjet = async (req: Request, res: Response) => {
         where: { id_projet: idProjet, id_utilisateur: uid },
       });
       if (!ex) {
+        const u = users.find((row) => row.id_utilisateur === uid);
+        const roleLabel = resolveProjectPosteLabel(u?.poste || "Membre");
         await prisma.membre_projet.create({
           data: {
             id_projet: idProjet,
             id_utilisateur: uid,
-            role_projet: "Membre",
+            role_projet: roleLabel,
           },
         });
       }

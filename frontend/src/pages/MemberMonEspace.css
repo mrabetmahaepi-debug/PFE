@@ -1,0 +1,178 @@
+/**
+ * Member → Mon espace — lock page scroll; only Recent list scrolls.
+ * Navbar height must match .navbar.navbar--member-mon-espace (52px).
+ */
+:root {
+  --member-mon-espace-navbar-h: 52px;
+  --member-mon-espace-outer-pad: 24px;
+}
+
+/* Prevent shell / layout scroll */
+.coach-layout--member-space:has(.mon-espace-page),
+.coach-layout--member-workspace:has(.mon-espace-page) {
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
+}
+
+.coach-layout--member-space:has(.mon-espace-page) .coach-app-shell,
+.coach-layout--member-workspace:has(.mon-espace-page) .coach-app-shell {
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
+}
+
+/* Main column: no document scroll */
+.coach-layout--member-space .main-content:has(.mon-espace-page),
+.coach-layout--member-workspace .main-content:has(.mon-espace-page) {
+  height: 100vh;
+  max-height: 100vh;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.coach-layout--member-space .page-wrapper.page-wrapper--member-mon-espace,
+.coach-layout--member-workspace .page-wrapper.page-wrapper--member-mon-espace,
+.coach-layout--member-space .page-wrapper:has(.mon-espace-page),
+.coach-layout--member-workspace .page-wrapper:has(.mon-espace-page) {
+  overflow: hidden !important;
+  overflow-y: hidden !important;
+  flex: 0 0 auto;
+  height: calc(100vh - var(--member-mon-espace-navbar-h));
+  max-height: calc(100vh - var(--member-mon-espace-navbar-h));
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.coach-layout--member-space .page-wrapper:has(.mon-espace-page) > *,
+.coach-layout--member-workspace .page-wrapper:has(.mon-espace-page) > * {
+  height: 100%;
+  max-height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+/* Mon espace page shell */
+.mon-espace-page.workspace-page--member-overview,
+.workspace-page.mon-espace-page {
+  height: 100%;
+  max-height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  padding: 0;
+  gap: 0;
+  background: #f6f7f9;
+}
+
+.mon-espace-page .workspace-layout,
+.mon-espace-page .workspace-main {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.mon-espace-page .workspace-main {
+  background: #f6f7f9;
+  padding: 0;
+}
+
+.mon-espace-page .ms-dashboard--mon-espace {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  box-sizing: border-box;
+  background: transparent;
+}
+
+.mon-espace-page .ms-dashboard--mon-espace > * {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Cards row — fixed height below navbar + outer padding */
+.mon-espace-page .ms-dashboard-grid {
+  height: calc(100vh - var(--member-mon-espace-navbar-h) - var(--member-mon-espace-outer-pad));
+  max-height: calc(100vh - var(--member-mon-espace-navbar-h) - var(--member-mon-espace-outer-pad));
+  min-height: 0;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  align-items: stretch;
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
+}
+
+.mon-espace-page .ms-card--workload {
+  align-self: start;
+  overflow: visible;
+  max-height: 100%;
+}
+
+/* Recent card — only list scrolls */
+.mon-espace-page .ms-card--recent {
+  height: 100%;
+  max-height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.mon-espace-page .ms-card--recent .ms-card-head {
+  flex-shrink: 0;
+}
+
+.mon-espace-page .ms-card--recent .ms-recent-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 4px 0 8px;
+  scrollbar-width: thin;
+  scrollbar-color: #d1d5db transparent;
+}
+
+.mon-espace-page .ms-card--recent .ms-recent-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.mon-espace-page .ms-card--recent .ms-recent-list::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 999px;
+}
+
+.mon-espace-page .ms-card--recent .ms-empty {
+  min-height: 160px;
+}
+
+.mon-espace-page .ms-dashboard--mon-espace.ms-dashboard--loading {
+  height: calc(100vh - var(--member-mon-espace-navbar-h) - var(--member-mon-espace-outer-pad));
+  max-height: calc(100vh - var(--member-mon-espace-navbar-h) - var(--member-mon-espace-outer-pad));
+  justify-content: center;
+}
+
+@media (max-width: 1024px) {
+  .mon-espace-page .ms-dashboard-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 1fr) auto;
+  }
+}

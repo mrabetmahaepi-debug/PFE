@@ -1,0 +1,207 @@
+/**
+ * ClickUp-style pointer + press feedback (hover lift, active press-in).
+ */
+
+:root {
+  --cu-press-hover-bg: #f7f5ff;
+  --cu-press-ease: all 0.15s ease;
+}
+
+/* ── Shared press targets ─────────────────────────────────────── */
+
+.cu-pressable,
+.cu-spaces-tree-main:not(.cu-spaces-tree-main--label),
+.cu-spaces-tree-main--subtask-edit,
+.cu-spaces-tree-chevron,
+.cu-spaces-tree-menu-btn,
+.cu-spaces-tree-add-btn,
+.cu-nav-item,
+.cu-nav-item--nested,
+.cu-create-btn,
+.cu-create-menu button,
+.cu-collapse-btn,
+.cu-section-toggle,
+.cu-tree-item,
+.cu-tree-item-main,
+.cu-tree-chevron,
+.cu-tree-icon-btn,
+.cu-tree-add,
+.ms-recent-row:not(:disabled),
+.member-stats-card--clickable,
+.member-dashboard-stat-card--clickable,
+.mtd-subtasks-item-btn,
+.mtd-subtasks-item-row,
+.cu-kanban-card-click,
+.cu-kanban-column-add,
+.task-row-item,
+.task-card,
+.project-card,
+.project-super-card,
+.premium-card--interactive,
+.virtide-btn:not(:disabled),
+.primary-btn:not(:disabled),
+.secondary-btn:not(:disabled),
+.cu-hero-btn:not(:disabled),
+.cu-header-btn:not(:disabled),
+.navbar-icon-btn,
+.profile-mini-v2,
+.result-item,
+.profile-dropdown .dropdown-item,
+.member-tasks-sidebar-link,
+.member-tasks-sidebar-parent,
+.subtask-delete-btn:not(:disabled),
+.editable-subtask-name-edit,
+.cu-clickup-menu-item,
+.ws-filter-dropdown-trigger {
+  cursor: pointer;
+  transition: var(--cu-press-ease);
+}
+
+/* ── Hover: lift + tint ───────────────────────────────────────── */
+
+.cu-pressable:hover:not(:disabled):not([aria-disabled='true']),
+.cu-spaces-tree-main:not(.cu-spaces-tree-main--label):hover:not(:disabled),
+.cu-spaces-tree-main--subtask-edit:hover,
+.cu-spaces-tree-chevron:hover:not(:disabled),
+.cu-spaces-tree-menu-btn:hover,
+.cu-spaces-tree-add-btn:hover,
+.cu-nav-item:hover:not(.is-active),
+.cu-nav-item--nested:hover,
+.cu-create-btn:hover:not(:disabled),
+.cu-create-menu button:hover,
+.cu-collapse-btn:hover,
+.cu-section-toggle:hover,
+.cu-tree-item:hover,
+.cu-tree-item-main:hover,
+.cu-tree-chevron:hover,
+.cu-tree-icon-btn:hover,
+.cu-tree-add:hover,
+.ms-recent-row:hover:not(:disabled),
+.member-stats-card--clickable:hover,
+.member-dashboard-stat-card--clickable:hover,
+.mtd-subtasks-item-btn:hover,
+.mtd-subtasks-item-row:hover,
+.cu-kanban-card-wrap:not(.is-dragging):hover .cu-kanban-card,
+.cu-kanban-column-add:hover,
+.task-row-item:hover,
+.task-card:hover,
+.project-card:hover,
+.project-super-card:hover,
+.premium-card--interactive:hover,
+.virtide-btn:hover:not(:disabled),
+.primary-btn:hover:not(:disabled),
+.secondary-btn:hover:not(:disabled),
+.cu-hero-btn:hover:not(:disabled),
+.cu-header-btn:hover:not(:disabled),
+.navbar-icon-btn:hover,
+.profile-mini-v2:hover,
+.result-item:hover,
+.profile-dropdown .dropdown-item:hover,
+.member-tasks-sidebar-link:hover,
+.member-tasks-sidebar-parent:hover,
+.cu-clickup-menu-item:hover,
+.ws-filter-dropdown-trigger:hover {
+  background: var(--cu-press-hover-bg);
+}
+
+.cu-pressable:hover:not(:disabled):not([aria-disabled='true']),
+.cu-spaces-tree-main:not(.cu-spaces-tree-main--label):hover:not(:disabled),
+.cu-spaces-tree-chevron:hover:not(:disabled),
+.cu-nav-item:hover,
+.cu-tree-item:hover,
+.ms-recent-row:hover:not(:disabled),
+.member-stats-card--clickable:hover,
+.mtd-subtasks-item-row:hover,
+.cu-kanban-card-wrap:not(.is-dragging):hover,
+.task-row-item:hover,
+.project-card:hover,
+.virtide-btn:hover:not(:disabled),
+.primary-btn:hover:not(:disabled),
+.secondary-btn:hover:not(:disabled),
+.result-item:hover,
+.member-tasks-sidebar-link:hover {
+  transform: translateY(-1px);
+}
+
+/* Active nav / tree — keep tint, still allow press (light sidebar only) */
+.cu-nav-item.is-active:hover,
+.cu-spaces-tree-row.is-active .cu-spaces-tree-main:hover,
+.cu-tree-item.is-active:hover {
+  background: #f3f1fd;
+}
+
+/* ── Dark member sidebar: never apply light (#f7f5ff) hover / lift ─ */
+.cu-sidebar--member-dark .cu-spaces-tree-main:hover,
+.cu-sidebar--member-dark .cu-spaces-tree-main--subtask-edit:hover,
+.cu-sidebar--member-dark .cu-spaces-tree-row.is-active .cu-spaces-tree-main:hover {
+  background: transparent !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.cu-sidebar--member-dark .cu-spaces-tree-row:hover,
+.cu-sidebar--member-dark .cu-spaces-tree-row.is-active,
+.cu-sidebar--member-dark .cu-spaces-tree-chevron:hover,
+.cu-sidebar--member-dark .cu-spaces-tree-menu-btn:hover,
+.cu-sidebar--member-dark .cu-spaces-tree-add-btn:hover,
+.cu-sidebar--member-dark .cu-nav-item:hover,
+.cu-sidebar--member-dark .member-tasks-sidebar-parent:hover,
+.cu-sidebar--member-dark .member-tasks-sidebar-link:hover,
+.cu-sidebar--member-dark nav a:hover,
+.cu-sidebar--member-dark .cu-pressable:hover {
+  transform: none !important;
+}
+
+/* Kanban card hover (card surface, not wrapper bg) */
+.cu-kanban-card-wrap:not(.is-dragging):hover .cu-kanban-card {
+  border-color: #d8dce3;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
+  transform: translateY(-1px);
+}
+
+/* Click feedback is handled by CursorClickEffect (pointer ring only). */
+
+/* ── Disabled ─────────────────────────────────────────────────── */
+
+.cu-pressable:disabled,
+.cu-pressable[aria-disabled='true'],
+button:disabled,
+.ms-recent-row:disabled {
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+  opacity: 0.55;
+}
+
+/* ── Exclusions (no press on form controls) ─────────────────── */
+
+input,
+textarea,
+select,
+.editable-subtask-name-input,
+.editable-subtask-name--editing {
+  cursor: text;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+input[type='checkbox'],
+input[type='radio'],
+input[type='button'],
+input[type='submit'],
+button input {
+  cursor: pointer;
+}
+
+/* Delete btn — red hover tint */
+.subtask-delete-btn:hover:not(:disabled) {
+  background: #fdecea;
+  color: #c93c37;
+}
+
+/* Dragging — no hover lift */
+.cu-kanban-board.is-dragging .cu-kanban-card-click,
+.cu-kanban-card-wrap.is-dragging {
+  transform: none !important;
+  box-shadow: none !important;
+}

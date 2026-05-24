@@ -1,5 +1,7 @@
 import prisma from "../prisma/prismaClient";
 import { roleNomSelect } from "./utilisateurSelect";
+import { resolveProjectPosteLabel } from "./projectRoleLabels";
+import { logRoleAssignment } from "./roleAssignmentLog";
 
 export type CreateUtilisateurSafeInput = {
   email: string;
@@ -21,6 +23,8 @@ const reloadAfterRawSelect = {
   password: true,
   id_role: true,
   id_entreprise: true,
+  poste: true,
+  telephone: true,
   statut: true,
   role: { select: roleNomSelect },
 } as const;
@@ -33,6 +37,7 @@ const reloadMinimalSelect = {
   password: true,
   id_role: true,
   id_entreprise: true,
+  poste: true,
   role: { select: roleNomSelect },
 } as const;
 
@@ -73,6 +78,9 @@ async function readCreatedUser(id: number) {
  */
 export async function createUtilisateurSafe(input: CreateUtilisateurSafeInput) {
   const statut = input.statut ?? "ACTIVE";
+  const selectedRole = input.poste != null ? String(input.poste).trim() : "";
+  const resolvedPoste = selectedRole ? resolveProjectPosteLabel(selectedRole) : null;
+
   const data: Record<string, unknown> = {
     email: input.email,
     id_role: input.id_role,
@@ -84,11 +92,12 @@ export async function createUtilisateurSafe(input: CreateUtilisateurSafeInput) {
   if (input.password != null && input.password !== "") {
     data.password = input.password;
   }
-  if (input.poste != null) data.poste = input.poste;
+  if (resolvedPoste) data.poste = resolvedPoste;
   if (input.telephone != null) data.telephone = input.telephone;
 
+  let created: any;
   try {
-    return await prisma.utilisateur.create({
+    created = await prisma.utilisateur.create({
       data: data as any,
       include: { role: true },
     });
@@ -100,9 +109,22 @@ export async function createUtilisateurSafe(input: CreateUtilisateurSafeInput) {
     );
   }
 
+  if (created) {
+    logRoleAssignment("createUtilisateurSafe", {
+      selectedRole: selectedRole || null,
+      savedRole: resolvedPoste,
+      loadedRole: created.poste ?? resolvedPoste,
+      globalRoleNom: created.role?.nom ?? null,
+      poste: created.poste ?? resolvedPoste,
+      userId: created.id_utilisateur,
+      email: created.email,
+    });
+    return created;
+  }
+
   const idEnt = input.id_entreprise ?? null;
   const pwd = input.password ?? null;
-  const poste = input.poste ?? null;
+  const poste = resolvedPoste;
   const tel = input.telephone ?? null;
 
   const newId = await prisma.$transaction(async (tx) => {
@@ -158,5 +180,15 @@ export async function createUtilisateurSafe(input: CreateUtilisateurSafeInput) {
     throw new Error("Échec création utilisateur (identifiant invalide)");
   }
 
-  return readCreatedUser(newId);
+  const reloaded = await readCreatedUser(newId);
+  logRoleAssignment("createUtilisateurSafe:legacy", {
+    selectedRole: selectedRole || null,
+    savedRole: resolvedPoste,
+    loadedRole: reloaded.poste ?? resolvedPoste,
+    globalRoleNom: reloaded.role?.nom ?? null,
+    poste: reloaded.poste ?? resolvedPoste,
+    userId: reloaded.id_utilisateur,
+    email: reloaded.email,
+  });
+  return reloaded;
 }

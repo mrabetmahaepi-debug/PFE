@@ -52,3 +52,19 @@
 .cu-view-tab--active .cu-view-tab-icon {
   color: #7b68ee;
 }
+
+.cu-view-tab--add {
+  margin-left: 2px;
+  color: #87909e;
+  font-weight: 500;
+}
+
+.cu-view-tab--add:hover {
+  color: #7b68ee;
+  background: #f8f7ff;
+  border-radius: 6px 6px 0 0;
+}
+
+.cu-view-tab--add .cu-view-tab-icon {
+  opacity: 1;
+}
