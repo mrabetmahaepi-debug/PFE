@@ -35,6 +35,7 @@ const CANONICAL_BY_KEY = new Map<string, ProjectPosteOption>(
 
 const ALIASES: Record<string, ProjectPosteOption> = {
   chef_projet: 'Chef de projet',
+  'chef projet': 'Chef de projet',
   'chef de projet': 'Chef de projet',
   'project manager': 'Chef de projet',
   pm: 'Chef de projet',

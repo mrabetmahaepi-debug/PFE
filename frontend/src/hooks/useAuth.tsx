@@ -124,6 +124,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           id_role: data.id_role ?? prev.id_role,
           id_entreprise: data.id_entreprise ?? prev.id_entreprise,
           role: data.role ?? prev.role,
+          poste: data.poste?.trim() || prev.poste,
           isSuperAdmin: data.isSuperAdmin ?? prev.isSuperAdmin,
         };
         localStorage.setItem('user', JSON.stringify(next));

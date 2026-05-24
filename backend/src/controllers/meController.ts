@@ -10,6 +10,7 @@ import {
   isAdminAccountType,
   isUtilisateurAccountType,
 } from "../lib/permissionProfiles";
+import { resolveProjectPosteLabel } from "../lib/projectRoleLabels";
 import { resolvePermissionsForUserProfile } from "../services/permissionProfile.service";
 
 /**
@@ -68,8 +69,13 @@ export const getMyPermissions = async (req: Request, res: Response) => {
 
     const permissionSet = new Set(permissionNames);
 
+    const posteRaw =
+      dbUser.poste != null ? String(dbUser.poste).trim() : "";
+    const posteLabel = posteRaw ? resolveProjectPosteLabel(posteRaw) : null;
+
     return res.json({
       role: (dbUser as any).role?.nom ?? null,
+      poste: posteLabel ?? posteRaw || null,
       id_role: dbUser.id_role ?? null,
       id_entreprise: dbUser.id_entreprise ?? null,
       isSuperAdmin: superAdmin,

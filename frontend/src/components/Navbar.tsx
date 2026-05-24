@@ -35,6 +35,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '../lib/cn';
 import { cu } from '../lib/cu-styles';
 import { isGlobalMember, isEnterpriseAdmin } from '../lib/permissions';
+import { resolveAccountRoleLabel } from '../lib/accountRoleDisplay';
 import { parseMemberTasksView } from '../lib/memberTasksViews';
 import {
   adminDashboardDisplayName,
@@ -515,7 +516,7 @@ const Navbar: React.FC = () => {
                     <strong>{displayName}</strong>
                     <span>{user?.email || '—'}</span>
                     <span className="profile-dropdown-role">
-                      {typeof user?.role === 'string' ? user.role : user?.role?.nom || t('navbar.member')} ·{' '}
+                      {resolveAccountRoleLabel(user)} ·{' '}
                       {user?.entreprise?.nom || t('navbar.workspace')}
                     </span>
                   </div>

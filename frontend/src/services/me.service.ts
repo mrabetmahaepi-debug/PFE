@@ -15,6 +15,7 @@ export interface MePermissionGroup {
 
 export interface MePermissionsResponse {
   role: string | null;
+  poste?: string | null;
   id_role: number | null;
   id_entreprise: number | null;
   isSuperAdmin: boolean;
