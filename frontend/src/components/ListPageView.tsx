@@ -29,7 +29,6 @@ import ListTaskView from './ListTaskView';
 import KanbanBoardView from './KanbanBoardView';
 import CalendarTaskView from './CalendarTaskView';
 import TableurTaskView from './TableurTaskView';
-import CanalTaskView from './CanalTaskView';
 import GanttTaskView from './GanttTaskView';
 import ClickUpListViewTabs, {
   type ClickUpViewTabId,
@@ -537,9 +536,7 @@ const ListPageView: React.FC<ListPageViewProps> = ({
             ? 'list-page-body--tableur'
             : viewMode === 'gantt'
               ? 'list-page-body--gantt'
-              : viewMode === 'canal'
-                ? 'list-page-body--canal'
-                : '';
+              : '';
 
     return (
       <ListPageProvider value={listPageContextValue}>
@@ -608,7 +605,6 @@ const ListPageView: React.FC<ListPageViewProps> = ({
               </div>
             ) : (
               <>
-                {viewMode === 'canal' && <CanalTaskView listId={listId} />}
                 {viewMode === 'list' && (
                   <ListTaskView
                     listId={listId}

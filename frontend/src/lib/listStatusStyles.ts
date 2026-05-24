@@ -12,7 +12,7 @@ export type StatusTone =
 const TONE_BY_KEY: Record<string, StatusTone> = {
   todo: 'gray',
   todo_open: 'gray',
-  en_cours: 'blue',
+  en_cours: 'purple',
   en_retard: 'orange',
   terminee: 'green',
   bloquee: 'red',

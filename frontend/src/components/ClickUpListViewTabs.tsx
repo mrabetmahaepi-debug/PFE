@@ -2,16 +2,13 @@ import React from 'react';
 import {
   Calendar,
   ChartGantt,
-  Hash,
   LayoutGrid,
   LayoutList,
-  Plus,
   Sheet,
 } from 'lucide-react';
 import './ClickUpListViewTabs.css';
 
 export type ClickUpViewTabId =
-  | 'canal'
   | 'list'
   | 'board'
   | 'calendar'
@@ -21,7 +18,6 @@ export type ClickUpViewTabId =
 export interface ClickUpListViewTabsProps {
   activeTab: ClickUpViewTabId;
   onTabChange: (tab: ClickUpViewTabId) => void;
-  onAddView?: () => void;
 }
 
 const TABS: {
@@ -29,7 +25,6 @@ const TABS: {
   label: string;
   icon: React.ReactNode;
 }[] = [
-  { id: 'canal', label: 'Canal', icon: <Hash size={15} /> },
   { id: 'list', label: 'Liste', icon: <LayoutList size={15} /> },
   { id: 'board', label: 'Tableau', icon: <LayoutGrid size={15} /> },
   { id: 'calendar', label: 'Calendrier', icon: <Calendar size={15} /> },
@@ -40,7 +35,6 @@ const TABS: {
 const ClickUpListViewTabs: React.FC<ClickUpListViewTabsProps> = ({
   activeTab,
   onTabChange,
-  onAddView,
 }) => {
   return (
     <nav className="cu-view-tabs" aria-label="Vues de la liste">
@@ -63,19 +57,6 @@ const ClickUpListViewTabs: React.FC<ClickUpListViewTabsProps> = ({
             {tab.label}
           </button>
         ))}
-        <button
-          type="button"
-          className="cu-view-tab cu-view-tab--add"
-          aria-label="Ajouter une vue"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            onAddView?.();
-          }}
-        >
-          <Plus size={14} aria-hidden />
-          Vue
-        </button>
       </div>
     </nav>
   );

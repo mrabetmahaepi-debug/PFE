@@ -1,0 +1,78 @@
+/* Shared workflow status badge sizing — Liste, Tableau, Tableur */
+.cu-kanban-status-badge,
+.status-badge,
+.status-badge-select,
+.cu-tableur-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.3;
+}
+
+.status-badge,
+.status-badge-select,
+.cu-tableur-status-badge {
+  text-transform: uppercase;
+}
+
+.cu-kanban-status-badge {
+  text-transform: uppercase;
+}
+
+.status-badge::before,
+.status-badge-select::before,
+.cu-tableur-status-badge::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ClickUp list — group header badges (À FAIRE, EN COURS, …) */
+.list-page--clickup .list-status-name {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1.3;
+}
+
+.list-page--clickup .list-status-name::before {
+  display: none;
+}
+
+.list-page--clickup .list-status-group[data-tone='gray'] .list-status-name {
+  background: #e8eaed;
+  color: #646f79;
+}
+
+.list-page--clickup .list-status-group[data-tone='blue'] .list-status-name,
+.list-page--clickup .list-status-group[data-tone='purple'] .list-status-name {
+  background: #ede9fe;
+  color: #7b68ee;
+}
+
+.list-page--clickup .list-status-group[data-tone='green'] .list-status-name {
+  background: #d1fae5;
+  color: #047857;
+}
+
+.list-page--clickup .list-status-group[data-tone='orange'] .list-status-name {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.list-page--clickup .list-status-group[data-tone='red'] .list-status-name {
+  background: #fef2f2;
+  color: #dc2626;
+}
