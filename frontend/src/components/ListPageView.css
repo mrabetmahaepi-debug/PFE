@@ -391,3 +391,18 @@
 .link-btn:hover {
   text-decoration: underline;
 }
+
+.list-page-empty-accessible {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-height: 200px;
+  padding: 2rem;
+  color: var(--text-muted, #6b7280);
+  font-size: 14px;
+}
+
+.list-page-empty-accessible p {
+  margin: 0;
+}

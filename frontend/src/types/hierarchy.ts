@@ -124,6 +124,8 @@ export interface ListDetail {
     done: number;
     total: number;
   };
+  currentUserProjectRole?: string | null;
+  currentUserPermissions?: string[];
 }
 
 export interface ListStatusPM {

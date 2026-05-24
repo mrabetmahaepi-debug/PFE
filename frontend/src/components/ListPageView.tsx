@@ -50,6 +50,7 @@ import { useAuth } from '../hooks/useAuth';
 import { usePermission } from '../hooks/usePermission';
 import { getRoleKey, isGlobalMember } from '../lib/permissions';
 import { canChangeTaskStatusForTask, resolveEffectiveProjectPermissions } from '../lib/projectPermissions';
+import { permissionDeniedFromError } from '../lib/permissionDenied';
 import { useSetMemberTopbarTitle } from '../context/MemberTopbarTitleContext';
 import './ListPageView.css';
 
@@ -156,16 +157,42 @@ const ListPageView: React.FC<ListPageViewProps> = ({
       ]);
       setListDetail(detail);
       setTasks(listTasks);
-      const p = await projectService.getById(detail.id_projet);
-      setProjectDetail(p);
-    } catch (err: any) {
+
+      if (detail.currentUserPermissions?.length) {
+        setProjectDetail({
+          id_projet: detail.id_projet,
+          nom_p: detail.projet?.nom_p ?? 'Projet',
+          currentUserPermissions: detail.currentUserPermissions,
+          currentUserProjectRole: detail.currentUserProjectRole ?? null,
+        } as Projet);
+      }
+
+      try {
+        const p = await projectService.getById(detail.id_projet);
+        setProjectDetail(p);
+      } catch (projectErr: unknown) {
+        const ax = projectErr as { response?: { status?: number } };
+        if (ax?.response?.status === 403 && !detail.currentUserPermissions?.length) {
+          throw projectErr;
+        }
+        if (!detail.currentUserPermissions?.length) {
+          setProjectDetail(null);
+        }
+      }
+    } catch (err: unknown) {
       setListDetail(null);
       setTasks([]);
-      setError(
-        err?.response?.data?.message ||
-          err?.message ||
-          'Impossible de charger la liste'
-      );
+      const ax = err as { response?: { status?: number } };
+      if (ax?.response?.status === 403) {
+        setError(permissionDeniedFromError(err));
+      } else {
+        const anyErr = err as { response?: { data?: { message?: string } }; message?: string };
+        setError(
+          anyErr?.response?.data?.message ||
+            anyErr?.message ||
+            'Impossible de charger la liste'
+        );
+      }
     } finally {
       setLoading(false);
     }
@@ -565,19 +592,27 @@ const ListPageView: React.FC<ListPageViewProps> = ({
             className={`list-page-body list-page-body--clickup ${bodyModeClass}`.trim()}
             data-view-mode={viewMode}
           >
-            {viewMode === 'canal' && <CanalTaskView listId={listId} />}
-            {viewMode === 'list' && (
-              <ListTaskView
-                listId={listId}
-                searchQuery={listSearch}
-                showClosed={showClosed}
-                visibleColumns={visibleColumns}
-              />
+            {!loading && tasks.length === 0 ? (
+              <div className="list-page-empty-accessible" role="status">
+                <p>Aucune tâche accessible</p>
+              </div>
+            ) : (
+              <>
+                {viewMode === 'canal' && <CanalTaskView listId={listId} />}
+                {viewMode === 'list' && (
+                  <ListTaskView
+                    listId={listId}
+                    searchQuery={listSearch}
+                    showClosed={showClosed}
+                    visibleColumns={visibleColumns}
+                  />
+                )}
+                {viewMode === 'board' && <KanbanBoardView listId={listId} />}
+                {viewMode === 'calendar' && <CalendarTaskView listId={listId} />}
+                {viewMode === 'gantt' && <GanttTaskView listId={listId} />}
+                {viewMode === 'tableur' && <TableurTaskView listId={listId} />}
+              </>
             )}
-            {viewMode === 'board' && <KanbanBoardView listId={listId} />}
-            {viewMode === 'calendar' && <CalendarTaskView listId={listId} />}
-            {viewMode === 'gantt' && <GanttTaskView listId={listId} />}
-            {viewMode === 'tableur' && <TableurTaskView listId={listId} />}
           </div>
         </div>
       </ListPageProvider>

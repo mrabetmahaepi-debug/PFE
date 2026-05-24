@@ -8,11 +8,15 @@ import {
 import {
   getProjectPermissionContext,
   requestCanWriteLists,
+  serializeWorkspaceProjectAuth,
 } from "../services/projectPermission.service";
-import { filterTasksForProjectContext } from "../lib/sidebarAccessFilter";
+import {
+  filterTasksForProjectContext,
+  userCanAccessListInProject,
+} from "../lib/sidebarAccessFilter";
 import {
   PROJECT_READ_FORBIDDEN_MESSAGE,
-  userCanReadProject,
+  userCanAccessProjectWorkspace,
 } from "../lib/projectAccess";
 import {
   createFolderInSpace,
@@ -46,12 +50,16 @@ async function getAccessibleProject(req: Request, projectId: number) {
     select: {
       id_projet: true,
       id_entreprise: true,
-      membre_projet: { select: { id_utilisateur: true } },
+      chef_de_projet_id: true,
+      membre_projet: {
+        select: { id_utilisateur: true, role_projet: true },
+      },
     },
   });
   if (!project) return null;
   if (isSuperAdmin(user)) return project;
-  if (!userCanReadProject(user, project)) {
+  const gate = { ...project, id_projet: project.id_projet };
+  if (!(await userCanAccessProjectWorkspace(user, gate))) {
     throw new Error("FORBIDDEN_PROJECT");
   }
   return project;
@@ -584,7 +592,16 @@ export const getListById = async (req: Request, res: Response) => {
     const project = await getAccessibleProject(req, list.id_projet);
     if (!project) return res.status(404).json({ message: "Projet introuvable" });
 
-    const [projet, sprint, tasks] = await Promise.all([
+    const user = (req as any).user;
+    const permCtx = await getProjectPermissionContext(user, list.id_projet);
+    if (!(await userCanAccessListInProject(Number(user?.id), permCtx, id_list))) {
+      return res.status(403).json({
+        message: "Vous n'avez pas accès à cette liste.",
+      });
+    }
+    const listAuth = serializeWorkspaceProjectAuth(user, permCtx);
+
+    const [projet, sprint, tasksRaw] = await Promise.all([
       prisma.projet.findUnique({
         where: { id_projet: list.id_projet },
         select: {
@@ -607,9 +624,15 @@ export const getListById = async (req: Request, res: Response) => {
         : Promise.resolve(null),
       prisma.tache.findMany({
         where: { id_list, deleted_at: null },
-        select: { statut_t: true },
+        select: { statut_t: true, assigne_a: true },
       }),
     ]);
+    const userId = Number(user?.id);
+    const tasks = filterTasksForProjectContext(
+      permCtx,
+      tasksRaw,
+      Number.isFinite(userId) ? userId : 0
+    );
 
     let todo = 0;
     let inProgress = 0;
@@ -646,6 +669,8 @@ export const getListById = async (req: Request, res: Response) => {
         : null,
       task_count: tasks.length,
       stats: { todo, inProgress, done, total: tasks.length },
+      currentUserProjectRole: listAuth.currentUserProjectRole,
+      currentUserPermissions: listAuth.currentUserPermissions,
     });
   } catch (err) {
     return handleHierarchyError(res, err);
@@ -664,6 +689,11 @@ export const getTasksByList = async (req: Request, res: Response) => {
 
     const user = (req as any).user;
     const ctx = await getProjectPermissionContext(user, list.id_projet);
+    if (!(await userCanAccessListInProject(Number(user?.id), ctx, id_list))) {
+      return res.status(403).json({
+        message: "Vous n'avez pas accès à cette liste.",
+      });
+    }
     const tasksRaw = await prisma.tache.findMany({
       where: { id_list, deleted_at: null },
       include: {

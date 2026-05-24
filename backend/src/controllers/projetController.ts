@@ -10,6 +10,7 @@ import {
   isGlobalMembreUser,
   isTenantAdminUser,
   PROJECT_READ_FORBIDDEN_MESSAGE,
+  userCanAccessProjectWorkspace,
   userCanReadProject,
 } from "../lib/projectAccess";
 import {
@@ -1016,10 +1017,12 @@ export const getProjetById = async (req: Request, res: Response) => {
     }
 
     const gatePayload = {
+      id_projet: projet.id_projet,
       id_entreprise: projet.id_entreprise,
+      chef_de_projet_id: projet.chef_de_projet_id,
       membre_projet: projet.membre_projet,
     };
-    if (!userCanReadProject(user, gatePayload)) {
+    if (!(await userCanAccessProjectWorkspace(user, gatePayload))) {
       return res.status(403).json({ message: PROJECT_READ_FORBIDDEN_MESSAGE });
     }
 
@@ -1298,14 +1301,18 @@ export const getProjectTree = async (req: Request, res: Response) => {
     const gate = await prisma.projet.findUnique({
       where: { id_projet: id },
       select: {
+        id_projet: true,
         id_entreprise: true,
-        membre_projet: { select: { id_utilisateur: true } },
+        chef_de_projet_id: true,
+        membre_projet: {
+          select: { id_utilisateur: true, role_projet: true },
+        },
       },
     });
     if (!gate) {
       return res.status(404).json({ message: "Projet introuvable" });
     }
-    if (!userCanReadProject(user, gate)) {
+    if (!(await userCanAccessProjectWorkspace(user, gate))) {
       return res.status(403).json({ message: PROJECT_READ_FORBIDDEN_MESSAGE });
     }
 

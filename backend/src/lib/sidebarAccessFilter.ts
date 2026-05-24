@@ -5,6 +5,7 @@ import {
 import { isLocalDeveloppeur } from "./projectLocalRolePermissions";
 import { permissionSetHas } from "./permissionProfiles";
 import type { ProjectPermissionContext } from "../services/projectPermission.service";
+import prisma from "../prisma/prismaClient";
 
 export type SidebarTaskRow = {
   id_tache: number;
@@ -166,6 +167,25 @@ export function userCanViewTaskInProject(
     return true;
   }
   return false;
+}
+
+/** Liste accessible si le membre peut lire le projet ou y a des tâches assignées (développeur). */
+export async function userCanAccessListInProject(
+  userId: number,
+  ctx: Pick<ProjectPermissionContext, "fullAccess" | "roleProjet">,
+  listId: number
+): Promise<boolean> {
+  if (ctx.fullAccess || isChefDeProjetMemberRole(ctx.roleProjet)) return true;
+  if (!isLocalDeveloppeur(ctx.roleProjet)) return true;
+  const uid = Number(userId);
+  const lid = Number(listId);
+  if (!Number.isFinite(uid) || uid < 1 || !Number.isFinite(lid) || lid < 1) {
+    return false;
+  }
+  const count = await prisma.tache.count({
+    where: { id_list: lid, assigne_a: uid, deleted_at: null },
+  });
+  return count > 0;
 }
 
 export function filterTasksForProjectContext<

@@ -663,14 +663,26 @@ const Workspace: React.FC = () => {
   }, [loadingProjects, spaces, searchParams, location.pathname]);
 
   useEffect(() => {
+    if (activeListId) {
+      setError('');
+    }
+  }, [activeListId]);
+
+  useEffect(() => {
     if (activeProjectId) {
-      fetchTree(activeProjectId);
-      fetchTasks(activeProjectId);
+      const hydrated = hydrateTreeFromSpaces(activeProjectId, spaces);
+      if (hydrated) {
+        setTree(hydrated);
+        setError('');
+      } else {
+        void fetchTree(activeProjectId);
+      }
+      void fetchTasks(activeProjectId);
     } else {
       setTree(null);
       setTasks([]);
     }
-  }, [activeProjectId]);
+  }, [activeProjectId, spaces]);
 
   useEffect(() => {
     const onHierarchyRefresh = () => {

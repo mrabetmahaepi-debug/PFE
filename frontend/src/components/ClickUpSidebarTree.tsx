@@ -587,8 +587,8 @@ const ClickUpSidebarTree: React.FC<ClickUpSidebarTreeProps> = ({
   const goToList = useCallback(
     (listId: number) => {
       const ctx = findListContext(displaySpaces, listId, layout);
-      if (layout === 'sprint' && ctx) {
-        if (monEspaceRoot) {
+      if (monEspaceRoot) {
+        if (ctx) {
           const h = findHierarchyContext(displaySpaces, { listId });
           trackMemberOpen('list', listId, h?.listName || 'Liste', h?.sprintName || 'Sprint', {
             spaceId: ctx.spaceId,
@@ -597,6 +597,10 @@ const ClickUpSidebarTree: React.FC<ClickUpSidebarTreeProps> = ({
             listId,
           });
         }
+        navigate(appPaths.listView(listId));
+        return;
+      }
+      if (layout === 'sprint' && ctx) {
         navigate(
           buildListPath(ctx.spaceId, ctx.projectId, listId, ctx.sprintId)
         );

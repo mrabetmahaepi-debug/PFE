@@ -3,6 +3,7 @@ import type { AuthedUser } from "../middleware/permissions";
 import { isSuperAdmin } from "../middleware/permissions";
 
 import { isProjectAccessDenied } from "./userAccessGrants";
+import prisma from "../prisma/prismaClient";
 
 
 
@@ -186,6 +187,53 @@ export async function userCanReadProjectAsync(
   if (isTenantAdminUser(user) || isSuperAdmin(user)) return true;
 
   return !(await isProjectAccessDenied(user.id, projectId));
+}
 
+/** True when the user has at least one active task assigned in the project. */
+export async function userHasAssignedTasksInProject(
+  userId: number,
+  projectId: number
+): Promise<boolean> {
+  const uid = Number(userId);
+  const pid = Number(projectId);
+  if (!Number.isFinite(uid) || uid < 1 || !Number.isFinite(pid) || pid < 1) {
+    return false;
+  }
+  const count = await prisma.tache.count({
+    where: { id_projet: pid, assigne_a: uid, deleted_at: null },
+  });
+  return count > 0;
+}
+
+/**
+ * Workspace / list access: team membership, chef, or assignee on a project task.
+ * Respects explicit admin DENY grants on the project.
+ */
+export async function userCanAccessProjectWorkspace(
+  user: AuthedUser & { id: number; id_entreprise?: number | null },
+  projet: ProjectReadGatePayload
+): Promise<boolean> {
+  if (isSuperAdmin(user)) return true;
+
+  const projectId = projet.id_projet;
+  if (
+    projectId != null &&
+    Number.isFinite(projectId) &&
+    (await isProjectAccessDenied(user.id, projectId))
+  ) {
+    return false;
+  }
+
+  if (userCanReadProject(user, projet)) return true;
+
+  if (
+    projectId != null &&
+    Number.isFinite(projectId) &&
+    (await userHasAssignedTasksInProject(user.id, projectId))
+  ) {
+    return true;
+  }
+
+  return false;
 }
 
