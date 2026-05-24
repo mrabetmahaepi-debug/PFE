@@ -39,10 +39,9 @@ const LanguageSettingsCard: React.FC<LanguageSettingsCardProps> = ({
     try {
       await changeAppLanguage(selected);
       setFeedback('success');
-      window.setTimeout(() => {
-        window.location.reload();
-      }, 400);
     } catch {
+      setApplying(false);
+    } finally {
       setApplying(false);
     }
   };
@@ -97,7 +96,7 @@ const LanguageSettingsCard: React.FC<LanguageSettingsCardProps> = ({
       {feedback === 'success' && !applying && (
         <p className="language-settings-card__success" role="status">
           <CheckCircle2 size={16} aria-hidden />
-          {t('settings.languageApplied')}
+          {t('settings.languageAppliedLive')}
         </p>
       )}
 

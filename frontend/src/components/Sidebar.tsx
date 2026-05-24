@@ -489,7 +489,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggleCollapsed }) => {
           title={
             collapsed
               ? isInboxItem && inboxUnreadCount > 0
-                ? `${label} (${inboxUnreadCount} non lue${inboxUnreadCount > 1 ? 's' : ''})`
+                ? `${label} (${t('nav.notificationsUnread', { count: inboxUnreadCount })})`
                 : label
               : undefined
           }
@@ -639,7 +639,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggleCollapsed }) => {
                       }
                       title={
                         isInboxItem && inboxUnreadCount > 0
-                          ? `${label} (${inboxUnreadCount} non lue${inboxUnreadCount > 1 ? 's' : ''})`
+                          ? `${label} (${t('nav.notificationsUnread', { count: inboxUnreadCount })})`
                           : label
                       }
                       onClick={isInboxItem ? handleInboxNavigate : undefined}

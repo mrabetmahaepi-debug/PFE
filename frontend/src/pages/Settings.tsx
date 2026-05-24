@@ -57,7 +57,7 @@ function formFromUser(
 }
 
 const Settings: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { user, updateUser, refreshUser } = useAuth();
   const isMember = isGlobalMember(user);
   const superAdmin = detectSuperAdmin(user);
@@ -108,6 +108,17 @@ const Settings: React.FC = () => {
     setFormData((prev) => ({ ...prev, ...base }));
     setPhotoPreview(resolveProfilePhotoUrl(user?.photoUrl));
   }, [user?.nom, user?.prenom, user?.email, user?.photoUrl]);
+
+  useEffect(() => {
+    const clearFeedback = () => {
+      setSaveError(null);
+      setSaveSuccess(null);
+      setUploadError(null);
+      setUploadSuccess(null);
+    };
+    i18n.on('languageChanged', clearFeedback);
+    return () => i18n.off('languageChanged', clearFeedback);
+  }, [i18n]);
 
   useEffect(() => {
     if (!photoMenuOpen) return;
@@ -170,7 +181,7 @@ const Settings: React.FC = () => {
       updateUser({ photoUrl: null });
       await refreshUser();
       setPhotoPreview(null);
-      setUploadSuccess('Photo de profil supprimée.');
+      setUploadSuccess(t('success.photoDeleted'));
       setDeletePhotoModalOpen(false);
     } catch (err: unknown) {
       const ax = err as {
@@ -179,7 +190,7 @@ const Settings: React.FC = () => {
       setUploadError(
         ax.response?.data?.error ||
           ax.response?.data?.message ||
-          'Erreur lors de la suppression.'
+          t('errors.deletePhotoFailed')
       );
     } finally {
       setDeletingPhoto(false);
@@ -194,11 +205,11 @@ const Settings: React.FC = () => {
     setUploadSuccess(null);
 
     if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
-      setUploadError('Format non supporté. Utilisez PNG, JPG, JPEG ou WEBP.');
+      setUploadError(t('settings.unsupportedFormat'));
       return;
     }
     if (file.size > MAX_PHOTO_BYTES) {
-      setUploadError('La photo ne doit pas dépasser 2 Mo.');
+      setUploadError(t('settings.photoTooLarge'));
       return;
     }
 
@@ -213,7 +224,7 @@ const Settings: React.FC = () => {
       setPhotoPreview(resolved);
       updateUser({ photoUrl });
       await refreshUser();
-      setUploadSuccess('Photo de profil mise à jour.');
+      setUploadSuccess(t('success.photoUpdated'));
     } catch (err: unknown) {
       const ax = err as {
         response?: { data?: { error?: string; message?: string } };
@@ -221,7 +232,7 @@ const Settings: React.FC = () => {
       setUploadError(
         ax.response?.data?.error ||
           ax.response?.data?.message ||
-          'Erreur lors du téléversement.'
+          t('errors.uploadFailed')
       );
       setPhotoPreview(resolveProfilePhotoUrl(user?.photoUrl));
     } finally {
@@ -248,15 +259,15 @@ const Settings: React.FC = () => {
     const email = formData.email.trim().toLowerCase();
 
     if (!prenom) {
-      setSaveError('Le prénom est requis.');
+      setSaveError(t('errors.requiredFirstName'));
       return;
     }
     if (!nom) {
-      setSaveError('Le nom est requis.');
+      setSaveError(t('errors.requiredLastName'));
       return;
     }
     if (!EMAIL_RE.test(email)) {
-      setSaveError('Adresse e-mail invalide.');
+      setSaveError(t('errors.invalidEmail'));
       return;
     }
 
@@ -265,7 +276,7 @@ const Settings: React.FC = () => {
       prenom === savedForm.prenom &&
       email === savedForm.email;
     if (unchanged) {
-      setSaveError('Aucune modification à enregistrer.');
+      setSaveError(t('errors.noChanges'));
       return;
     }
 
@@ -285,11 +296,11 @@ const Settings: React.FC = () => {
       setFormData((prev) => ({ ...prev, ...next }));
       updateUser(next);
       await refreshUser();
-      setSaveSuccess('Profil enregistré avec succès.');
+      setSaveSuccess(t('success.profileSaved'));
     } catch (err: unknown) {
       const ax = err as { response?: { data?: { message?: string } } };
       setSaveError(
-        ax.response?.data?.message || "Erreur lors de l'enregistrement."
+        ax.response?.data?.message || t('errors.saveFailed')
       );
     } finally {
       setSaving(false);
@@ -302,7 +313,7 @@ const Settings: React.FC = () => {
     return (
       <div className="member-settings-page">
         <div className="member-settings-layout">
-          <aside className="member-settings-nav" aria-label="Sections des paramètres">
+          <aside className="member-settings-nav" aria-label={t('settings.sectionsAria')}>
             <button
               type="button"
               className={`member-settings-nav-item ${activeTab === 'profile' ? 'is-active' : ''}`}
@@ -341,7 +352,7 @@ const Settings: React.FC = () => {
             {activeTab === 'profile' && (
               <section className="member-settings-card">
                 <h2 className="member-settings-card-title">
-                  Informations personnelles
+                  {t('settings.personalInfo')}
                 </h2>
 
                 <input
@@ -372,7 +383,7 @@ const Settings: React.FC = () => {
                       onClick={handleChangePhotoClick}
                       disabled={uploading || deletingPhoto}
                     >
-                      Changer la photo
+                      {t('settings.changePhoto')}
                     </button>
                     {hasProfilePhoto && (
                       <button
@@ -381,7 +392,7 @@ const Settings: React.FC = () => {
                         onClick={handleRequestDeletePhoto}
                         disabled={uploading || deletingPhoto}
                       >
-                        Supprimer
+                        {t('common.delete')}
                       </button>
                     )}
                   </div>
@@ -408,7 +419,7 @@ const Settings: React.FC = () => {
 
                 <div className="member-settings-form-grid">
                   <div className="member-settings-field">
-                    <label htmlFor="member-settings-prenom">Prénom</label>
+                    <label htmlFor="member-settings-prenom">{t('settings.firstName')}</label>
                     <input
                       id="member-settings-prenom"
                       type="text"
@@ -419,7 +430,7 @@ const Settings: React.FC = () => {
                     />
                   </div>
                   <div className="member-settings-field">
-                    <label htmlFor="member-settings-nom">Nom</label>
+                    <label htmlFor="member-settings-nom">{t('settings.lastName')}</label>
                     <input
                       id="member-settings-nom"
                       type="text"
@@ -431,7 +442,7 @@ const Settings: React.FC = () => {
                   </div>
                 </div>
                 <div className="member-settings-field">
-                  <label htmlFor="member-settings-email">E-mail</label>
+                  <label htmlFor="member-settings-email">{t('settings.email')}</label>
                   <input
                     id="member-settings-email"
                     type="email"
@@ -468,7 +479,7 @@ const Settings: React.FC = () => {
                     onClick={handleCancelProfile}
                     disabled={saving || uploading}
                   >
-                    Annuler
+                    {t('common.cancel')}
                   </button>
                   <button
                     type="button"
@@ -479,10 +490,10 @@ const Settings: React.FC = () => {
                     {saving ? (
                       <>
                         <Loader size={16} className="member-settings-spin" />
-                        Enregistrement…
+                        {t('common.saving')}
                       </>
                     ) : (
-                      'Enregistrer les modifications'
+                      t('settings.saveChanges')
                     )}
                   </button>
                 </div>
@@ -491,14 +502,14 @@ const Settings: React.FC = () => {
 
             {activeTab === 'security' && (
               <section className="member-settings-card">
-                <h2 className="member-settings-card-title">Sécurité</h2>
+                <h2 className="member-settings-card-title">{t('settings.security')}</h2>
                 <p className="member-settings-card-sub">
-                  Mettez à jour votre mot de passe pour sécuriser votre compte.
+                  {t('settings.memberSecuritySubtitle')}
                 </p>
                 <div className="member-settings-security-form">
                   <div className="member-settings-field">
                     <label htmlFor="member-settings-pwd-current">
-                      Mot de passe actuel
+                      {t('settings.currentPassword')}
                     </label>
                     <input
                       id="member-settings-pwd-current"
@@ -512,7 +523,7 @@ const Settings: React.FC = () => {
                   </div>
                   <div className="member-settings-field">
                     <label htmlFor="member-settings-pwd-new">
-                      Nouveau mot de passe
+                      {t('settings.newPassword')}
                     </label>
                     <input
                       id="member-settings-pwd-new"
@@ -526,7 +537,7 @@ const Settings: React.FC = () => {
                   </div>
                   <div className="member-settings-field">
                     <label htmlFor="member-settings-pwd-confirm">
-                      Confirmer mot de passe
+                      {t('settings.confirmPasswordShort')}
                     </label>
                     <input
                       id="member-settings-pwd-confirm"
@@ -541,7 +552,7 @@ const Settings: React.FC = () => {
                   <div className="member-settings-form-actions">
                     <button type="button" className="member-settings-btn-primary">
                       <Key size={16} aria-hidden />
-                      Mettre à jour
+                      {t('settings.update')}
                     </button>
                   </div>
                 </div>
@@ -556,13 +567,13 @@ const Settings: React.FC = () => {
               <section className="member-settings-card">
                 <h2 className="member-settings-card-title">{t('settings.notifications')}</h2>
                 <p className="member-settings-card-sub">
-                  Choisissez les alertes que vous souhaitez recevoir.
+                  {t('settings.notificationsMemberSubtitle')}
                 </p>
                 <div className="member-settings-pref-list">
                   <div className="member-settings-pref-row">
                     <div className="member-settings-pref-info">
-                      <h4>Notifications par e-mail</h4>
-                      <p>Recevoir des récapitulatifs et mises à jour par e-mail.</p>
+                      <h4>{t('settings.emailNotifications')}</h4>
+                      <p>{t('settings.emailNotificationsDesc')}</p>
                     </div>
                     <label className="member-settings-switch">
                       <input
@@ -576,8 +587,8 @@ const Settings: React.FC = () => {
                   </div>
                   <div className="member-settings-pref-row">
                     <div className="member-settings-pref-info">
-                      <h4>Notifications des tâches en retard</h4>
-                      <p>Être alerté lorsqu&apos;une tâche assignée dépasse sa date limite.</p>
+                      <h4>{t('settings.overdueTasks')}</h4>
+                      <p>{t('settings.overdueTasksDesc')}</p>
                     </div>
                     <label className="member-settings-switch">
                       <input
@@ -591,8 +602,8 @@ const Settings: React.FC = () => {
                   </div>
                   <div className="member-settings-pref-row">
                     <div className="member-settings-pref-info">
-                      <h4>Notifications des commentaires</h4>
-                      <p>Recevoir une alerte lors de nouveaux commentaires sur vos tâches.</p>
+                      <h4>{t('settings.commentNotifications')}</h4>
+                      <p>{t('settings.commentNotificationsDesc')}</p>
                     </div>
                     <label className="member-settings-switch">
                       <input
@@ -623,8 +634,8 @@ const Settings: React.FC = () => {
               aria-labelledby="member-delete-photo-title"
               onClick={(e) => e.stopPropagation()}
             >
-              <h3 id="member-delete-photo-title">Supprimer la photo</h3>
-              <p>Voulez-vous supprimer votre photo de profil ?</p>
+              <h3 id="member-delete-photo-title">{t('settings.deletePhotoTitle')}</h3>
+              <p>{t('settings.deletePhotoConfirm')}</p>
               <div className="member-settings-modal-actions">
                 <button
                   type="button"
@@ -632,7 +643,7 @@ const Settings: React.FC = () => {
                   onClick={() => setDeletePhotoModalOpen(false)}
                   disabled={deletingPhoto}
                 >
-                  Annuler
+                  {t('common.cancel')}
                 </button>
                 <button
                   type="button"
@@ -643,10 +654,10 @@ const Settings: React.FC = () => {
                   {deletingPhoto ? (
                     <>
                       <Loader size={16} className="member-settings-spin" aria-hidden />
-                      Suppression…
+                      {t('settings.deleting')}
                     </>
                   ) : (
-                    'Supprimer'
+                    t('common.delete')
                   )}
                 </button>
               </div>
@@ -706,7 +717,7 @@ const Settings: React.FC = () => {
           {activeTab === 'profile' && (
             <section className="settings-section premium-card">
               <div className="section-header section-header--profile">
-                <h2 className="settings-profile-heading">Informations personnelles</h2>
+                <h2 className="settings-profile-heading">{t('settings.personalInfo')}</h2>
               </div>
 
               <input
@@ -723,7 +734,7 @@ const Settings: React.FC = () => {
                     type="button"
                     className="avatar-large avatar-clickable"
                     onClick={handleAvatarClick}
-                    title="Gérer la photo de profil"
+                    title={t('settings.manageProfilePhoto')}
                     disabled={uploading || deletingPhoto}
                     aria-expanded={photoMenuOpen}
                     aria-haspopup="menu"
@@ -735,7 +746,7 @@ const Settings: React.FC = () => {
                     ) : photoPreview ? (
                       <img
                         src={photoPreview}
-                        alt="Photo de profil"
+                        alt={t('settings.profilePhoto')}
                         className="avatar-photo"
                       />
                     ) : (
@@ -743,7 +754,7 @@ const Settings: React.FC = () => {
                     )}
                     <span className="avatar-hover-overlay" aria-hidden>
                       <Camera size={22} />
-                      <span className="avatar-hover-label">Modifier</span>
+                      <span className="avatar-hover-label">{t('settings.editPhotoHover')}</span>
                     </span>
                   </button>
 
@@ -751,7 +762,7 @@ const Settings: React.FC = () => {
                     <div
                       className="profile-photo-menu"
                       role="menu"
-                      aria-label="Actions photo de profil"
+                      aria-label={t('settings.photoActionsAria')}
                     >
                       <button
                         type="button"
@@ -760,7 +771,7 @@ const Settings: React.FC = () => {
                         onClick={handleModifyPhoto}
                       >
                         <Pencil size={16} aria-hidden />
-                        <span>Modifier la photo</span>
+                        <span>{t('settings.modifyPhoto')}</span>
                       </button>
                       {hasProfilePhoto && (
                         <button
@@ -770,14 +781,14 @@ const Settings: React.FC = () => {
                           onClick={handleRequestDeletePhoto}
                         >
                           <Trash2 size={16} aria-hidden />
-                          <span>Supprimer la photo</span>
+                          <span>{t('settings.deletePhoto')}</span>
                         </button>
                       )}
                     </div>
                   )}
                 </div>
                 <div className="upload-info">
-                  <h3>Photo de profil</h3>
+                  <h3>{t('settings.profilePhoto')}</h3>
                   {uploadError && (
                     <p
                       className="settings-feedback settings-feedback--error"
@@ -802,7 +813,7 @@ const Settings: React.FC = () => {
               <div className="settings-form">
                 <div className="form-grid">
                   <div className="form-group">
-                    <label htmlFor="settings-prenom">Prénom</label>
+                    <label htmlFor="settings-prenom">{t('settings.firstName')}</label>
                     <input
                       id="settings-prenom"
                       type="text"
@@ -813,7 +824,7 @@ const Settings: React.FC = () => {
                     />
                   </div>
                   <div className="form-group">
-                    <label htmlFor="settings-nom">Nom</label>
+                    <label htmlFor="settings-nom">{t('settings.lastName')}</label>
                     <input
                       id="settings-nom"
                       type="text"
@@ -825,7 +836,7 @@ const Settings: React.FC = () => {
                   </div>
                 </div>
                 <div className="form-group">
-                  <label htmlFor="settings-email">E-mail</label>
+                  <label htmlFor="settings-email">{t('settings.email')}</label>
                   <input
                     id="settings-email"
                     type="email"
@@ -836,7 +847,7 @@ const Settings: React.FC = () => {
                   />
                 </div>
                 <div className="form-group">
-                  <label htmlFor="settings-role">Rôle</label>
+                  <label htmlFor="settings-role">{t('settings.role')}</label>
                   <input
                     id="settings-role"
                     type="text"
@@ -872,7 +883,7 @@ const Settings: React.FC = () => {
                     onClick={handleCancelProfile}
                     disabled={saving || uploading}
                   >
-                    Annuler
+                    {t('common.cancel')}
                   </button>
                   <button
                     type="button"
@@ -883,10 +894,10 @@ const Settings: React.FC = () => {
                     {saving ? (
                       <>
                         <Loader size={16} className="spin" />
-                        Enregistrement…
+                        {t('common.saving')}
                       </>
                     ) : (
-                      'Enregistrer'
+                      t('settings.saveProfile')
                     )}
                   </button>
                 </div>
@@ -897,15 +908,15 @@ const Settings: React.FC = () => {
           {activeTab === 'security' && (
             <section className="settings-section premium-card">
               <div className="section-header">
-                <h2>Sécurité du compte</h2>
-                <p>Gérez votre mot de passe et la protection de votre accès.</p>
+                <h2>{t('settings.securityTitle')}</h2>
+                <p>{t('settings.securitySubtitle')}</p>
               </div>
 
               <div className="security-form">
                 <div className="password-section">
-                  <h3>Changer le mot de passe</h3>
+                  <h3>{t('settings.changePassword')}</h3>
                   <div className="form-group">
-                    <label>Mot de passe actuel</label>
+                    <label>{t('settings.currentPassword')}</label>
                     <input
                       type="password"
                       name="current"
@@ -915,7 +926,7 @@ const Settings: React.FC = () => {
                     />
                   </div>
                   <div className="form-group">
-                    <label>Nouveau mot de passe</label>
+                    <label>{t('settings.newPassword')}</label>
                     <input
                       type="password"
                       name="new"
@@ -925,7 +936,7 @@ const Settings: React.FC = () => {
                     />
                   </div>
                   <div className="form-group">
-                    <label>Confirmer le nouveau mot de passe</label>
+                    <label>{t('settings.confirmPassword')}</label>
                     <input
                       type="password"
                       name="confirm"
@@ -939,7 +950,7 @@ const Settings: React.FC = () => {
                     className="settings-btn settings-btn--secondary"
                   >
                     <Key size={18} />
-                    <span>Mettre à jour le mot de passe</span>
+                    <span>{t('settings.updatePassword')}</span>
                   </button>
                 </div>
 
@@ -949,17 +960,14 @@ const Settings: React.FC = () => {
                   <div className="mfa-info">
                     <Smartphone size={24} />
                     <div>
-                      <h3>Authentification à deux facteurs</h3>
-                      <p>
-                        Ajoutez une couche de sécurité supplémentaire à votre
-                        compte.
-                      </p>
+                      <h3>{t('settings.mfaTitle')}</h3>
+                      <p>{t('settings.mfaDesc')}</p>
                     </div>
                     <button
                       type="button"
                       className="settings-btn settings-btn--outline"
                     >
-                      Activer
+                      {t('settings.mfaEnable')}
                     </button>
                   </div>
                 </div>
@@ -967,20 +975,18 @@ const Settings: React.FC = () => {
                 <hr className="divider" />
 
                 <div className="sessions-section">
-                  <h3>Sessions actives</h3>
-                  <p>Vous êtes actuellement connecté sur ces appareils.</p>
+                  <h3>{t('settings.activeSessions')}</h3>
+                  <p>{t('settings.activeSessionsDesc')}</p>
                   <div className="session-item">
                     <div className="session-icon">
                       <Smartphone size={18} />
                     </div>
                     <div className="session-details">
-                      <p className="device">Windows PC • Paris, France</p>
-                      <p className="status">
-                        Session actuelle • Actif maintenant
-                      </p>
+                      <p className="device">{t('settings.sessionDevice')}</p>
+                      <p className="status">{t('settings.sessionCurrent')}</p>
                     </div>
                     <button type="button" className="text-btn-danger">
-                      <LogOut size={16} /> Déconnecter
+                      <LogOut size={16} /> {t('settings.disconnect')}
                     </button>
                   </div>
                 </div>
@@ -1000,8 +1006,8 @@ const Settings: React.FC = () => {
               <div className="preferences-list">
                 <div className="pref-card">
                   <div className="pref-info">
-                    <h4>Notifications par email</h4>
-                    <p>Recevoir des récapitulatifs quotidiens des tâches.</p>
+                    <h4>{t('settings.emailNotifications')}</h4>
+                    <p>{t('settings.dailyEmailDigest')}</p>
                   </div>
                   <label className="switch">
                     <input
@@ -1016,10 +1022,8 @@ const Settings: React.FC = () => {
 
                 <div className="pref-card">
                   <div className="pref-info">
-                    <h4>Alertes de sécurité</h4>
-                    <p>
-                      Être notifié en cas de tentative de connexion suspecte.
-                    </p>
+                    <h4>{t('settings.securityAlerts')}</h4>
+                    <p>{t('settings.securityAlertsDesc')}</p>
                   </div>
                   <label className="switch">
                     <input
@@ -1050,8 +1054,8 @@ const Settings: React.FC = () => {
             aria-labelledby="delete-photo-title"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 id="delete-photo-title">Supprimer la photo</h3>
-            <p>Voulez-vous supprimer votre photo de profil ?</p>
+            <h3 id="delete-photo-title">{t('settings.deletePhotoTitle')}</h3>
+            <p>{t('settings.deletePhotoConfirm')}</p>
             <div className="profile-photo-delete-actions">
               <button
                 type="button"
@@ -1059,7 +1063,7 @@ const Settings: React.FC = () => {
                 onClick={() => setDeletePhotoModalOpen(false)}
                 disabled={deletingPhoto}
               >
-                Annuler
+                {t('common.cancel')}
               </button>
               <button
                 type="button"
@@ -1070,10 +1074,10 @@ const Settings: React.FC = () => {
                 {deletingPhoto ? (
                   <>
                     <Loader size={16} className="spin" aria-hidden />
-                    Suppression…
+                    {t('settings.deleting')}
                   </>
                 ) : (
-                  'Supprimer'
+                  t('common.delete')
                 )}
               </button>
             </div>

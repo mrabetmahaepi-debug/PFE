@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Archive, ChevronDown, ChevronRight, RotateCcw, Trash2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import {
   workspaceTrashService,
   type WorkspaceTrashItem,
@@ -11,13 +12,8 @@ interface SidebarCorbeilleProps {
   onRefreshTree: () => void | Promise<void>;
 }
 
-const TYPE_LABEL: Record<WorkspaceTrashItem['type'], string> = {
-  space: 'Espace',
-  project: 'Dossier',
-  list: 'Liste',
-};
-
 const SidebarCorbeille: React.FC<SidebarCorbeilleProps> = ({ onRefreshTree }) => {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<WorkspaceTrashItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -25,6 +21,12 @@ const SidebarCorbeille: React.FC<SidebarCorbeilleProps> = ({ onRefreshTree }) =>
     null
   );
   const [deleting, setDeleting] = useState(false);
+
+  const typeLabel = (type: WorkspaceTrashItem['type']) => {
+    if (type === 'space') return t('trash.typeSpace');
+    if (type === 'project') return t('trash.typeProject');
+    return t('trash.typeList');
+  };
 
   const loadTrash = useCallback(async () => {
     setLoading(true);
@@ -52,7 +54,7 @@ const SidebarCorbeille: React.FC<SidebarCorbeilleProps> = ({ onRefreshTree }) =>
       await onRefreshTree();
     } catch (err: unknown) {
       const ax = err as { response?: { data?: { message?: string } } };
-      window.alert(ax?.response?.data?.message || 'Restauration impossible.');
+      window.alert(ax?.response?.data?.message || t('trash.restoreFailed'));
     }
   };
 
@@ -70,7 +72,7 @@ const SidebarCorbeille: React.FC<SidebarCorbeilleProps> = ({ onRefreshTree }) =>
       await onRefreshTree();
     } catch (err: unknown) {
       const ax = err as { response?: { data?: { message?: string } } };
-      window.alert(ax?.response?.data?.message || 'Suppression impossible.');
+      window.alert(ax?.response?.data?.message || t('trash.deleteFailed'));
     } finally {
       setDeleting(false);
     }
@@ -86,7 +88,7 @@ const SidebarCorbeille: React.FC<SidebarCorbeilleProps> = ({ onRefreshTree }) =>
           aria-expanded={open}
         >
           <Archive size={14} className="cu-corbeille-toggle-icon" />
-          <span className="cu-corbeille-toggle-label">Corbeille</span>
+          <span className="cu-corbeille-toggle-label">{t('trash.title')}</span>
           {items.length > 0 && (
             <span className="cu-corbeille-count">{items.length}</span>
           )}
@@ -99,17 +101,17 @@ const SidebarCorbeille: React.FC<SidebarCorbeilleProps> = ({ onRefreshTree }) =>
         {open && (
           <div className="cu-corbeille-list">
             {loading && (
-              <p className="cu-corbeille-empty">Chargement…</p>
+              <p className="cu-corbeille-empty">{t('common.loading')}</p>
             )}
             {!loading && items.length === 0 && (
-              <p className="cu-corbeille-empty">La corbeille est vide.</p>
+              <p className="cu-corbeille-empty">{t('trash.empty')}</p>
             )}
             {!loading &&
               items.map((item) => (
                 <div key={`${item.type}:${item.id}`} className="cu-corbeille-row">
                   <div className="cu-corbeille-row-main">
                     <span className="cu-corbeille-row-type">
-                      {TYPE_LABEL[item.type]}
+                      {typeLabel(item.type)}
                     </span>
                     <span className="cu-corbeille-row-name">{item.name}</span>
                   </div>
@@ -117,7 +119,7 @@ const SidebarCorbeille: React.FC<SidebarCorbeilleProps> = ({ onRefreshTree }) =>
                     <button
                       type="button"
                       className="cu-corbeille-action"
-                      title="Restaurer"
+                      title={t('trash.restore')}
                       onClick={() => void handleRestore(item)}
                     >
                       <RotateCcw size={13} />
@@ -125,7 +127,7 @@ const SidebarCorbeille: React.FC<SidebarCorbeilleProps> = ({ onRefreshTree }) =>
                     <button
                       type="button"
                       className="cu-corbeille-action cu-corbeille-action--danger"
-                      title="Supprimer définitivement"
+                      title={t('trash.deletePermanent')}
                       onClick={() => setDeleteTarget(item)}
                     >
                       <Trash2 size={13} />
@@ -147,7 +149,7 @@ const SidebarCorbeille: React.FC<SidebarCorbeilleProps> = ({ onRefreshTree }) =>
               ? 'folder'
               : 'list'
         }
-        confirmLabel="Supprimer"
+        confirmLabel={t('common.delete')}
         loading={deleting}
         onCancel={() => !deleting && setDeleteTarget(null)}
         onConfirm={() => void handlePermanentDelete()}

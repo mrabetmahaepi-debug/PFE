@@ -290,6 +290,16 @@ const Navbar: React.FC = () => {
           <p className="navbar-page-sub">{t('navbar.recommendationsSubtitle')}</p>
         </div>
       )}
+      {showMemberAssignedTitle && (
+        <div className="navbar-page-title">
+          <h1 className="navbar-page-heading">{t('tasks.viewAssigned')}</h1>
+        </div>
+      )}
+      {showMemberTodayTitle && (
+        <div className="navbar-page-title">
+          <h1 className="navbar-page-heading">{t('tasks.viewTodayOverdue')}</h1>
+        </div>
+      )}
       {showMemberInboxTitle && (
         <div className="navbar-page-title navbar-page-title--stacked">
           <h1 className="navbar-page-heading">{t('notifications.inbox')}</h1>

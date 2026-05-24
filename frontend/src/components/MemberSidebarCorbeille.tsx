@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Archive, ChevronDown, ChevronRight, RotateCcw, Trash2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import {
   workspaceTrashService,
   type MemberTrashItemType,
@@ -14,29 +15,30 @@ interface MemberSidebarCorbeilleProps {
   onRefreshTree: () => void | Promise<void>;
 }
 
-const GROUP_ORDER: { type: MemberTrashItemType; label: string }[] = [
-  { type: 'task', label: 'Tâches' },
-  { type: 'subtask', label: 'Sous-tâches' },
-  { type: 'list', label: 'Listes' },
-  { type: 'sprint', label: 'Sprints' },
+const GROUP_ORDER: { type: MemberTrashItemType; labelKey: string }[] = [
+  { type: 'task', labelKey: 'trash.groupTasks' },
+  { type: 'subtask', labelKey: 'trash.groupSubtasks' },
+  { type: 'list', labelKey: 'trash.groupLists' },
+  { type: 'sprint', labelKey: 'trash.groupSprints' },
 ];
-
-const TYPE_LABEL: Record<MemberTrashItemType, string> = {
-  task: 'Tâche',
-  subtask: 'Sous-tâche',
-  list: 'Liste',
-  sprint: 'Sprint',
-};
 
 const MemberSidebarCorbeille: React.FC<MemberSidebarCorbeilleProps> = ({
   onRefreshTree,
 }) => {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<MemberWorkspaceTrashItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [deleteTarget, setDeleteTarget] =
     useState<MemberWorkspaceTrashItem | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  const typeLabel = (type: MemberTrashItemType) => {
+    if (type === 'task') return t('trash.typeTask');
+    if (type === 'subtask') return t('trash.typeSubtask');
+    if (type === 'list') return t('trash.typeList');
+    return t('trash.typeSprint');
+  };
 
   const loadTrash = useCallback(async () => {
     setLoading(true);
@@ -90,7 +92,7 @@ const MemberSidebarCorbeille: React.FC<MemberSidebarCorbeilleProps> = ({
       await onRefreshTree();
     } catch (err: unknown) {
       const ax = err as { response?: { data?: { message?: string } } };
-      window.alert(ax?.response?.data?.message || 'Restauration impossible.');
+      window.alert(ax?.response?.data?.message || t('trash.restoreFailed'));
     }
   };
 
@@ -110,7 +112,7 @@ const MemberSidebarCorbeille: React.FC<MemberSidebarCorbeilleProps> = ({
       await onRefreshTree();
     } catch (err: unknown) {
       const ax = err as { response?: { data?: { message?: string } } };
-      window.alert(ax?.response?.data?.message || 'Suppression impossible.');
+      window.alert(ax?.response?.data?.message || t('trash.deleteFailed'));
     } finally {
       setDeleting(false);
     }
@@ -133,7 +135,7 @@ const MemberSidebarCorbeille: React.FC<MemberSidebarCorbeilleProps> = ({
           aria-expanded={open}
         >
           <Archive size={14} className="cu-corbeille-toggle-icon" />
-          <span className="cu-corbeille-toggle-label">Corbeille</span>
+          <span className="cu-corbeille-toggle-label">{t('trash.title')}</span>
           {items.length > 0 && (
             <span className="cu-corbeille-count">{items.length}</span>
           )}
@@ -146,15 +148,15 @@ const MemberSidebarCorbeille: React.FC<MemberSidebarCorbeilleProps> = ({
         {open && (
           <div className="cu-corbeille-list">
             {loading && (
-              <p className="cu-corbeille-empty">Chargement…</p>
+              <p className="cu-corbeille-empty">{t('common.loading')}</p>
             )}
             {!loading && items.length === 0 && (
-              <p className="cu-corbeille-empty">La corbeille est vide.</p>
+              <p className="cu-corbeille-empty">{t('trash.empty')}</p>
             )}
             {!loading &&
               grouped.map((group) => (
                 <div key={group.type} className="cu-corbeille-group">
-                  <p className="cu-corbeille-group-title">{group.label}</p>
+                  <p className="cu-corbeille-group-title">{t(group.labelKey)}</p>
                   {group.items.map((item) => (
                     <div
                       key={`${item.type}:${item.id}`}
@@ -162,7 +164,7 @@ const MemberSidebarCorbeille: React.FC<MemberSidebarCorbeilleProps> = ({
                     >
                       <div className="cu-corbeille-row-main">
                         <span className="cu-corbeille-row-type">
-                          {TYPE_LABEL[item.type]}
+                          {typeLabel(item.type)}
                         </span>
                         <span className="cu-corbeille-row-name">{item.name}</span>
                         <span className="cu-corbeille-row-meta">
@@ -176,7 +178,7 @@ const MemberSidebarCorbeille: React.FC<MemberSidebarCorbeilleProps> = ({
                         <button
                           type="button"
                           className="cu-corbeille-action"
-                          title="Restaurer"
+                          title={t('trash.restore')}
                           onClick={() => void handleRestore(item)}
                         >
                           <RotateCcw size={13} />
@@ -184,7 +186,7 @@ const MemberSidebarCorbeille: React.FC<MemberSidebarCorbeilleProps> = ({
                         <button
                           type="button"
                           className="cu-corbeille-action cu-corbeille-action--danger"
-                          title="Supprimer définitivement"
+                          title={t('trash.deletePermanent')}
                           onClick={() => setDeleteTarget(item)}
                         >
                           <Trash2 size={13} />
@@ -204,8 +206,8 @@ const MemberSidebarCorbeille: React.FC<MemberSidebarCorbeilleProps> = ({
         entityKind={
           deleteTarget ? entityKindForModal(deleteTarget) : 'task'
         }
-        descriptionLine="Cet élément sera supprimé définitivement. Cette action est irréversible."
-        confirmLabel="Supprimer définitivement"
+        descriptionLine={t('trash.deletePermanentWarning')}
+        confirmLabel={t('trash.deletePermanentConfirm')}
         loading={deleting}
         onCancel={() => !deleting && setDeleteTarget(null)}
         onConfirm={() => void handlePermanentDelete()}

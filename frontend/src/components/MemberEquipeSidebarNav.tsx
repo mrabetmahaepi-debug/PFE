@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { Users } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { projectTeamAccessService } from '../services/projectTeamAccess.service';
 import { cn } from '../lib/cn';
 import { cu } from '../lib/cu-styles';
@@ -13,6 +14,7 @@ interface MemberEquipeSidebarNavProps {
 const MemberEquipeSidebarNav: React.FC<MemberEquipeSidebarNavProps> = ({
   collapsed,
 }) => {
+  const { t } = useTranslation();
   const [visible, setVisible] = useState(false);
 
   const load = useCallback(async () => {
@@ -37,7 +39,7 @@ const MemberEquipeSidebarNav: React.FC<MemberEquipeSidebarNavProps> = ({
         className={({ isActive }) =>
           cn(cu.navItem, 'justify-center px-2', isActive && cu.navItemActive)
         }
-        title="Équipe"
+        title={t('nav.team')}
       >
         <span className={cu.navIcon}>
           <Users size={16} />
@@ -56,7 +58,7 @@ const MemberEquipeSidebarNav: React.FC<MemberEquipeSidebarNavProps> = ({
       <span className={cu.navIcon}>
         <Users size={16} />
       </span>
-      <span className={cu.navLabel}>Équipe</span>
+      <span className={cu.navLabel}>{t('nav.team')}</span>
     </NavLink>
   );
 };
