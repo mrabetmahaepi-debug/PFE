@@ -75,7 +75,7 @@ export const getMyPermissions = async (req: Request, res: Response) => {
 
     return res.json({
       role: (dbUser as any).role?.nom ?? null,
-      poste: posteLabel ?? posteRaw || null,
+      poste: posteLabel ?? (posteRaw || null),
       id_role: dbUser.id_role ?? null,
       id_entreprise: dbUser.id_entreprise ?? null,
       isSuperAdmin: superAdmin,
