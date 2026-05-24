@@ -28,6 +28,8 @@ export interface Projet {
   todoTasks?: number;
   tachesCount?: number;
   progressPercent?: number;
+  /** Derived from task stats — admin dashboard grouping. */
+  dashboardBucket?: 'planning' | 'in_progress' | 'completed' | 'delayed';
   membresCount?: number;
   createdAt?: string;
   updatedAt?: string;

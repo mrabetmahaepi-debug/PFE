@@ -21,8 +21,9 @@ import {
 import { projectService } from '../services/project.service';
 import { teamService } from '../services/team.service';
 import { activityService, type EnterpriseActivityItem } from '../services/activity.service';
-import { ProjectStatus } from '../types/project';
 import type { Projet } from '../types/project';
+import { countActiveAdminProjects } from '../lib/adminDashboardAnalytics';
+import { WORKSPACE_REFRESH_EVENT } from '../lib/workspaceEvents';
 import { formatActivityTimestamp } from '../lib/formatActivityTimestamp';
 import {
   countAdminEstimations,
@@ -68,6 +69,15 @@ const TenantAdminDashboard: React.FC = () => {
   const [riskSummary, setRiskSummary] = useState<TenantAdminRiskSummary | null>(null);
   const [riskLoading, setRiskLoading] = useState(true);
   const [riskError, setRiskError] = useState<string | null>(null);
+
+  const reloadProjects = useCallback(async () => {
+    try {
+      const loadedProjects = await projectService.getAll();
+      setProjects(loadedProjects);
+    } catch (error) {
+      console.error('Failed to refresh tenant admin projects:', error);
+    }
+  }, []);
 
   const loadActivity = useCallback(async (silent = false) => {
     if (!silent) setActivityLoading(true);
@@ -124,8 +134,17 @@ const TenantAdminDashboard: React.FC = () => {
     return () => window.clearInterval(timer);
   }, [loadActivity]);
 
+  useEffect(() => {
+    const onWorkspaceRefresh = () => {
+      void reloadProjects();
+    };
+    window.addEventListener(WORKSPACE_REFRESH_EVENT, onWorkspaceRefresh);
+    return () =>
+      window.removeEventListener(WORKSPACE_REFRESH_EVENT, onWorkspaceRefresh);
+  }, [reloadProjects]);
+
   const activeProjectsCount = useMemo(
-    () => projects.filter((p) => p.statut_p !== ProjectStatus.COMPLETED).length,
+    () => countActiveAdminProjects(projects),
     [projects]
   );
 

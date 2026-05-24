@@ -18,19 +18,18 @@ export type AdminProjectProgressItem = AdminProjectStatusBar & {
   percent: number;
 };
 
+export type AdminDashboardProjectBucket =
+  | 'planning'
+  | 'in_progress'
+  | 'completed'
+  | 'delayed';
+
 const PROJECT_STATUS_COLORS = {
   planning: '#a78bfa',
   in_progress: '#6366f1',
   completed: '#10b981',
   delayed: '#f97316',
 } as const;
-
-function projectCreatedAt(project: Projet): Date | null {
-  const raw = project.createdAt ?? project.date_debut;
-  if (!raw) return null;
-  const date = new Date(raw);
-  return Number.isNaN(date.getTime()) ? null : date;
-}
 
 function normalizeStatusKey(statut?: string | null): string {
   return String(statut ?? ProjectStatus.PLANNING)
@@ -39,6 +38,105 @@ function normalizeStatusKey(statut?: string | null): string {
     .normalize('NFD')
     .replace(/\p{M}/gu, '')
     .replace(/[\s-]/g, '_');
+}
+
+function isCompletedStatus(statut?: string | null): boolean {
+  const status = normalizeStatusKey(statut);
+  return (
+    status === 'COMPLETED' ||
+    status === 'TERMINE' ||
+    status === 'TERMINEE' ||
+    status === 'LIVRE' ||
+    status === 'LIVREE'
+  );
+}
+
+function isDelayedStatus(statut?: string | null): boolean {
+  const status = normalizeStatusKey(statut);
+  return status === 'DELAYED' || status === 'EN_RETARD' || status === 'RETARD';
+}
+
+function isInProgressStatus(statut?: string | null): boolean {
+  const status = normalizeStatusKey(statut);
+  return (
+    status === 'IN_PROGRESS' ||
+    status === 'EN_COURS' ||
+    status === 'ACTIVE' ||
+    status === 'ACTIF'
+  );
+}
+
+/** Progress % from API task stats (same source as page Projets). */
+export function projectProgressPercent(project: Projet): number {
+  const fromApi = project.progressPercent ?? project.avancement;
+  if (typeof fromApi === 'number' && Number.isFinite(fromApi)) {
+    return Math.max(0, Math.min(100, Math.round(fromApi)));
+  }
+  const total =
+    project.totalTasks ??
+    project.tachesCount ??
+    project._count?.tache ??
+    0;
+  const completed = project.completedTasks ?? 0;
+  if (total > 0) {
+    return Math.round((completed / total) * 100);
+  }
+  return 0;
+}
+
+export function isProjectCompletedByTaskStats(project: Projet): boolean {
+  const progress = projectProgressPercent(project);
+  if (progress >= 100) return true;
+  const total =
+    project.totalTasks ??
+    project.tachesCount ??
+    project._count?.tache ??
+    0;
+  const completed = project.completedTasks ?? 0;
+  return total > 0 && completed >= total;
+}
+
+/**
+ * Dashboard bucket from real task data first, then statut_p fallback.
+ * Aligns with GET /projets `dashboardBucket` when present.
+ */
+export function resolveAdminDashboardProjectBucket(
+  project: Projet
+): AdminDashboardProjectBucket {
+  const apiBucket = (project as Projet & { dashboardBucket?: string })
+    .dashboardBucket;
+  if (
+    apiBucket === 'planning' ||
+    apiBucket === 'in_progress' ||
+    apiBucket === 'completed' ||
+    apiBucket === 'delayed'
+  ) {
+    return apiBucket;
+  }
+
+  if (isProjectCompletedByTaskStats(project) || isCompletedStatus(project.statut_p)) {
+    return 'completed';
+  }
+
+  const lateTasks = project.lateTasks ?? 0;
+  if (lateTasks > 0 || isDelayedStatus(project.statut_p)) {
+    return 'delayed';
+  }
+
+  const progress = projectProgressPercent(project);
+  const inProgressTasks = project.inProgressTasks ?? 0;
+  if (progress > 0 || inProgressTasks > 0 || isInProgressStatus(project.statut_p)) {
+    return 'in_progress';
+  }
+
+  return 'planning';
+}
+
+function projectCreatedAt(project: Projet): Date | null {
+  const raw = project.createdAt ?? project.date_debut;
+  if (!raw) return null;
+  const date = new Date(raw);
+  return Number.isNaN(date.getTime()) ? null : date;
 }
 
 function countProjectsByStatus(projects: Projet[]) {
@@ -50,31 +148,8 @@ function countProjectsByStatus(projects: Projet[]) {
   };
 
   for (const project of projects) {
-    const status = normalizeStatusKey(project.statut_p);
-    if (
-      status === 'COMPLETED' ||
-      status === 'TERMINE' ||
-      status === 'TERMINEE' ||
-      status === 'LIVRE' ||
-      status === 'LIVREE'
-    ) {
-      counts.completed += 1;
-      continue;
-    }
-    if (status === 'DELAYED' || status === 'EN_RETARD' || status === 'RETARD') {
-      counts.delayed += 1;
-      continue;
-    }
-    if (
-      status === 'IN_PROGRESS' ||
-      status === 'EN_COURS' ||
-      status === 'ACTIVE' ||
-      status === 'ACTIF'
-    ) {
-      counts.in_progress += 1;
-      continue;
-    }
-    counts.planning += 1;
+    const bucket = resolveAdminDashboardProjectBucket(project);
+    counts[bucket] += 1;
   }
 
   return counts;
@@ -160,4 +235,10 @@ export function buildAdminProjectProgress(projects: Projet[]): AdminProjectProgr
     ...bar,
     percent: total > 0 ? Math.round((bar.value / total) * 100) : 0,
   }));
+}
+
+export function countActiveAdminProjects(projects: Projet[]): number {
+  return projects.filter(
+    (p) => resolveAdminDashboardProjectBucket(p) !== 'completed'
+  ).length;
 }

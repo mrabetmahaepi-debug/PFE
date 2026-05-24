@@ -40,6 +40,7 @@ import {
 } from "../lib/projectArchive";
 import { filterProjectResponsibleCandidates } from "../lib/projectResponsibleCandidates";
 import { computeProjectTaskStatsBatch, computeProjectTaskStats } from "../lib/projectTaskStats";
+import { resolveProjectDashboardBucket } from "../lib/projectDashboardBucket";
 import { buildProjectNode, loadHierarchyEntities } from "../lib/spaceHierarchy";
 
 const CHEF_DE_PROJET_ROLE_LABEL = "Chef de projet";
@@ -906,6 +907,7 @@ export const getAllProjets = async (req: Request, res: Response) => {
         todoTasks,
         avancement,
         progressPercent: avancement,
+        dashboardBucket: resolveProjectDashboardBucket(stats, p.statut_p),
         responsable: finalResponsable,
         responsable_role: chef ? CHEF_DE_PROJET_ROLE_LABEL : admin ? "Admin" : null,
         chef_id: chef ? chef.id_utilisateur : null,
@@ -966,11 +968,19 @@ export const getProjetStats = async (req: Request, res: Response) => {
     }
 
     const stats = await computeProjectTaskStats(id);
+    const projetMeta = await prisma.projet.findUnique({
+      where: { id_projet: id },
+      select: { statut_p: true },
+    });
     return res.json({
       id_projet: id,
       ...stats,
       tachesCount: stats.totalTasks,
       progressPercent: stats.avancement,
+      dashboardBucket: resolveProjectDashboardBucket(
+        stats,
+        projetMeta?.statut_p
+      ),
     });
   } catch (error) {
     console.error("[getProjetStats] error:", error);
@@ -1078,6 +1088,7 @@ export const getProjetById = async (req: Request, res: Response) => {
       todoTasks,
       tachesCount: totalTasks,
       progressPercent: avancement,
+      dashboardBucket: resolveProjectDashboardBucket(stats, projet.statut_p),
       _count: {
         tache: totalTasks,
         membres:

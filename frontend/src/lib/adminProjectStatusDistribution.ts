@@ -1,4 +1,5 @@
 import type { Projet } from '../types/project';
+import { resolveAdminDashboardProjectBucket } from './adminDashboardAnalytics';
 
 export type ProjectStatusBucket = 'active' | 'completed' | 'delayed' | 'pending';
 
@@ -35,9 +36,17 @@ const BUCKET_ORDER: ProjectStatusBucket[] = [
 ];
 
 export function normalizeProjectStatusBucket(
-  statut?: string | null
+  projectOrStatut: Projet | string | null | undefined
 ): ProjectStatusBucket {
-  const s = String(statut ?? 'PLANNING')
+  if (projectOrStatut != null && typeof projectOrStatut === 'object') {
+    const bucket = resolveAdminDashboardProjectBucket(projectOrStatut);
+    if (bucket === 'completed') return 'completed';
+    if (bucket === 'delayed') return 'delayed';
+    if (bucket === 'in_progress') return 'active';
+    return 'pending';
+  }
+
+  const s = String(projectOrStatut ?? 'PLANNING')
     .trim()
     .toUpperCase()
     .normalize('NFD')
@@ -55,15 +64,6 @@ export function normalizeProjectStatusBucket(
   }
   if (s === 'DELAYED' || s === 'EN_RETARD' || s === 'RETARD') {
     return 'delayed';
-  }
-  if (
-    s === 'ON_HOLD' ||
-    s === 'EN_ATTENTE' ||
-    s === 'PLANNING' ||
-    s === 'PAUSE' ||
-    s === 'A_VENIR'
-  ) {
-    return 'pending';
   }
   if (s === 'IN_PROGRESS' || s === 'EN_COURS' || s === 'ACTIVE' || s === 'ACTIF') {
     return 'active';
@@ -92,7 +92,7 @@ export function buildAdminProjectInsights(projects: Projet[]): AdminProjectInsig
   let createdLastWeek = 0;
 
   for (const p of projects) {
-    const bucket = normalizeProjectStatusBucket(p.statut_p);
+    const bucket = normalizeProjectStatusBucket(p);
     counts[bucket] += 1;
 
     const created = projectCreatedAt(p);
