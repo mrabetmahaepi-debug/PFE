@@ -333,7 +333,11 @@ const ListPageView: React.FC<ListPageViewProps> = ({
   useSetMemberTopbarTitle(memberListNavbarTitle);
 
   const handleBoardMove = async (taskId: number, target: BoardColumnId) => {
-    if (!canEditTask) return;
+    const task = tasks.find((t) => t.id_tache === taskId);
+    if (!task || !canEditTaskStatusFor(task)) {
+      alert("Vous n'avez pas l'autorisation de modifier le statut de cette tâche.");
+      throw new Error('PROJECT_PERMISSION_DENIED');
+    }
     const normalized = normalizeTaskStatutKey(target);
     const previous = tasks;
     setTasks((prev) =>
@@ -354,7 +358,8 @@ const ListPageView: React.FC<ListPageViewProps> = ({
         message?: string;
       };
       alert(
-        ax?.response?.data?.message ||
+        permissionDeniedFromError(err) ||
+          ax?.response?.data?.message ||
           ax?.message ||
           'Impossible de déplacer la tâche'
       );
@@ -366,7 +371,11 @@ const ListPageView: React.FC<ListPageViewProps> = ({
     taskId: number,
     statutKey: ClickUpColumnId
   ) => {
-    if (!canEditTask) return;
+    const task = tasks.find((t) => t.id_tache === taskId);
+    if (!task || !canEditTaskStatusFor(task)) {
+      alert("Vous n'avez pas l'autorisation de modifier le statut de cette tâche.");
+      throw new Error('PROJECT_PERMISSION_DENIED');
+    }
     const normalized = normalizeTaskStatutKey(statutKey);
     const previous = tasks;
     setTasks((prev) =>
@@ -388,7 +397,8 @@ const ListPageView: React.FC<ListPageViewProps> = ({
         message?: string;
       };
       alert(
-        ax?.response?.data?.message ||
+        permissionDeniedFromError(err) ||
+          ax?.response?.data?.message ||
           ax?.message ||
           'Impossible de déplacer la tâche'
       );
@@ -859,6 +869,7 @@ const ListPageView: React.FC<ListPageViewProps> = ({
               void onRefreshHierarchy();
             }}
             canEditStatus={canEditTask}
+            canEditStatusFor={canEditTaskStatusFor}
             onTaskStatusChange={handleTaskStatusChange}
             savingStatusTaskId={statusSavingId}
           />
@@ -869,7 +880,8 @@ const ListPageView: React.FC<ListPageViewProps> = ({
             tasks={filteredTasks}
             listLookup={{ [listId]: listDetail.nom }}
             canCreateTask={canCreateTask}
-            canReorderTasks={canEditTask}
+            canReorderTask={canEditTaskStatusFor}
+            canReorderTasks={filteredTasks.some((t) => canEditTaskStatusFor(t))}
             onAddTask={(status) =>
               onOpenCreateTask(parentCtx, taskStatusToStatutKey(status))
             }

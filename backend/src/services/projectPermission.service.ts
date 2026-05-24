@@ -18,7 +18,7 @@ import {
   mergePermissionOverrides,
 } from "../lib/memberProjectPermissionResolution";
 import {
-  assertCanChangeTaskStatusByLocalRole,
+  assertCanChangeTaskStatus,
   bodyChangesTaskStatus,
 } from "../lib/projectLocalRolePermissions";
 
@@ -341,7 +341,7 @@ export function assertCanUpdateTask(
   if (ctx.fullAccess) return;
 
   if (bodyChangesTaskStatus(body)) {
-    assertCanChangeTaskStatusByLocalRole(ctx, task, userId);
+    assertCanChangeTaskStatus(ctx, task, userId);
   }
 
   const assigneeId =
@@ -431,7 +431,7 @@ export function assertCanUpdateAssignedTaskStatus(
     (err as any).status = 400;
     throw err;
   }
-  assertCanChangeTaskStatusByLocalRole(ctx, task, userId);
+  assertCanChangeTaskStatus(ctx, task, userId);
 }
 
 async function loadUserForProjectAuth(

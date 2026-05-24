@@ -235,6 +235,7 @@ interface ColumnProps {
   contextLabel: string;
   canCreateTask: boolean;
   canReorder: boolean;
+  canReorderTask?: (task: Tache) => boolean;
   highlightTaskId?: number | null;
   onAdd: () => void;
   onTaskClick: (task: Tache) => void;
@@ -249,6 +250,7 @@ const Column: React.FC<ColumnProps> = ({
   contextLabel,
   canCreateTask,
   canReorder,
+  canReorderTask,
   highlightTaskId,
   onAdd,
   onTaskClick,
@@ -280,7 +282,7 @@ const Column: React.FC<ColumnProps> = ({
               task={t}
               contextLabel={contextLabel}
               highlight={highlightTaskId === t.id_tache}
-              canReorder={canReorder}
+              canReorder={canReorderTask ? canReorderTask(t) : canReorder}
               onCardClick={() => onTaskClick(t)}
             />
           ))}
@@ -302,6 +304,8 @@ export interface ClickUpKanbanBoardProps {
   projectName?: string;
   canCreateTask: boolean;
   canReorderTasks?: boolean;
+  /** Per-task drag permission (overrides canReorderTasks on each card). */
+  canReorderTask?: (task: Tache) => boolean;
   onAddTask: (statutKey: ClickUpColumnId) => void;
   onMoveTask: (taskId: number, statutKey: ClickUpColumnId) => void | Promise<void>;
   highlightTaskId?: number | null;
@@ -314,6 +318,7 @@ const ClickUpKanbanBoard: React.FC<ClickUpKanbanBoardProps> = ({
   projectName,
   canCreateTask,
   canReorderTasks = true,
+  canReorderTask,
   onAddTask,
   onMoveTask,
   highlightTaskId,
@@ -481,11 +486,26 @@ const ClickUpKanbanBoard: React.FC<ClickUpKanbanBoardProps> = ({
       return current;
     });
 
-    if (!canReorderTasks || !finalCol || !sourceCol) return;
+    if (!finalCol || !sourceCol) {
+      setColumns(groupTasksByKanbanWorkflow(tasks));
+      return;
+    }
 
     if (finalCol === sourceCol) return;
 
     const taskId = parseTaskKey(active.id);
+    const movingTask = tasks.find((t) => t.id_tache === taskId);
+    const canMoveThisTask = canReorderTask
+      ? movingTask
+        ? canReorderTask(movingTask)
+        : false
+      : canReorderTasks;
+
+    if (!canMoveThisTask) {
+      setColumns(groupTasksByKanbanWorkflow(tasks));
+      return;
+    }
+
     const stillInSource = snap[sourceCol]?.some(
       (t) => taskKey(t.id_tache) === active.id
     );
@@ -546,6 +566,7 @@ const ClickUpKanbanBoard: React.FC<ClickUpKanbanBoardProps> = ({
               contextLabel={contextLabel}
               canCreateTask={canCreateTask}
               canReorder={canReorderTasks}
+              canReorderTask={canReorderTask}
               highlightTaskId={highlightTaskId}
               onAdd={() => onAddTask(col.id)}
               onTaskClick={handleTaskClick}

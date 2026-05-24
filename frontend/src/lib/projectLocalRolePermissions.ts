@@ -4,6 +4,7 @@ import {
 } from './projectRoleLabels';
 import type { Tache } from '../types/task';
 import { isTaskAssignee } from './projectPermissions';
+import { permissionSetHas } from './permissionCheck';
 
 export function isLocalChefDeProjet(
   roleProjet: string | null | undefined
@@ -57,17 +58,22 @@ export function localRoleCanEditProject(
 }
 
 /**
- * Status change: local « Développeur » on own assigned tasks only.
- * Local « Chef de projet » cannot change status.
+ * Status change for local project roles:
+ * - Chef de projet: any task in the project
+ * - Développeur: assigned tasks, or when TASK_STATUS_ALL / TASK_EDIT_ALL is granted
  */
 export function localRoleCanChangeTaskStatus(
   roleProjet: string | null | undefined,
   task: Pick<Tache, 'assigne_a'>,
-  userId: number | null | undefined
+  userId: number | null | undefined,
+  permissions?: string[] | null
 ): boolean {
-  if (isLocalChefDeProjet(roleProjet)) return false;
+  if (isLocalChefDeProjet(roleProjet)) return true;
   if (!isLocalDeveloppeur(roleProjet)) return false;
-  return isTaskAssignee(task, userId);
+  if (isTaskAssignee(task, userId)) return true;
+  if (permissionSetHas(permissions, 'TASK_STATUS_ALL')) return true;
+  if (permissionSetHas(permissions, 'TASK_EDIT_ALL')) return true;
+  return false;
 }
 
 export function localRoleCanEditAssignedTask(

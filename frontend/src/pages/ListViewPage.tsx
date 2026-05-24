@@ -10,7 +10,7 @@ import { projectService } from '../services/project.service';
 import { usePermission } from '../hooks/usePermission';
 import { useAuth } from '../hooks/useAuth';
 import { getRoleKey } from '../lib/permissions';
-import { canCreateTasksInProject } from '../lib/projectPermissions';
+import { canCreateTasksInProject, canEditTasksInProject } from '../lib/projectPermissions';
 import { dispatchWorkspaceRefresh, WORKSPACE_REFRESH_EVENT, PROJECT_PERMISSIONS_CHANGED_EVENT } from '../lib/workspaceEvents';
 import type { ListDetail } from '../types/hierarchy';
 import './ListViewPage.css';
@@ -78,11 +78,13 @@ const ListViewPage: React.FC = () => {
     );
   }, [isSuperAdmin, user, projectPermissions]);
 
-  const canEditTask =
-    isSuperAdmin ||
-    getRoleKey(user) === 'ADMIN' ||
-    projectPermissions.includes('edit_all_tasks') ||
-    projectPermissions.includes('edit_assigned_tasks');
+  const canEditTask = useMemo(() => {
+    return (
+      isSuperAdmin ||
+      getRoleKey(user) === 'ADMIN' ||
+      canEditTasksInProject(projectPermissions)
+    );
+  }, [isSuperAdmin, user, projectPermissions]);
 
   const canDeleteTask =
     isSuperAdmin ||

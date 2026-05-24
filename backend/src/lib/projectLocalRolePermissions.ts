@@ -2,10 +2,12 @@ import {
   isChefDeProjetMemberRole,
   normalizeProjectLocalRole,
 } from "./projectRoleLabels";
+import { permissionSetHas } from "./permissionProfiles";
 
-type LocalRolePermCtx = {
+type StatusPermCtx = {
   fullAccess: boolean;
   roleProjet: string | null;
+  permissions: ReadonlySet<string>;
 };
 
 const STATUS_FIELD_KEYS = new Set([
@@ -35,34 +37,77 @@ export function bodyChangesTaskStatus(body: Record<string, unknown>): boolean {
   );
 }
 
+function ctxHasPermission(ctx: StatusPermCtx, permission: string): boolean {
+  if (ctx.fullAccess) return true;
+  return permissionSetHas(ctx.permissions, permission);
+}
+
 /**
- * Task status may only be changed by a local « Développeur » on tasks assigned to them.
- * Local « Chef de projet » cannot change task status (even with legacy TASK_STATUS_ALL).
+ * Local role rules for task status:
+ * - Chef de projet: may change any task status in the project
+ * - Développeur: own assigned tasks, or when TASK_STATUS_ALL / TASK_EDIT_ALL is granted
  */
 export function localRoleAllowsTaskStatusChange(
-  roleProjet: string | null | undefined,
+  ctx: StatusPermCtx,
   task: { assigne_a: number | null },
   userId: number
 ): boolean {
-  if (isLocalChefDeProjet(roleProjet)) return false;
-  if (!isLocalDeveloppeur(roleProjet)) return false;
-  return task.assigne_a != null && Number(task.assigne_a) === userId;
+  if (ctx.fullAccess) return true;
+
+  const role = ctx.roleProjet;
+  if (isLocalChefDeProjet(role)) return true;
+
+  if (!isLocalDeveloppeur(role)) return false;
+
+  const isAssignee =
+    task.assigne_a != null && Number(task.assigne_a) === userId;
+  if (isAssignee) return true;
+  if (ctxHasPermission(ctx, "TASK_STATUS_ALL")) return true;
+  if (ctxHasPermission(ctx, "TASK_EDIT_ALL")) return true;
+  return false;
 }
 
-export function assertCanChangeTaskStatusByLocalRole(
-  ctx: LocalRolePermCtx,
+/**
+ * Assert the user may change task status (local roles + UML permissions).
+ */
+export function assertCanChangeTaskStatus(
+  ctx: StatusPermCtx,
   task: { assigne_a: number | null },
   userId: number
 ): void {
   if (ctx.fullAccess) return;
-  if (localRoleAllowsTaskStatusChange(ctx.roleProjet, task, userId)) return;
+
+  const assigneeId = task.assigne_a == null ? null : Number(task.assigne_a);
+  const isAssignee = assigneeId === userId;
+  const role = ctx.roleProjet;
+
+  if (isLocalChefDeProjet(role) || isLocalDeveloppeur(role)) {
+    if (localRoleAllowsTaskStatusChange(ctx, task, userId)) return;
+    const err = new Error(
+      "Seul le développeur assigné peut modifier le statut de cette tâche."
+    );
+    (err as any).status = 403;
+    (err as any).code = "PROJECT_PERMISSION_DENIED";
+    throw err;
+  }
+
+  if (ctxHasPermission(ctx, "TASK_EDIT_ALL")) return;
+  if (ctxHasPermission(ctx, "TASK_STATUS_ALL")) return;
+  if (
+    isAssignee &&
+    (ctxHasPermission(ctx, "TASK_EDIT_ASSIGNED") ||
+      ctxHasPermission(ctx, "TASK_STATUS_OWN"))
+  ) {
+    return;
+  }
 
   const err = new Error(
-    isLocalChefDeProjet(ctx.roleProjet)
-      ? "Le chef de projet ne peut pas modifier le statut des tâches."
-      : "Seul le développeur assigné peut modifier le statut de cette tâche."
+    "Vous n'avez pas l'autorisation de modifier le statut de cette tâche."
   );
   (err as any).status = 403;
   (err as any).code = "PROJECT_PERMISSION_DENIED";
   throw err;
 }
+
+/** @deprecated Use assertCanChangeTaskStatus */
+export const assertCanChangeTaskStatusByLocalRole = assertCanChangeTaskStatus;

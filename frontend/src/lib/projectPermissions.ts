@@ -3,7 +3,11 @@ import type { SpaceTreeNode, TreeProjectNode } from '../types/hierarchy';
 import type { Tache } from '../types/task';
 
 import { permissionSetHas } from './permissionCheck';
-import { localRoleCanChangeTaskStatus } from './projectLocalRolePermissions';
+import {
+  isLocalChefDeProjet,
+  isLocalDeveloppeur,
+  localRoleCanChangeTaskStatus,
+} from './projectLocalRolePermissions';
 
 
 
@@ -230,19 +234,14 @@ export function canEditTaskDetailFields(
 
 
 export function canEditTasksInProject(
-
   permissions: string[] | undefined | null
-
 ): boolean {
-
   return (
-
     projectCan(permissions, 'TASK_EDIT_ALL') ||
-
-    projectCan(permissions, 'TASK_EDIT_ASSIGNED')
-
+    projectCan(permissions, 'TASK_EDIT_ASSIGNED') ||
+    projectCan(permissions, 'TASK_STATUS_ALL') ||
+    projectCan(permissions, 'TASK_STATUS_OWN')
   );
-
 }
 
 
@@ -353,8 +352,12 @@ export function canChangeTaskStatusForTask(
   }
 ): boolean {
   if (options?.isAdmin) return true;
-  if (options?.localRole != null && options.localRole !== '') {
-    return localRoleCanChangeTaskStatus(options.localRole, task, userId);
+
+  const role = options?.localRole;
+  if (role != null && role !== '') {
+    if (isLocalChefDeProjet(role) || isLocalDeveloppeur(role)) {
+      return localRoleCanChangeTaskStatus(role, task, userId, permissions);
+    }
   }
 
   if (projectCan(permissions, 'TASK_EDIT_ALL')) return true;

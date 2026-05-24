@@ -12,7 +12,7 @@ const KanbanBoardView: React.FC<KanbanBoardViewProps> = ({ listId }) => {
     projectName,
     tasks,
     canCreateTask,
-    canEditTask,
+    canEditTaskStatusFor,
     onOpenCreateTask,
     onBoardMove,
     highlightTaskId,
@@ -31,7 +31,8 @@ const KanbanBoardView: React.FC<KanbanBoardViewProps> = ({ listId }) => {
         listName={listName}
         projectName={projectName}
         canCreateTask={canCreateTask}
-        canReorderTasks={canEditTask}
+        canReorderTask={canEditTaskStatusFor}
+        canReorderTasks={listTasks.some((t) => canEditTaskStatusFor(t))}
         onAddTask={(statutKey) => onOpenCreateTask(statutKey)}
         onMoveTask={onBoardMove}
         highlightTaskId={highlightTaskId}

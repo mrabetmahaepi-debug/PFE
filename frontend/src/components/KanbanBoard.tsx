@@ -54,6 +54,7 @@ interface KanbanBoardProps {
   listLookup: Record<number, string>;
   canCreateTask: boolean;
   canReorderTasks?: boolean;
+  canReorderTask?: (task: Tache) => boolean;
   onAddTask: (status: BoardColumnId) => void;
   onMoveTask: (taskId: number, targetColumn: BoardColumnId) => void | Promise<void>;
   highlightTaskId?: number | null;
@@ -294,6 +295,7 @@ interface ColumnProps {
   isActiveColumn: boolean;
   onTaskClick?: (task: Tache) => void;
   canReorderTasks: boolean;
+  canReorderTask?: (task: Tache) => boolean;
 }
 
 const Column: React.FC<ColumnProps> = ({
@@ -306,6 +308,7 @@ const Column: React.FC<ColumnProps> = ({
   isActiveColumn,
   onTaskClick,
   canReorderTasks,
+  canReorderTask,
 }) => {
   const { setNodeRef, isOver } = useDroppable({
     id: columnKey(column.id),
@@ -356,7 +359,7 @@ const Column: React.FC<ColumnProps> = ({
                   : undefined
               }
               highlight={highlightTaskId === t.id_tache}
-              canReorder={canReorderTasks}
+              canReorder={canReorderTask ? canReorderTask(t) : canReorderTasks}
               onCardClick={() => onTaskClick?.(t)}
             />
           ))}
@@ -376,6 +379,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
   listLookup,
   canCreateTask,
   canReorderTasks = true,
+  canReorderTask,
   onAddTask,
   onMoveTask,
   highlightTaskId,
@@ -547,10 +551,25 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
       return current;
     });
 
-    if (!canReorderTasks || !finalCol || !sourceCol) return;
+    if (!finalCol || !sourceCol) {
+      setColumns(groupTasksByBoardColumns(tasks));
+      return;
+    }
     if (finalCol === sourceCol) return;
 
     const taskId = parseTaskKey(active.id);
+    const movingTask = tasks.find((t) => t.id_tache === taskId);
+    const canMoveThisTask = canReorderTask
+      ? movingTask
+        ? canReorderTask(movingTask)
+        : false
+      : canReorderTasks;
+
+    if (!canMoveThisTask) {
+      setColumns(groupTasksByBoardColumns(tasks));
+      return;
+    }
+
     const stillInSource = snap[sourceCol]?.some(
       (t) => taskKey(t.id_tache) === active.id
     );
@@ -616,6 +635,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
             isActiveColumn={activeColumn === col.id}
             onTaskClick={onTaskClick}
             canReorderTasks={canReorderTasks}
+            canReorderTask={canReorderTask}
           />
         ))}
       </div>
