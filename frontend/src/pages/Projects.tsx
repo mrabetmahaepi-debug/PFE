@@ -22,6 +22,7 @@ import {
   Archive,
   ChevronDown,
   ArrowUpDown,
+  ArrowRight,
 } from 'lucide-react';
 import { projectService } from '../services/project.service';
 import { usePermission } from '../hooks/usePermission';
@@ -45,7 +46,6 @@ import type { User } from '../types/auth.types';
 import CreateProjectModal from '../components/CreateProjectModal';
 import EditProjectModal from '../components/EditProjectModal';
 import ProjectProgress from '../components/ProjectProgress';
-import BackButton from '../components/BackButton';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { teamService } from '../services/team.service';
 import { useAuth } from '../hooks/useAuth';
@@ -471,21 +471,29 @@ const Projects: React.FC = () => {
   };
 
   return (
-    <div className="projects-page">
-      <BackButton />
-      <header className="page-header">
-        <div>
-          <h1>
-            {t('projects.title')} {isSuperAdmin ? t('projects.supervision') : ''}
-          </h1>
-          {isSuperAdmin ? (
-            <p className="subtitle">{t('projects.supervisionSubtitle')}</p>
-          ) : null}
+    <div className="projects-page projects-page--admin">
+      <header className="projects-admin-header">
+        <div className="projects-admin-header-main">
+          <div className="projects-admin-title-row">
+            <h1 className="projects-admin-title">Projets</h1>
+            {!loading && (
+              <span className="projects-admin-count-badge">
+                {filteredProjects.length} projet{filteredProjects.length !== 1 ? 's' : ''}
+              </span>
+            )}
+          </div>
+          <p className="projects-admin-subtitle">
+            Gérez les projets de votre entreprise et suivez leur avancement.
+          </p>
         </div>
-        {!isSuperAdmin && (can('PROJECT_CREATE') || isEnterpriseAdmin(user)) && (
-          <button className="primary-btn" onClick={() => setIsModalOpen(true)}>
-            <Plus size={15} />
-            <span>{t('projects.createProject')}</span>
+        {(can('PROJECT_CREATE') || isEnterpriseAdmin(user)) && (
+          <button
+            type="button"
+            className="projects-admin-create-btn"
+            onClick={() => setIsModalOpen(true)}
+          >
+            <Plus size={16} aria-hidden />
+            <span>Créer un projet</span>
           </button>
         )}
       </header>
@@ -542,12 +550,12 @@ const Projects: React.FC = () => {
         </div>
       )}
 
-      <div className="projects-toolbar">
+      <div className="projects-toolbar projects-toolbar--admin">
         <div className="search-box">
           <Search size={18} />
           <input
             type="text"
-            placeholder="Rechercher par nom, responsable ou entreprise…"
+            placeholder="Rechercher un projet…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -616,11 +624,23 @@ const Projects: React.FC = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 whileHover={{ y: -4 }}
-                className="project-super-card project-card-cu"
+                className="project-super-card project-card-cu project-card-cu--admin"
                 onClick={() => navigate(`/projects/${project.id_projet}`)}
               >
                 <div className="project-card-header">
                   <div className="project-card-head-main">
+                    <div className="project-card-title-row">
+                      <span
+                        className="project-status-badge"
+                        style={{
+                          backgroundColor: `${getProjectStatusColor(project.statut_p)}18`,
+                          color: getProjectStatusColor(project.statut_p),
+                          borderColor: `${getProjectStatusColor(project.statut_p)}40`,
+                        }}
+                      >
+                        {formatProjectStatus(project.statut_p ?? project.status)}
+                      </span>
+                    </div>
                     <h3 className="project-title">{project.nom_p}</h3>
                     <p className={`project-desc ${!project.description_p ? 'empty-desc' : ''}`}>
                       {project.description_p || 'Aucune description fournie.'}
@@ -724,6 +744,7 @@ const Projects: React.FC = () => {
                       })()}
                     </div>
                     <div className="responsable-info" style={{ flex: 1 }}>
+                      <span className="responsable-label">Chef de projet</span>
                       {canManageProject(user, project) ? (
                         <div style={{ position: 'relative' }}>
                           <div
@@ -840,7 +861,17 @@ const Projects: React.FC = () => {
                     </div>
                     </div>
                   </div>
-                  <div className="card-action-hint">Détails →</div>
+                  <button
+                    type="button"
+                    className="project-details-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/projects/${project.id_projet}`);
+                    }}
+                  >
+                    Détails
+                    <ArrowRight size={14} aria-hidden />
+                  </button>
                 </div>
               </motion.div>
             ))}

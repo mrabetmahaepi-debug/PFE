@@ -176,8 +176,7 @@ const MORE_ITEMS: MoreNavItem[] = [
     nameKey: 'nav.projects',
     icon: <Briefcase size={16} />,
     path: appPaths.projects,
-    anyPermissions: ['PROJECT_VIEW', 'PROJECT_VIEW_ALL', 'WORKSPACE_VIEW'],
-    hideForSuperAdmin: true,
+    requiresEnterpriseAdmin: true,
   },
   {
     id: 'messages',

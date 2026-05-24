@@ -1097,3 +1097,288 @@ button.project-info-chip--link:hover .project-info-chip-value {
   background: var(--bg-surface-2);
   border-color: var(--border-strong);
 }
+
+/* ── Admin projects page (ClickUp-style) ── */
+.projects-page--admin {
+  min-height: 100%;
+  padding: 1.75rem clamp(1rem, 3vw, 2rem) 2.5rem;
+  background: linear-gradient(180deg, #fafafd 0%, #f5f3ff 38%, #ffffff 100%);
+  gap: 1.35rem;
+}
+
+.projects-admin-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+  padding-bottom: 0.35rem;
+}
+
+.projects-admin-header-main {
+  flex: 1;
+  min-width: min(100%, 280px);
+}
+
+.projects-admin-title-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-bottom: 0.35rem;
+}
+
+.projects-admin-title {
+  margin: 0;
+  font-size: clamp(1.65rem, 3vw, 2rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: #292d34;
+  line-height: 1.15;
+}
+
+.projects-admin-count-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.28rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #7b68ee;
+  background: rgba(123, 104, 238, 0.1);
+  border: 1px solid rgba(123, 104, 238, 0.18);
+}
+
+.projects-admin-subtitle {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #87909e;
+  line-height: 1.5;
+  max-width: 42rem;
+}
+
+.projects-admin-create-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.62rem 1.05rem;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #7b68ee 0%, #6b5ce7 100%);
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(123, 104, 238, 0.28);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+  flex-shrink: 0;
+}
+
+.projects-admin-create-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(123, 104, 238, 0.32);
+  filter: brightness(1.03);
+}
+
+.projects-toolbar--admin {
+  padding: 0.85rem 1rem;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(123, 104, 238, 0.12);
+  box-shadow: 0 4px 18px rgba(123, 104, 238, 0.06);
+}
+
+.projects-page--admin .search-box {
+  background: #fff;
+  border-color: rgba(123, 104, 238, 0.16);
+  border-radius: 10px;
+  min-height: 42px;
+}
+
+.projects-page--admin .search-box:focus-within {
+  border-color: rgba(123, 104, 238, 0.45);
+  box-shadow: 0 0 0 3px rgba(123, 104, 238, 0.12);
+}
+
+.projects-page--admin .filter-group {
+  background: #fff;
+  border-color: rgba(123, 104, 238, 0.14);
+  border-radius: 10px;
+  min-height: 42px;
+}
+
+.projects-page--admin .projects-toolbar-select-icon {
+  color: #7b68ee;
+}
+
+.projects-page--admin .projects-toolbar-select-menu {
+  background: #fff;
+  border-color: rgba(123, 104, 238, 0.16);
+  box-shadow: 0 12px 32px rgba(123, 104, 238, 0.12);
+}
+
+.projects-page--admin .projects-toolbar-select-option.is-selected {
+  background: rgba(123, 104, 238, 0.1);
+  color: #5b4cc4;
+  box-shadow: inset 0 0 0 1px rgba(123, 104, 238, 0.18);
+}
+
+.projects-page--admin .projects-grid {
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 1.25rem;
+}
+
+.project-card-cu--admin {
+  background: #fff;
+  border: 1px solid rgba(123, 104, 238, 0.12);
+  border-radius: 16px;
+  padding: 1.15rem 1.2rem 1.1rem;
+  box-shadow: 0 8px 24px rgba(123, 104, 238, 0.07);
+}
+
+.project-card-cu--admin::before {
+  background: linear-gradient(90deg, #7b68ee 0%, #9b8afb 55%, #6ea8fe 100%);
+  height: 4px;
+  left: 12px;
+  right: 12px;
+  top: 0;
+  border-radius: 0 0 8px 8px;
+}
+
+.projects-page--admin .project-super-card.project-card-cu--admin:hover {
+  border-color: rgba(123, 104, 238, 0.28);
+  box-shadow: 0 14px 36px rgba(123, 104, 238, 0.12);
+}
+
+.project-card-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.55rem;
+}
+
+.project-status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.28rem 0.62rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1.2;
+}
+
+.projects-page--admin .project-title {
+  font-size: 1.2rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  background: none;
+  -webkit-text-fill-color: unset;
+  color: #292d34;
+  margin-bottom: 0.4rem;
+}
+
+.projects-page--admin .project-desc {
+  font-size: 0.8125rem;
+  color: #646f79;
+}
+
+.projects-page--admin .project-info-chip {
+  border-radius: 10px;
+  border-color: rgba(123, 104, 238, 0.12);
+  background: linear-gradient(135deg, rgba(123, 104, 238, 0.06) 0%, rgba(110, 168, 254, 0.08) 100%);
+}
+
+.projects-page--admin .project-info-chip-icon {
+  color: #7b68ee;
+}
+
+.projects-page--admin .project-card-progress .super-progress-bar {
+  background: #eceafd;
+}
+
+.projects-page--admin .project-card-cu .progress-track {
+  background: linear-gradient(90deg, #7b68ee 0%, #9b8afb 50%, #6ea8fe 100%) !important;
+}
+
+.projects-page--admin .project-card-chef-avatar,
+.projects-page--admin .project-card-chef .responsable-avatar {
+  background: linear-gradient(135deg, #7b68ee 0%, #6ea8fe 100%) !important;
+  box-shadow: 0 3px 10px rgba(123, 104, 238, 0.22);
+}
+
+.projects-page--admin .responsable-label {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #87909e;
+  font-weight: 700;
+}
+
+.project-details-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.48rem 0.85rem;
+  border: 1px solid rgba(123, 104, 238, 0.22);
+  border-radius: 10px;
+  background: rgba(123, 104, 238, 0.08);
+  color: #7b68ee;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+
+.project-details-btn:hover {
+  background: rgba(123, 104, 238, 0.14);
+  border-color: rgba(123, 104, 238, 0.35);
+  color: #5b4cc4;
+  transform: translateX(1px);
+}
+
+.projects-page--admin .empty-super-state {
+  border-color: rgba(123, 104, 238, 0.18);
+  background: rgba(255, 255, 255, 0.75);
+  border-radius: 16px;
+}
+
+@media (max-width: 720px) {
+  .projects-page--admin {
+    padding: 1.15rem 0.85rem 1.75rem;
+  }
+
+  .projects-admin-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .projects-admin-create-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .projects-toolbar--admin {
+    padding: 0.75rem;
+  }
+
+  .projects-page--admin .projects-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .project-card-footer-cu {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .project-details-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}

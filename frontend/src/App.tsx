@@ -26,6 +26,7 @@ import AcceptInvitation from './pages/AcceptInvitation';
 import InvitationSetupPassword from './pages/InvitationSetupPassword';
 import Invite from './pages/Invite';
 import AdminRecommendationsRoute from './components/AdminRecommendationsRoute';
+import EnterpriseAdminRoute from './components/EnterpriseAdminRoute';
 import ProjectEquipePage from './pages/ProjectEquipePage';
 
 
@@ -129,9 +130,11 @@ function App() {
               element={
                 <PermissionRoute any={['PROJECT_VIEW', 'PROJECT_VIEW_ALL', 'WORKSPACE_VIEW']}>
                   <NoSuperAdminRoute>
-                    <RouteErrorBoundary pageLabel="la liste des projets">
-                      <Projects />
-                    </RouteErrorBoundary>
+                    <EnterpriseAdminRoute>
+                      <RouteErrorBoundary pageLabel="la liste des projets">
+                        <Projects />
+                      </RouteErrorBoundary>
+                    </EnterpriseAdminRoute>
                   </NoSuperAdminRoute>
                 </PermissionRoute>
               }
