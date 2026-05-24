@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
@@ -172,6 +173,7 @@ const SORT_OPTIONS: ToolbarSelectOption[] = [
 ];
 
 const Projects: React.FC = () => {
+  const { t } = useTranslation();
   const { can, isSuperAdmin } = usePermission();
   const { user } = useAuth();
   const roleKey = getRoleKey(user);
@@ -462,7 +464,7 @@ const Projects: React.FC = () => {
       dispatchProjectsUpdated();
     } catch (err) {
       console.error(err);
-      setFetchError('Impossible de supprimer ce projet.');
+      setFetchError(t('projects.deleteError'));
     } finally {
       setDeletingProject(false);
     }
@@ -473,17 +475,17 @@ const Projects: React.FC = () => {
       <BackButton />
       <header className="page-header">
         <div>
-          <h1>Projets {isSuperAdmin ? '(Supervision)' : ''}</h1>
+          <h1>
+            {t('projects.title')} {isSuperAdmin ? t('projects.supervision') : ''}
+          </h1>
           {isSuperAdmin ? (
-            <p className="subtitle">
-              Supervision globale de tous les projets de la plateforme.
-            </p>
+            <p className="subtitle">{t('projects.supervisionSubtitle')}</p>
           ) : null}
         </div>
         {!isSuperAdmin && (can('PROJECT_CREATE') || isEnterpriseAdmin(user)) && (
           <button className="primary-btn" onClick={() => setIsModalOpen(true)}>
             <Plus size={15} />
-            <span>Créer un projet</span>
+            <span>{t('projects.createProject')}</span>
           </button>
         )}
       </header>
@@ -491,7 +493,7 @@ const Projects: React.FC = () => {
       {isSuperAdmin && (
         <div className="superadmin-banner">
           <ShieldAlert size={20} />
-          <span>Mode Supervision : Vous consultez tous les projets en lecture seule.</span>
+          <span>{t('projects.supervisionBanner')}</span>
         </div>
       )}
 
@@ -509,7 +511,7 @@ const Projects: React.FC = () => {
             setLoading(true);
             void fetchProjects();
           }}>
-            Réessayer
+            {t('common.retry')}
           </button>
         </div>
       )}
@@ -520,20 +522,22 @@ const Projects: React.FC = () => {
             <AlertTriangle size={16} />
           </span>
           <div className="filter-banner-text">
-            <strong>Projets à faible progression</strong>
+            <strong>{t('projects.lowProgressTitle')}</strong>
             <span>
-              {filteredProjects.length} projet{filteredProjects.length > 1 ? 's' : ''}
-              {' '}sous {LOW_PROGRESS_THRESHOLD}% avec des tâches déjà ouvertes
+              {t('projects.lowProgressHint', {
+                count: filteredProjects.length,
+                threshold: LOW_PROGRESS_THRESHOLD,
+              })}
             </span>
           </div>
           <button
             type="button"
             className="filter-banner-reset"
             onClick={clearRiskFilter}
-            aria-label="Réinitialiser le filtre"
+            aria-label={t('projects.resetFilterAria')}
           >
             <X size={14} />
-            Réinitialiser
+            {t('projects.resetFilter')}
           </button>
         </div>
       )}

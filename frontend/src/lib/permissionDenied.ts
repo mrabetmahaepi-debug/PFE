@@ -1,6 +1,6 @@
-import { PERMISSION_DENIED_MESSAGE } from './workspaceEvents';
+import { getPermissionDeniedMessage } from './workspaceEvents';
 
-export { PERMISSION_DENIED_MESSAGE };
+export { getPermissionDeniedMessage };
 
 /** Extract a user-facing denial message from an API error. */
 export function permissionDeniedFromError(err: unknown): string {
@@ -8,7 +8,7 @@ export function permissionDeniedFromError(err: unknown): string {
     response?: { status?: number; data?: { message?: string } };
   };
   if (ax?.response?.status === 403) {
-    return ax.response.data?.message || PERMISSION_DENIED_MESSAGE;
+    return ax.response.data?.message || getPermissionDeniedMessage();
   }
-  return PERMISSION_DENIED_MESSAGE;
+  return getPermissionDeniedMessage();
 }

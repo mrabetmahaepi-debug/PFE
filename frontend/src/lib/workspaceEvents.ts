@@ -1,3 +1,5 @@
+import i18n from '../i18n/config';
+
 /** Dispatched after sidebar hierarchy changes that should refresh the workspace view. */
 export const WORKSPACE_REFRESH_EVENT = 'virtide:workspace-refresh';
 
@@ -40,9 +42,13 @@ export function dispatchProjectPermissionsChanged(): void {
   dispatchWorkspaceRefresh();
 }
 
-/** Standard French message when an action is denied. */
-export const PERMISSION_DENIED_MESSAGE =
-  "Vous n'avez pas l'autorisation nécessaire";
+/** Message when an action is denied (follows current app language). */
+export function getPermissionDeniedMessage(): string {
+  return i18n.t('errors.permissionDenied');
+}
+
+/** @deprecated Use getPermissionDeniedMessage() for translated text. */
+export const PERMISSION_DENIED_MESSAGE = "Vous n'avez pas l'autorisation nécessaire";
 
 /** Dispatched when a task title is saved — sidebar patches in place (no full reload). */
 export const TASK_RENAMED_EVENT = 'virtide:task-renamed';

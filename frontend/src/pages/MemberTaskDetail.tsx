@@ -72,7 +72,10 @@ import SubtaskDeleteButton from '../components/SubtaskDeleteButton';
 import DeleteConfirmModal from '../components/DeleteConfirmModal';
 import ThemedDateField from '../components/ThemedDateField';
 import { validateTaskDateRange } from '../lib/taskDateValidation';
-import { permissionDeniedFromError } from '../lib/permissionDenied';
+import {
+  getPermissionDeniedMessage,
+  permissionDeniedFromError,
+} from '../lib/permissionDenied';
 import '../styles/memberStatusPill.css';
 import './MemberTaskDetail.css';
 
@@ -91,9 +94,6 @@ function toDateInput(raw?: string | null): string {
   if (!raw) return '';
   return String(raw).slice(0, 10);
 }
-
-const PERMISSION_DENIED_MESSAGE =
-  "Vous n'avez pas l'autorisation nécessaire.";
 
 const MemberTaskDetail: React.FC = () => {
   const { taskId } = useParams<{ taskId: string }>();
@@ -333,7 +333,7 @@ const MemberTaskDetail: React.FC = () => {
         setError(
           ax?.response?.data?.message ||
             ax?.message ||
-            PERMISSION_DENIED_MESSAGE
+            getPermissionDeniedMessage()
         );
       } finally {
         setSaving(false);
@@ -397,7 +397,7 @@ const MemberTaskDetail: React.FC = () => {
         setError(
           ax?.response?.data?.message ||
             ax?.message ||
-            PERMISSION_DENIED_MESSAGE
+            getPermissionDeniedMessage()
         );
       } finally {
         setSaving(false);

@@ -11,9 +11,13 @@ import {
 
 export type MemberTasksView = 'assigned' | 'today';
 
-export const MEMBER_TASKS_VIEWS: { id: MemberTasksView; label: string; path: string }[] = [
-  { id: 'assigned', label: 'Assigné à moi', path: '/tasks?view=assigned' },
-  { id: 'today', label: 'Aujourd\'hui et en retard', path: '/tasks?view=today' },
+export const MEMBER_TASKS_VIEWS: {
+  id: MemberTasksView;
+  labelKey: string;
+  path: string;
+}[] = [
+  { id: 'assigned', labelKey: 'tasks.viewAssigned', path: '/tasks?view=assigned' },
+  { id: 'today', labelKey: 'tasks.viewTodayOverdue', path: '/tasks?view=today' },
 ];
 
 export function parseMemberTasksView(

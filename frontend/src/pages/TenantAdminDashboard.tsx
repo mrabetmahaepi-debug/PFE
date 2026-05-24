@@ -10,6 +10,7 @@ import {
   Wand2,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import AdminDashboardStatCard from '../components/AdminDashboardStatCard';
 import AdminDashboardCharts from '../components/AdminDashboardCharts';
 import { alertService } from '../services/alert.service';
@@ -36,10 +37,13 @@ import './TenantAdminDashboard.css';
 const ACTIVITY_LIMIT = 24;
 const ACTIVITY_REFRESH_MS = 60_000;
 
-function displayActivityTitle(item: EnterpriseActivityItem): string {
+function displayActivityTitle(
+  item: EnterpriseActivityItem,
+  fallback: string
+): string {
   if (item.title?.trim()) return item.title.trim();
   if (item.action?.trim()) return item.action.trim();
-  return item.entityLabel?.trim() || 'Action administration';
+  return item.entityLabel?.trim() || fallback;
 }
 
 function activityInitials(item: EnterpriseActivityItem): string {
@@ -57,6 +61,7 @@ function activityNavigatePath(item: EnterpriseActivityItem): string {
 }
 
 const TenantAdminDashboard: React.FC = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
 
   const [projects, setProjects] = useState<Projet[]>([]);
@@ -92,7 +97,7 @@ const TenantAdminDashboard: React.FC = () => {
     } catch (err) {
       setActivities([]);
       setActivityError(
-        err instanceof Error ? err.message : "Impossible de charger les actions admin."
+        err instanceof Error ? err.message : t('dashboard.adminActivityLoadError')
       );
     } finally {
       setActivityLoading(false);
@@ -111,7 +116,7 @@ const TenantAdminDashboard: React.FC = () => {
           teamService.getAllMembers(),
           adminRiskService.getSummary().catch((err: unknown) => {
             const message =
-              err instanceof Error ? err.message : 'Impossible de charger les risques';
+              err instanceof Error ? err.message : t('dashboard.riskLoadError');
             setRiskError(message);
             return null;
           }),
@@ -161,7 +166,7 @@ const TenantAdminDashboard: React.FC = () => {
     return (
       <div className="tadb tadb--loading">
         <div className="cu-loader" />
-        <p>Préparation de votre espace de travail…</p>
+        <p>{t('dashboard.loading')}</p>
       </div>
     );
   }
@@ -173,14 +178,14 @@ const TenantAdminDashboard: React.FC = () => {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.22 }}
     >
-      <div className="tadb-top-actions" aria-label="Actions rapides">
+      <div className="tadb-top-actions" aria-label={t('dashboard.quickActions')}>
         <button
           type="button"
           className="virtide-btn virtide-btn--primary"
           onClick={() => navigate('/projects?create=1')}
-          aria-label="Créer un nouveau projet"
+          aria-label={t('dashboard.createProjectAria')}
         >
-          <span>+ Projet</span>
+          <span>{t('dashboard.newProject')}</span>
         </button>
         <button
           type="button"
@@ -188,68 +193,66 @@ const TenantAdminDashboard: React.FC = () => {
           onClick={() => navigate('/invite')}
         >
           <UserPlus size={17} />
-          <span>Inviter</span>
+          <span>{t('dashboard.invite')}</span>
         </button>
       </div>
 
-      <section className="tadb-stats-grid" aria-label="Statistiques administration">
+      <section className="tadb-stats-grid" aria-label={t('dashboard.adminStats')}>
         <AdminDashboardStatCard
           icon={<Briefcase size={18} />}
-          label="Projets actifs"
+          label={t('dashboard.activeProjects')}
           value={activeProjectsCount}
           tone="violet"
-          ariaLabel={`Projets actifs : ${activeProjectsCount}`}
+          ariaLabel={`${t('dashboard.activeProjects')} : ${activeProjectsCount}`}
           onClick={() => navigate('/projects')}
         />
         <AdminDashboardStatCard
           icon={<Users size={18} />}
-          label="Équipe"
+          label={t('dashboard.team')}
           value={teamCount}
           tone="default"
-          ariaLabel={`Équipe : ${teamCount}`}
+          ariaLabel={`${t('dashboard.team')} : ${teamCount}`}
           onClick={() => navigate('/team')}
         />
         <AdminDashboardStatCard
           icon={<AlertTriangle size={18} />}
-          label="Risques / projets en retard"
+          label={t('dashboard.risks')}
           value={riskLoading ? '—' : riskError ? '—' : riskCount}
           tone="amber"
-          ariaLabel={`Risques : ${riskCount}`}
+          ariaLabel={`${t('dashboard.risks')} : ${riskCount}`}
           onClick={() => navigate('/projects?status=DELAYED')}
         />
         <AdminDashboardStatCard
           icon={<Wand2 size={18} />}
-          label="Estimations automatiques"
+          label={t('dashboard.autoEstimates')}
           value={estimationsCount}
           tone="teal"
-          ariaLabel={`Estimations automatiques : ${estimationsCount}`}
+          ariaLabel={`${t('dashboard.autoEstimates')} : ${estimationsCount}`}
           onClick={() => navigate('/projects')}
         />
         <AdminDashboardStatCard
           icon={<Sparkles size={18} />}
-          label="Recommandations"
+          label={t('dashboard.recommendations')}
           value={recommendationsStatValue}
           tone="rose"
-          ariaLabel={`Recommandations : ${recommendationsStatValue}`}
+          ariaLabel={`${t('dashboard.recommendations')} : ${recommendationsStatValue}`}
           onClick={() => navigate('/recommendations')}
         />
       </section>
 
       <AdminDashboardCharts projects={projects} />
 
-      <section className="tadb-panel" aria-label="Actions administration">
+      <section className="tadb-panel" aria-label={t('dashboard.adminActions')}>
         <header className="tadb-panel-head">
           <div>
-            <h2>Actions administration</h2>
-            <p className="tadb-panel-sub">
-              Inscriptions, invitations, projets, rôles et estimations
-            </p>
+            <h2>{t('dashboard.adminActions')}</h2>
+            <p className="tadb-panel-sub">{t('dashboard.adminActionsSubtitle')}</p>
           </div>
           <button
             type="button"
             className={`tadb-activity-refresh${activityRefreshing ? ' is-spinning' : ''}`}
             onClick={() => void loadActivity(true)}
-            aria-label="Actualiser les actions"
+            aria-label={t('dashboard.refreshActions')}
             disabled={activityLoading}
           >
             <RefreshCw size={16} />
@@ -267,7 +270,7 @@ const TenantAdminDashboard: React.FC = () => {
             <div className="tadb-empty">
               <p>{activityError}</p>
               <button type="button" className="cu-link-btn" onClick={() => void loadActivity()}>
-                Réessayer
+                {t('common.retry')}
               </button>
             </div>
           ) : activities.length > 0 ? (
@@ -282,8 +285,11 @@ const TenantAdminDashboard: React.FC = () => {
                   {activityInitials(act)}
                 </span>
                 <span className="tadb-activity-body">
-                  <p className="tadb-activity-title" title={displayActivityTitle(act)}>
-                    {displayActivityTitle(act)}
+                  <p
+                    className="tadb-activity-title"
+                    title={displayActivityTitle(act, t('dashboard.adminActionFallback'))}
+                  >
+                    {displayActivityTitle(act, t('dashboard.adminActionFallback'))}
                   </p>
                   <p className="tadb-activity-kind">{getTenantAdminActionKind(act)}</p>
                 </span>
@@ -292,11 +298,8 @@ const TenantAdminDashboard: React.FC = () => {
             ))
           ) : (
             <div className="tadb-empty">
-              <p>Aucune action récente</p>
-              <span>
-                Les inscriptions, invitations, créations de projet et mises à jour de rôles
-                apparaîtront ici.
-              </span>
+              <p>{t('dashboard.noRecentActions')}</p>
+              <span>{t('dashboard.noRecentActionsHint')}</span>
             </div>
           )}
         </div>

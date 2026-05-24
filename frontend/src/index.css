@@ -739,3 +739,21 @@
     transform: translateX(0);
   }
 }
+
+/* RTL layout (Arabic) */
+html[dir='rtl'] body.app-rtl {
+  direction: rtl;
+}
+
+html[dir='rtl'] .cu-sidebar,
+html[dir='rtl'] .navbar,
+html[dir='rtl'] .member-settings-layout,
+html[dir='rtl'] .language-settings-card {
+  direction: rtl;
+}
+
+html[dir='rtl'] .cu-nav-item,
+html[dir='rtl'] .navbar-notif-item,
+html[dir='rtl'] .language-settings-card__select {
+  text-align: right;
+}

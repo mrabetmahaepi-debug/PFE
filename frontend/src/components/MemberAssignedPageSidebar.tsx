@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { NavLink, useLocation } from 'react-router-dom';
 import { ListTodo } from 'lucide-react';
 import { taskService } from '../services/task.service';
@@ -11,6 +12,7 @@ import { WORKSPACE_REFRESH_EVENT } from '../lib/workspaceEvents';
 import './MemberAssignedPageSidebar.css';
 
 const MemberAssignedPageSidebar: React.FC = () => {
+  const { t } = useTranslation();
   const location = useLocation();
   const [todayCount, setTodayCount] = useState(0);
 
@@ -39,10 +41,10 @@ const MemberAssignedPageSidebar: React.FC = () => {
   }, [loadCount]);
 
   return (
-    <aside className="member-assigned-page-sidebar" aria-label="Mes tâches">
+    <aside className="member-assigned-page-sidebar" aria-label={t('tasks.myTasks')}>
       <div className="member-assigned-page-sidebar-head">
         <ListTodo size={18} className="member-assigned-page-sidebar-icon" aria-hidden />
-        <span className="member-assigned-page-sidebar-title">Mes tâches</span>
+        <span className="member-assigned-page-sidebar-title">{t('tasks.myTasks')}</span>
       </div>
       <ul className="member-assigned-page-sidebar-list" role="list">
         {MEMBER_TASKS_VIEWS.map((v) => {
@@ -61,11 +63,11 @@ const MemberAssignedPageSidebar: React.FC = () => {
                     N
                   </span>
                 ) : null}
-                <span className="member-assigned-page-sidebar-label">{v.label}</span>
+                <span className="member-assigned-page-sidebar-label">{t(v.labelKey)}</span>
                 {showBadge ? (
                   <span
                     className="member-assigned-page-sidebar-badge"
-                    aria-label={`${todayCount} tâche${todayCount !== 1 ? 's' : ''}`}
+                    aria-label={t('tasks.todayBadge', { count: todayCount })}
                   >
                     {todayCount}
                   </span>

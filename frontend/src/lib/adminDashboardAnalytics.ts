@@ -1,5 +1,6 @@
 import type { Projet } from '../types/project';
 import { ProjectStatus } from '../types/project';
+import i18n from '../i18n/config';
 
 export type AdminProjectEvolutionPoint = {
   label: string;
@@ -198,29 +199,30 @@ export function buildAdminProjectEvolution(
 
 export function buildAdminProjectStatusBars(projects: Projet[]): AdminProjectStatusBar[] {
   const counts = countProjectsByStatus(projects);
+  const t = i18n.t.bind(i18n);
 
   return [
     {
       key: 'planning',
-      name: 'Planning',
+      name: t('dashboard.statusPlanning'),
       value: counts.planning,
       color: PROJECT_STATUS_COLORS.planning,
     },
     {
       key: 'in_progress',
-      name: 'En cours',
+      name: t('dashboard.statusInProgress'),
       value: counts.in_progress,
       color: PROJECT_STATUS_COLORS.in_progress,
     },
     {
       key: 'completed',
-      name: 'Terminé',
+      name: t('dashboard.statusCompleted'),
       value: counts.completed,
       color: PROJECT_STATUS_COLORS.completed,
     },
     {
       key: 'delayed',
-      name: 'En retard',
+      name: t('dashboard.statusDelayed'),
       value: counts.delayed,
       color: PROJECT_STATUS_COLORS.delayed,
     },

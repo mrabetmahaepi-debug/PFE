@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import { CalendarClock, ChevronDown, ListTodo, User } from 'lucide-react';
 import { taskService } from '../services/task.service';
@@ -17,6 +18,7 @@ interface MemberTasksSidebarNavProps {
 }
 
 const MemberTasksSidebarNav: React.FC<MemberTasksSidebarNavProps> = ({ collapsed }) => {
+  const { t } = useTranslation();
   const location = useLocation();
   const [todayCount, setTodayCount] = useState(0);
   const onTasksRoute = location.pathname === '/tasks';
@@ -57,7 +59,7 @@ const MemberTasksSidebarNav: React.FC<MemberTasksSidebarNavProps> = ({ collapsed
             (isActive || onTasksRoute) && cu.navItemActive
           )
         }
-        title="Mes tâches"
+        title={t('tasks.myTasks')}
       >
         <span className={cu.navIcon}>
           <ListTodo size={16} />
@@ -67,7 +69,7 @@ const MemberTasksSidebarNav: React.FC<MemberTasksSidebarNavProps> = ({ collapsed
   }
 
   return (
-    <div className="member-tasks-sidebar" aria-label="Mes tâches">
+    <div className="member-tasks-sidebar" aria-label={t('tasks.myTasks')}>
       <button
         type="button"
         className={cn(
@@ -82,7 +84,7 @@ const MemberTasksSidebarNav: React.FC<MemberTasksSidebarNavProps> = ({ collapsed
         <span className={cu.navIcon}>
           <ListTodo size={16} className="member-tasks-sidebar-icon" aria-hidden />
         </span>
-        <span className="member-tasks-sidebar-parent-label">Mes tâches</span>
+        <span className="member-tasks-sidebar-parent-label">{t('tasks.myTasks')}</span>
         <ChevronDown
           size={14}
           className={cn(
@@ -121,11 +123,11 @@ const MemberTasksSidebarNav: React.FC<MemberTasksSidebarNavProps> = ({ collapsed
                   <span className="member-tasks-sidebar-link-icon" aria-hidden>
                     <LinkIcon size={14} strokeWidth={2} />
                   </span>
-                  <span className="member-tasks-sidebar-link-label">{v.label}</span>
+                  <span className="member-tasks-sidebar-link-label">{t(v.labelKey)}</span>
                   {showBadge ? (
                     <span
                       className="member-tasks-sidebar-badge"
-                      aria-label={`${todayCount} tâche${todayCount !== 1 ? 's' : ''}`}
+                      aria-label={t('tasks.todayBadge', { count: todayCount })}
                     >
                       {todayCount}
                     </span>

@@ -63,6 +63,7 @@ import {
   patchTaskNameInSpaces,
   removeSubtaskFromSpaces,
 } from '../lib/patchTaskNameInSpaces';
+import { useTranslation } from 'react-i18next';
 
 interface SidebarProps {
   collapsed: boolean;
@@ -71,7 +72,7 @@ interface SidebarProps {
 
 interface PrimaryNavItem {
   id: string;
-  label: string;
+  labelKey: string;
   icon: React.ReactNode;
   path?: string;
   end?: boolean;
@@ -82,10 +83,10 @@ interface PrimaryNavItem {
   hideForEnterpriseAdmin?: boolean;
   /** Masqué pour le rôle global Membre uniquement */
   hideForMember?: boolean;
-  /** Libellé affiché pour le rôle Membre (sinon `label`) */
-  memberLabel?: string;
-  /** Libellé affiché pour l'admin entreprise (sinon `label`) */
-  adminLabel?: string;
+  /** Libellé affiché pour le rôle Membre (sinon `labelKey`) */
+  memberLabelKey?: string;
+  /** Libellé affiché pour l'admin entreprise (sinon `labelKey`) */
+  adminLabelKey?: string;
   /** Inbox notifications : visible pour Membre sans MESSAGING_USE */
   memberNotificationsInbox?: boolean;
   /** Inbox notifications : badge + page notifications pour admin entreprise */
@@ -94,7 +95,7 @@ interface PrimaryNavItem {
 
 interface MoreNavItem {
   id: string;
-  name: string;
+  nameKey: string;
   icon: React.ReactNode;
   path: string;
   permission?: string;
@@ -103,15 +104,15 @@ interface MoreNavItem {
   hideForAdmin?: boolean;
   hideForMember?: boolean;
   requiresEnterpriseAdmin?: boolean;
-  /** Libellé affiché pour l'admin entreprise (sinon `name`) */
-  adminLabel?: string;
+  /** Libellé affiché pour l'admin entreprise (sinon `nameKey`) */
+  adminLabelKey?: string;
 }
 
 const PRIMARY_NAV: PrimaryNavItem[] = [
   {
     id: 'home',
-    label: 'Home',
-    memberLabel: 'Dashboard',
+    labelKey: 'nav.home',
+    memberLabelKey: 'nav.dashboard',
     icon: <Home size={16} />,
     path: appPaths.home,
     end: true,
@@ -119,9 +120,9 @@ const PRIMARY_NAV: PrimaryNavItem[] = [
   },
   {
     id: 'inbox',
-    label: 'Inbox',
-    memberLabel: 'Boîte de réception',
-    adminLabel: 'Boîte de réception',
+    labelKey: 'nav.inbox',
+    memberLabelKey: 'nav.inbox',
+    adminLabelKey: 'nav.inbox',
     icon: <Inbox size={16} />,
     path: appPaths.inbox,
     permission: 'MESSAGING_USE',
@@ -130,7 +131,7 @@ const PRIMARY_NAV: PrimaryNavItem[] = [
   },
   {
     id: 'docs',
-    label: 'Docs',
+    labelKey: 'nav.docs',
     icon: <FileText size={16} />,
     path: appPaths.docs,
     anyPermissions: ['PROJECT_VIEW', 'PROJECT_VIEW_ALL', 'WORKSPACE_VIEW'],
@@ -140,21 +141,21 @@ const PRIMARY_NAV: PrimaryNavItem[] = [
   },
   {
     id: 'dashboards',
-    label: 'Tableau de bord',
+    labelKey: 'nav.dashboard',
     icon: <LayoutDashboard size={16} />,
     path: appPaths.dashboard,
     hideForMember: true,
   },
   {
     id: 'clips',
-    label: 'Clips',
+    labelKey: 'nav.clips',
     icon: <Film size={16} />,
     hideForMember: true,
     hideForEnterpriseAdmin: true,
   },
   {
     id: 'timesheets',
-    label: 'Timesheets',
+    labelKey: 'nav.timesheets',
     icon: <Clock size={16} />,
     hideForMember: true,
     hideForEnterpriseAdmin: true,
@@ -164,7 +165,7 @@ const PRIMARY_NAV: PrimaryNavItem[] = [
 const MORE_ITEMS: MoreNavItem[] = [
   {
     id: 'tasks',
-    name: 'Mes tâches',
+    nameKey: 'nav.myTasks',
     icon: <ListTodo size={16} />,
     path: '/tasks',
     hideForSuperAdmin: true,
@@ -172,7 +173,7 @@ const MORE_ITEMS: MoreNavItem[] = [
   },
   {
     id: 'projects',
-    name: 'Projets',
+    nameKey: 'nav.projects',
     icon: <Briefcase size={16} />,
     path: appPaths.projects,
     anyPermissions: ['PROJECT_VIEW', 'PROJECT_VIEW_ALL', 'WORKSPACE_VIEW'],
@@ -180,7 +181,7 @@ const MORE_ITEMS: MoreNavItem[] = [
   },
   {
     id: 'messages',
-    name: 'Messagerie',
+    nameKey: 'nav.messaging',
     icon: <MessageSquare size={16} />,
     path: appPaths.inbox,
     permission: 'MESSAGING_USE',
@@ -189,7 +190,7 @@ const MORE_ITEMS: MoreNavItem[] = [
   },
   {
     id: 'team',
-    name: 'Équipe',
+    nameKey: 'nav.team',
     icon: <Users size={16} />,
     path: appPaths.team,
     permission: 'TEAM_VIEW',
@@ -197,29 +198,29 @@ const MORE_ITEMS: MoreNavItem[] = [
   },
   {
     id: 'recommendations',
-    name: 'Recommandations',
+    nameKey: 'nav.recommendations',
     icon: <Sparkles size={16} />,
     path: '/recommendations',
     requiresEnterpriseAdmin: true,
   },
   {
     id: 'enterprises',
-    name: 'Entreprises',
+    nameKey: 'nav.enterprises',
     icon: <Building2 size={16} />,
     path: '/enterprises',
     permission: 'SYSTEM_MANAGE_ENTERPRISES',
   },
   {
     id: 'approvals',
-    name: 'Approbations',
+    nameKey: 'nav.approvals',
     icon: <Mail size={16} />,
     path: '/approvals',
     permission: 'SYSTEM_APPROVE_ADMINS',
   },
   {
     id: 'permissions',
-    name: 'Permissions',
-    adminLabel: 'Rôles & permissions',
+    nameKey: 'nav.permissions',
+    adminLabelKey: 'nav.rolesPermissions',
     icon: <Lock size={16} />,
     path: '/permissions',
     permission: 'TEAM_MANAGE_ROLES',
@@ -227,7 +228,7 @@ const MORE_ITEMS: MoreNavItem[] = [
   },
   {
     id: 'invite',
-    name: 'Inviter',
+    nameKey: 'nav.invite',
     icon: <UserPlus size={16} />,
     path: '/invite',
     anyPermissions: ['TEAM_INVITE', 'TEAM_MANAGE_ROLES'],
@@ -235,7 +236,7 @@ const MORE_ITEMS: MoreNavItem[] = [
   },
   {
     id: 'settings',
-    name: 'Paramètres',
+    nameKey: 'nav.settings',
     icon: <Settings size={16} />,
     path: appPaths.settings,
     hideForMember: true,
@@ -243,6 +244,7 @@ const MORE_ITEMS: MoreNavItem[] = [
 ];
 
 const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggleCollapsed }) => {
+  const { t } = useTranslation();
   const { user, logout, refreshUser } = useAuth();
   const { can, canAny } = usePermission();
   const navigate = useNavigate();
@@ -425,14 +427,14 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggleCollapsed }) => {
   const isMoreActive = moreItems.some((item) => location.pathname === item.path);
 
   const primaryLabel = (item: PrimaryNavItem) => {
-    if (globalMember && item.memberLabel) return item.memberLabel;
-    if (enterpriseAdmin && item.adminLabel) return item.adminLabel;
-    return item.label;
+    if (globalMember && item.memberLabelKey) return t(item.memberLabelKey);
+    if (enterpriseAdmin && item.adminLabelKey) return t(item.adminLabelKey);
+    return t(item.labelKey);
   };
 
   const moreLabel = (item: MoreNavItem) => {
-    if (enterpriseAdmin && item.adminLabel) return item.adminLabel;
-    return item.name;
+    if (enterpriseAdmin && item.adminLabelKey) return t(item.adminLabelKey);
+    return t(item.nameKey);
   };
 
   const inboxBadgeVariant = enterpriseAdmin && !globalMember ? 'admin' : 'member';
@@ -461,7 +463,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggleCollapsed }) => {
           compact && 'sidebar-inbox-badge--compact',
           variant === 'admin' && 'sidebar-inbox-badge--admin'
         )}
-        aria-label={`${inboxUnreadCount} notification${inboxUnreadCount > 1 ? 's' : ''} non lue${inboxUnreadCount > 1 ? 's' : ''}`}
+        aria-label={t('nav.notificationsUnread', { count: inboxUnreadCount })}
       >
         {label}
       </span>
@@ -507,7 +509,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggleCollapsed }) => {
         key={item.id}
         type="button"
         className={cn(cu.navItem, 'cursor-default opacity-60')}
-        title={collapsed ? label : `${label} (bientôt)`}
+        title={collapsed ? label : `${label} (${t('common.soon')})`}
         disabled
       >
         <span className={cu.navIcon}>{item.icon}</span>
@@ -552,7 +554,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggleCollapsed }) => {
               : 'text-cu-text-muted hover:text-cu-text',
             !collapsed && 'ml-auto'
           )}
-          title={collapsed ? 'Développer' : 'Réduire'}
+          title={collapsed ? t('common.expand') : t('common.collapse')}
         >
           {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
         </button>
@@ -583,7 +585,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggleCollapsed }) => {
                     <span className={cu.navIcon}>
                       <MoreHorizontal size={16} />
                     </span>
-                    <span className={cu.navLabel}>More</span>
+                    <span className={cu.navLabel}>{t('common.more')}</span>
                     <ChevronDown
                       size={14}
                       className={cn(
@@ -604,7 +606,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggleCollapsed }) => {
                           onClick={() => setMoreOpen(false)}
                         >
                           <span className={cu.navIcon}>{item.icon}</span>
-                          <span className={cu.navLabel}>{item.name}</span>
+                          <span className={cu.navLabel}>{moreLabel(item)}</span>
                         </NavLink>
                       ))}
                     </div>
@@ -667,7 +669,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggleCollapsed }) => {
                   className={({ isActive }) =>
                     cn(cu.navItem, 'justify-center px-2', isActive && cu.navItemActive)
                   }
-                  title={item.name}
+                  title={moreLabel(item)}
                 >
                   <span className={cu.navIcon}>{item.icon}</span>
                 </NavLink>
@@ -679,7 +681,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggleCollapsed }) => {
                   className={({ isActive }) =>
                     cn(cu.navItem, 'justify-center px-2', isActive && cu.navItemActive)
                   }
-                  title={item.name}
+                  title={moreLabel(item)}
                 >
                   <span className={cu.navIcon}>{item.icon}</span>
                 </NavLink>
@@ -696,7 +698,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggleCollapsed }) => {
                 <>
                   <div className="mb-1 px-1.5">
                     <span className="cu-sidebar-spaces-label text-[11px] font-bold uppercase tracking-wider text-cu-text-muted">
-                      SPACES
+                      {t('common.spaces').toUpperCase()}
                     </span>
                   </div>
                   <MemberSpaceSidebarTree
@@ -715,7 +717,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggleCollapsed }) => {
                 <>
                   <div className="mb-1 flex items-center justify-between px-1.5">
                     <span className="text-[11px] font-bold uppercase tracking-wider text-cu-text-muted">
-                      SPACES
+                      {t('common.spaces').toUpperCase()}
                     </span>
                     <button
                       type="button"
@@ -724,8 +726,8 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggleCollapsed }) => {
                         'h-6 w-6 p-0 text-cu-text-muted hover:bg-[#F4F4F6] hover:text-cu-text'
                       )}
                       onClick={() => navigate(`${appPaths.spaces}?create=space`)}
-                      title="New Space"
-                      aria-label="New Space"
+                      title={t('common.newSpace')}
+                      aria-label={t('common.newSpace')}
                     >
                       <Plus size={14} strokeWidth={2.5} />
                     </button>
@@ -755,7 +757,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggleCollapsed }) => {
             <section className="px-2 pb-2">
               <div className="mb-1 px-1.5">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-cu-text-muted">
-                  Administration
+                  {t('common.administration')}
                 </span>
               </div>
               {moreItems.map((item) => (
@@ -767,7 +769,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggleCollapsed }) => {
                   }
                 >
                   <span className={cu.navIcon}>{item.icon}</span>
-                  <span className={cu.navLabel}>{item.name}</span>
+                  <span className={cu.navLabel}>{moreLabel(item)}</span>
                 </NavLink>
               ))}
               <SidebarCorbeille onRefreshTree={loadSpaces} />
@@ -827,7 +829,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggleCollapsed }) => {
                   ? 'text-[#8b909a] hover:bg-red-500/15 hover:text-red-400'
                   : 'text-cu-text-muted hover:bg-red-50 hover:text-red-500'
               )}
-              title="Déconnexion"
+              title={t('common.logout')}
             >
               <LogOut size={16} />
             </button>
@@ -841,7 +843,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggleCollapsed }) => {
               cu.btnGhost,
               'mx-auto w-full justify-center py-2 text-cu-text-muted hover:text-red-500'
             )}
-            title="Déconnexion"
+            title={t('common.logout')}
           >
             <LogOut size={18} />
           </button>

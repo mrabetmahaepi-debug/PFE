@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Line,
   LineChart,
@@ -29,12 +30,12 @@ function CircularProgressRing({
   percent,
   color,
   label,
-  count,
+  countLabel,
 }: {
   percent: number;
   color: string;
   label: string;
-  count: number;
+  countLabel: string;
 }) {
   const size = 62;
   const stroke = 5;
@@ -80,9 +81,7 @@ function CircularProgressRing({
       </div>
       <div className="tadb-progress-meta">
         <span className="tadb-progress-name">{label}</span>
-        <span className="tadb-progress-count">
-          {count} projet{count > 1 ? 's' : ''}
-        </span>
+        <span className="tadb-progress-count">{countLabel}</span>
       </div>
       <div className="tadb-progress-bar-track" aria-hidden>
         <span
@@ -95,13 +94,14 @@ function CircularProgressRing({
 }
 
 function ProjectProgressWidget({ items, total }: { items: AdminProjectProgressItem[]; total: number }) {
+  const { t } = useTranslation();
   const completedPercent = useMemo(() => {
     const completed = items.find((item) => item.key === 'completed');
     return completed?.percent ?? 0;
   }, [items]);
 
   if (total === 0) {
-    return <p className="tadb-chart-empty">Aucun projet à afficher</p>;
+    return <p className="tadb-chart-empty">{t('dashboard.noProjectsDisplay')}</p>;
   }
 
   return (
@@ -109,11 +109,9 @@ function ProjectProgressWidget({ items, total }: { items: AdminProjectProgressIt
       <div className="tadb-progress-summary">
         <div className="tadb-progress-summary-main">
           <strong>{completedPercent}%</strong>
-          <span>terminés</span>
+          <span>{t('dashboard.completedPercent')}</span>
         </div>
-        <p className="tadb-progress-summary-sub">
-          {total} projet{total > 1 ? 's' : ''} au total
-        </p>
+        <p className="tadb-progress-summary-sub">{t('dashboard.totalProjects', { count: total })}</p>
       </div>
       <div className="tadb-progress-grid">
         {items.map((item) => (
@@ -122,7 +120,7 @@ function ProjectProgressWidget({ items, total }: { items: AdminProjectProgressIt
             percent={item.percent}
             color={item.color}
             label={item.name}
-            count={item.value}
+            countLabel={t('dashboard.projectCount', { count: item.value })}
           />
         ))}
       </div>
@@ -131,17 +129,18 @@ function ProjectProgressWidget({ items, total }: { items: AdminProjectProgressIt
 }
 
 const AdminDashboardCharts: React.FC<AdminDashboardChartsProps> = ({ projects }) => {
+  const { t } = useTranslation();
   const evolution = useMemo(() => buildAdminProjectEvolution(projects), [projects]);
   const progressItems = useMemo(() => buildAdminProjectProgress(projects), [projects]);
 
   const hasEvolution = evolution.some((point) => point.total > 0 || point.newProjects > 0);
 
   return (
-    <section className="tadb-charts-grid" aria-label="Analyses visuelles">
+    <section className="tadb-charts-grid" aria-label={t('dashboard.visualAnalytics')}>
       <article className="tadb-chart-card">
         <header className="tadb-chart-head">
-          <h2>Évolution des projets</h2>
-          <p>Activité projet sur les 8 dernières semaines</p>
+          <h2>{t('dashboard.evolutionTitle')}</h2>
+          <p>{t('dashboard.evolutionSubtitle')}</p>
         </header>
         <div className="tadb-chart-body">
           {hasEvolution ? (
@@ -160,9 +159,11 @@ const AdminDashboardCharts: React.FC<AdminDashboardChartsProps> = ({ projects })
                   tickLine={false}
                 />
                 <Tooltip
-                  formatter={(value: number, name: string) => [
-                    value,
-                    name === 'total' ? 'Total projets' : 'Nouveaux projets',
+                  formatter={(value, name) => [
+                    Number(value ?? 0),
+                    String(name) === 'total'
+                      ? t('dashboard.chartTotal')
+                      : t('dashboard.chartNew'),
                   ]}
                   contentStyle={tooltipStyle}
                 />
@@ -185,15 +186,15 @@ const AdminDashboardCharts: React.FC<AdminDashboardChartsProps> = ({ projects })
               </LineChart>
             </ResponsiveContainer>
           ) : (
-            <p className="tadb-chart-empty">Aucun projet enregistré pour le moment</p>
+            <p className="tadb-chart-empty">{t('dashboard.noProjectsChart')}</p>
           )}
         </div>
       </article>
 
       <article className="tadb-chart-card">
         <header className="tadb-chart-head">
-          <h2>Progression des projets</h2>
-          <p>Part du portefeuille par statut</p>
+          <h2>{t('dashboard.progressTitle')}</h2>
+          <p>{t('dashboard.progressSubtitle')}</p>
         </header>
         <div className="tadb-chart-body tadb-chart-body--progress">
           <ProjectProgressWidget items={progressItems} total={projects.length} />

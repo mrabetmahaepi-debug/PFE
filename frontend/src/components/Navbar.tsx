@@ -44,9 +44,11 @@ import {
 } from '../lib/memberNavbarGreeting';
 import { MON_ESPACE_NAME, isMemberMonEspaceNavbarPath } from '../lib/monEspaceRoute';
 import { useMemberTopbarTitle } from '../context/MemberTopbarTitleContext';
+import { useTranslation } from 'react-i18next';
 import './Navbar.css';
 
 const Navbar: React.FC = () => {
+  const { t } = useTranslation();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -255,14 +257,14 @@ const Navbar: React.FC = () => {
             onClick={() => navigate(-1)}
           >
             <ArrowLeft size={16} strokeWidth={2} aria-hidden />
-            Retour
+            {t('navbar.back')}
           </button>
         </div>
       )}
       {showMemberGreeting && (
         <div className="navbar-member-greeting">
           <h1 className="navbar-member-greeting-title">
-            Bonjour {displayName}{' '}
+            {t('navbar.hello', { name: displayName })}{' '}
             <span className="navbar-member-greeting-wave" aria-hidden>
               👋
             </span>
@@ -273,41 +275,36 @@ const Navbar: React.FC = () => {
       {showAdminDashboardGreeting && (
         <div className="navbar-admin-greeting">
           <h1 className="navbar-admin-greeting-title">
-            Bonjour {adminGreetingName}{' '}
+            {t('navbar.hello', { name: adminGreetingName })}{' '}
             <span className="navbar-admin-greeting-wave" aria-hidden>
               👋
             </span>
           </h1>
-          <p className="navbar-admin-greeting-sub">
-            Vue globale de votre administration aujourd&apos;hui.
-          </p>
+          <p className="navbar-admin-greeting-sub">{t('navbar.adminSubtitle')}</p>
           <p className="navbar-admin-greeting-date">{adminGreetingDate}</p>
         </div>
       )}
       {showAdminRecommendationsTitle && (
         <div className="navbar-page-title navbar-page-title--stacked">
-          <h1 className="navbar-page-heading">Recommandations</h1>
-          <p className="navbar-page-sub">
-            Suggestions intelligentes générées par l&apos;IA pour optimiser vos projets et votre
-            équipe.
-          </p>
+          <h1 className="navbar-page-heading">{t('navbar.recommendationsTitle')}</h1>
+          <p className="navbar-page-sub">{t('navbar.recommendationsSubtitle')}</p>
         </div>
       )}
       {showMemberInboxTitle && (
         <div className="navbar-page-title navbar-page-title--stacked">
-          <h1 className="navbar-page-heading">Boîte de réception</h1>
-          <p className="navbar-page-sub">Toutes vos notifications</p>
+          <h1 className="navbar-page-heading">{t('notifications.inbox')}</h1>
+          <p className="navbar-page-sub">{t('navbar.inboxSubtitle')}</p>
         </div>
       )}
       {showAdminInboxTitle && (
         <div className="navbar-page-title navbar-page-title--stacked">
-          <h1 className="navbar-page-heading">Boîte de réception</h1>
-          <p className="navbar-page-sub">Toutes vos notifications</p>
+          <h1 className="navbar-page-heading">{t('notifications.inbox')}</h1>
+          <p className="navbar-page-sub">{t('navbar.inboxSubtitle')}</p>
         </div>
       )}
       {showMemberSettingsTitle && (
         <div className="navbar-page-title">
-          <h1 className="navbar-page-heading">Paramètres</h1>
+          <h1 className="navbar-page-heading">{t('settings.title')}</h1>
         </div>
       )}
       {showMemberMonEspaceNavbar && (
@@ -325,8 +322,12 @@ const Navbar: React.FC = () => {
           <button
             type="button"
             className={`navbar-icon-btn navbar-notif-trigger ${notifOpen ? 'is-active' : ''}`}
-            title="Notifications"
-            aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} non lues` : ''}`}
+            title={t('notifications.title')}
+            aria-label={
+              unreadCount > 0
+                ? t('nav.notificationsUnread', { count: unreadCount })
+                : t('notifications.title')
+            }
             aria-expanded={notifOpen}
             aria-haspopup="dialog"
             onClick={() =>
@@ -349,7 +350,7 @@ const Navbar: React.FC = () => {
             {notifOpen && (
               <motion.div
                 role="dialog"
-                aria-label="Notifications"
+                aria-label={t('notifications.title')}
                 className="navbar-notif-panel"
                 initial={{ opacity: 0, y: -6, scale: 0.98 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -358,8 +359,8 @@ const Navbar: React.FC = () => {
               >
                 <div className="navbar-notif-panel-header">
                   <div>
-                    <h2 className="navbar-notif-title">Notifications</h2>
-                    <p className="navbar-notif-sub">Activité de la plateforme</p>
+                    <h2 className="navbar-notif-title">{t('notifications.title')}</h2>
+                    <p className="navbar-notif-sub">{t('navbar.notifActivity')}</p>
                   </div>
                   {unreadCount > 0 && (
                     <button
@@ -368,21 +369,21 @@ const Navbar: React.FC = () => {
                       onClick={handleMarkAllRead}
                     >
                       <CheckCheck size={15} strokeWidth={2} />
-                      Tout marquer lu
+                      {t('navbar.markAllReadShort')}
                     </button>
                   )}
                 </div>
 
                 <div className="navbar-notif-list-wrap">
                   {notifLoading && notifications.length === 0 ? (
-                    <div className="navbar-notif-loading">Chargement…</div>
+                    <div className="navbar-notif-loading">{t('common.loading')}</div>
                   ) : notifications.length === 0 ? (
                     <div className="navbar-notif-empty">
                       <div className="navbar-notif-empty-icon">
                         <Bell size={28} strokeWidth={1.5} />
                       </div>
-                      <p>Aucune notification pour le moment</p>
-                      <span>Vous serez informé des invitations, tâches et alertes ici.</span>
+                      <p>{t('navbar.notifEmpty')}</p>
+                      <span>{t('navbar.notifEmptyHint')}</span>
                     </div>
                   ) : (
                     <ul className="navbar-notif-list" role="list">
@@ -412,7 +413,7 @@ const Navbar: React.FC = () => {
                               </span>
                               <span className="navbar-notif-body">
                                 <span className="navbar-notif-item-title">
-                                  {n.sujet || 'Notification'}
+                                  {n.sujet || t('navbar.defaultNotification')}
                                 </span>
                                 <span className="navbar-notif-item-desc">
                                   {n.message || '—'}
@@ -439,8 +440,8 @@ const Navbar: React.FC = () => {
         <button
           type="button"
           className="navbar-icon-btn"
-          title="Paramètres"
-          aria-label="Paramètres"
+          title={t('settings.title')}
+          aria-label={t('settings.title')}
           onClick={() => navigate('/settings')}
         >
           <Settings size={19} strokeWidth={2} />
@@ -453,19 +454,19 @@ const Navbar: React.FC = () => {
             onClick={() => setShowProfileMenu(!showProfileMenu)}
             aria-haspopup="menu"
             aria-expanded={showProfileMenu}
-            aria-label="Ouvrir le menu profil"
+            aria-label={t('navbar.openProfileMenu')}
           >
             <span className="profile-avatar-wrap">
               {resolveProfilePhotoUrl(user?.photoUrl) ? (
                 <UserAvatar
                   user={user}
                   imgClassName="profile-avatar-img"
-                  title="Avatar utilisateur"
+                  title={t('navbar.userAvatar')}
                 />
               ) : (
                 <img
                   src={`https://ui-avatars.com/api/?name=${encodeURIComponent(`${user?.prenom || ''} ${user?.nom || ''}`.trim() || user?.email || 'U')}&background=0d9488&color=fff`}
-                  alt="Avatar utilisateur"
+                  alt={t('navbar.userAvatar')}
                   className="profile-avatar-img"
                 />
               )}
@@ -504,8 +505,8 @@ const Navbar: React.FC = () => {
                     <strong>{displayName}</strong>
                     <span>{user?.email || '—'}</span>
                     <span className="profile-dropdown-role">
-                      {typeof user?.role === 'string' ? user.role : user?.role?.nom || 'Membre'} ·{' '}
-                      {user?.entreprise?.nom || 'Espace'}
+                      {typeof user?.role === 'string' ? user.role : user?.role?.nom || t('navbar.member')} ·{' '}
+                      {user?.entreprise?.nom || t('navbar.workspace')}
                     </span>
                   </div>
                 </div>
@@ -518,7 +519,7 @@ const Navbar: React.FC = () => {
                   }}
                 >
                   <User size={18} />
-                  <span>Mon Profil</span>
+                  <span>{t('navbar.myProfile')}</span>
                 </div>
                 <div
                   className="dropdown-item"
@@ -528,12 +529,12 @@ const Navbar: React.FC = () => {
                   }}
                 >
                   <Settings size={18} />
-                  <span>Paramètres</span>
+                  <span>{t('settings.title')}</span>
                 </div>
                 <div className="dropdown-divider" />
                 <div className="dropdown-item logout" onClick={logout}>
                   <LogOut size={18} />
-                  <span>Déconnexion</span>
+                  <span>{t('common.logout')}</span>
                 </div>
               </motion.div>
             )}

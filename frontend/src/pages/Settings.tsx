@@ -12,7 +12,10 @@ import {
   AlertCircle,
   Pencil,
   Trash2,
+  Languages,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import LanguageSettingsCard from '../components/LanguageSettingsCard';
 import { useAuth } from '../hooks/useAuth';
 import {
   isGlobalMember,
@@ -54,6 +57,7 @@ function formFromUser(
 }
 
 const Settings: React.FC = () => {
+  const { t } = useTranslation();
   const { user, updateUser, refreshUser } = useAuth();
   const isMember = isGlobalMember(user);
   const superAdmin = detectSuperAdmin(user);
@@ -61,7 +65,7 @@ const Settings: React.FC = () => {
     typeof user?.role === 'string' ? user.role : user?.role?.nom;
 
   const [activeTab, setActiveTab] = useState<
-    'profile' | 'security' | 'notifications'
+    'profile' | 'security' | 'notifications' | 'language'
   >('profile');
 
   const [savedForm, setSavedForm] = useState(() => formFromUser(user));
@@ -305,7 +309,7 @@ const Settings: React.FC = () => {
               onClick={() => setActiveTab('profile')}
             >
               <User size={18} aria-hidden />
-              <span>Profil</span>
+              <span>{t('settings.profile')}</span>
             </button>
             <button
               type="button"
@@ -313,7 +317,7 @@ const Settings: React.FC = () => {
               onClick={() => setActiveTab('security')}
             >
               <Lock size={18} aria-hidden />
-              <span>Sécurité</span>
+              <span>{t('settings.security')}</span>
             </button>
             <button
               type="button"
@@ -321,7 +325,15 @@ const Settings: React.FC = () => {
               onClick={() => setActiveTab('notifications')}
             >
               <Bell size={18} aria-hidden />
-              <span>Notifications</span>
+              <span>{t('settings.notifications')}</span>
+            </button>
+            <button
+              type="button"
+              className={`member-settings-nav-item ${activeTab === 'language' ? 'is-active' : ''}`}
+              onClick={() => setActiveTab('language')}
+            >
+              <Languages size={18} aria-hidden />
+              <span>{t('settings.language')}</span>
             </button>
           </aside>
 
@@ -536,9 +548,13 @@ const Settings: React.FC = () => {
               </section>
             )}
 
+            {activeTab === 'language' && (
+              <LanguageSettingsCard variant="member" />
+            )}
+
             {activeTab === 'notifications' && (
               <section className="member-settings-card">
-                <h2 className="member-settings-card-title">Notifications</h2>
+                <h2 className="member-settings-card-title">{t('settings.notifications')}</h2>
                 <p className="member-settings-card-sub">
                   Choisissez les alertes que vous souhaitez recevoir.
                 </p>
@@ -645,7 +661,9 @@ const Settings: React.FC = () => {
     <div className="settings-page">
       <BackButton />
       <header className="page-header settings-page-header">
-        <h1>Paramètres{superAdmin ? ' Super Admin' : ''}</h1>
+        <h1>
+          {superAdmin ? t('settings.titleSuperAdmin') : t('settings.title')}
+        </h1>
       </header>
 
       <div className="settings-container">
@@ -656,7 +674,7 @@ const Settings: React.FC = () => {
             onClick={() => setActiveTab('profile')}
           >
             <User size={18} />
-            <span>Profil</span>
+            <span>{t('settings.profile')}</span>
           </button>
           <button
             type="button"
@@ -664,7 +682,7 @@ const Settings: React.FC = () => {
             onClick={() => setActiveTab('security')}
           >
             <Lock size={18} />
-            <span>Sécurité</span>
+            <span>{t('settings.security')}</span>
           </button>
           <button
             type="button"
@@ -672,7 +690,15 @@ const Settings: React.FC = () => {
             onClick={() => setActiveTab('notifications')}
           >
             <Bell size={18} />
-            <span>Notifications</span>
+            <span>{t('settings.notifications')}</span>
+          </button>
+          <button
+            type="button"
+            className={`nav-item ${activeTab === 'language' ? 'active' : ''}`}
+            onClick={() => setActiveTab('language')}
+          >
+            <Languages size={18} />
+            <span>{t('settings.language')}</span>
           </button>
         </aside>
 
@@ -962,11 +988,13 @@ const Settings: React.FC = () => {
             </section>
           )}
 
+          {activeTab === 'language' && <LanguageSettingsCard variant="admin" />}
+
           {activeTab === 'notifications' && (
             <section className="settings-section premium-card">
               <div className="section-header">
-                <h2>Préférences de notifications</h2>
-                <p>Choisissez comment vous souhaitez être informé.</p>
+                <h2>{t('settings.notificationsTitle')}</h2>
+                <p>{t('settings.notificationsSubtitle')}</p>
               </div>
 
               <div className="preferences-list">
