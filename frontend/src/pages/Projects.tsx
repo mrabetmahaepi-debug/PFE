@@ -513,11 +513,13 @@ const Projects: React.FC = () => {
         </div>
       )}
 
-      {(projectsCountLabel || canCreateProject) && (
-        <div className="projects-admin-actions-row">
-          {projectsCountLabel ? (
-            <span className="projects-admin-count-badge">{projectsCountLabel}</span>
-          ) : null}
+      <div className="projects-admin-panel">
+        <div className="projects-admin-panel-head">
+          <div className="projects-admin-panel-head-start">
+            {projectsCountLabel ? (
+              <span className="projects-admin-count-badge">{projectsCountLabel}</span>
+            ) : null}
+          </div>
           {canCreateProject ? (
             <button
               type="button"
@@ -529,20 +531,19 @@ const Projects: React.FC = () => {
             </button>
           ) : null}
         </div>
-      )}
 
-      <div className="projects-toolbar projects-toolbar--admin">
-        <div className="search-box">
-          <Search size={18} />
-          <input
-            type="text"
-            placeholder="Rechercher un projet…"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
+        <div className="projects-toolbar projects-toolbar--admin projects-admin-panel-toolbar">
+          <div className="search-box">
+            <Search size={18} />
+            <input
+              type="text"
+              placeholder="Rechercher un projet…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
 
-        {isSuperAdmin && (
+          {isSuperAdmin && (
             <ToolbarSelect
               menuId="enterprise"
               value={enterpriseFilter}
@@ -585,6 +586,7 @@ const Projects: React.FC = () => {
             icon={ArrowUpDown}
             ariaLabel="Trier les projets"
           />
+        </div>
       </div>
 
       {(loading || filteredProjects.length > 0) && (

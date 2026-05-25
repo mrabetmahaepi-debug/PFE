@@ -1128,26 +1128,55 @@ button.project-info-chip--link:hover .project-info-chip-value {
   min-height: 100%;
   padding: 0.5rem clamp(1rem, 3vw, 2rem) 2rem;
   background: linear-gradient(180deg, #fafafd 0%, #f5f3ff 38%, #ffffff 100%);
-  gap: 0.65rem;
+  gap: 0.5rem;
 }
 
-.projects-admin-actions-row {
+/* Cadre blanc : badge + créer, puis recherche / filtres */
+.projects-admin-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  padding: 0.7rem 1rem;
+  border: 1px solid rgba(123, 104, 238, 0.14);
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 6px 22px rgba(123, 104, 238, 0.07);
+}
+
+.projects-admin-panel-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  padding: 0 0.15rem;
-  margin-top: 0.35rem;
+  min-height: 36px;
+  padding-bottom: 0.65rem;
+  border-bottom: 1px solid #f0f1f3;
 }
 
-.projects-admin-actions-row .projects-admin-count-badge {
+.projects-admin-panel-head .projects-admin-count-badge {
   margin: 0;
   flex-shrink: 0;
 }
 
-.projects-admin-actions-row .projects-admin-create-btn {
+.projects-admin-panel-head-start {
+  display: flex;
+  align-items: center;
+  min-height: 28px;
+}
+
+.projects-admin-panel-head .projects-admin-create-btn {
   flex-shrink: 0;
   margin-left: auto;
+}
+
+.projects-admin-panel-toolbar.projects-toolbar--admin {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  align-items: center;
 }
 
 .projects-admin-count-badge {
@@ -1186,7 +1215,7 @@ button.project-info-chip--link:hover .project-info-chip-value {
   filter: brightness(1.03);
 }
 
-.projects-toolbar--admin {
+.projects-toolbar--admin:not(.projects-admin-panel-toolbar) {
   margin-top: 0;
   padding: 0.85rem 1rem;
   border-radius: 14px;
@@ -1822,8 +1851,22 @@ button.project-info-chip--link:hover .project-info-chip-value {
     padding: 0.85rem 0.85rem 1.75rem;
   }
 
-  .projects-toolbar--admin {
-    padding: 0.75rem;
+  .projects-admin-panel {
+    padding: 0.65rem 0.75rem;
+    gap: 0.6rem;
+  }
+
+  .projects-admin-panel-head {
+    padding-bottom: 0.55rem;
+  }
+
+  .projects-admin-panel-toolbar.projects-toolbar--admin {
+    gap: 0.5rem;
+  }
+
+  .projects-admin-panel-toolbar .search-box {
+    flex: 1 1 100%;
+    min-width: 100%;
   }
 
   .projects-page--admin .projects-table-wrap {
