@@ -302,6 +302,34 @@ const ProjectDetail: React.FC = () => {
     }
   }, [id]);
 
+  const headerActions = useMemo(() => {
+    if (!canManageMembers && !canEditProjectInfo) return null;
+    return (
+      <div className="project-detail-actions-row">
+        {canManageMembers && (
+          <button
+            type="button"
+            className="project-detail-soft-btn"
+            onClick={() => setTeamModalOpen(true)}
+          >
+            <Users size={16} aria-hidden />
+            Gérer l&apos;équipe
+          </button>
+        )}
+        {canEditProjectInfo && !editingProjectInfo && (
+          <button
+            type="button"
+            className="project-detail-soft-btn"
+            onClick={() => setEditingProjectInfo(true)}
+          >
+            <Pencil size={16} aria-hidden />
+            Modifier le projet
+          </button>
+        )}
+      </div>
+    );
+  }, [canManageMembers, canEditProjectInfo, editingProjectInfo]);
+
   useEffect(() => {
     if (loading || forbidden || !project) {
       setAdminPageHeader(null);
@@ -310,9 +338,10 @@ const ProjectDetail: React.FC = () => {
     setAdminPageHeader({
       title: project.nom_p,
       subtitle: project.description_p?.trim() || 'Aucune description fournie.',
+      action: headerActions,
     });
     return () => setAdminPageHeader(null);
-  }, [loading, forbidden, project, setAdminPageHeader]);
+  }, [loading, forbidden, project, headerActions, setAdminPageHeader]);
 
   useEffect(() => {
     if (!id) return;
@@ -470,39 +499,11 @@ const ProjectDetail: React.FC = () => {
       transition={{ duration: 0.28 }}
       className="project-detail-page"
     >
-      {(canManageMembers || canEditProjectInfo || project.currentUserProjectRole) && (
-        <div className="project-detail-toolbar">
-          {(canManageMembers || canEditProjectInfo) && (
-            <div className="project-detail-actions-row">
-              {canManageMembers && (
-                <button
-                  type="button"
-                  className="project-detail-soft-btn"
-                  onClick={() => setTeamModalOpen(true)}
-                >
-                  <Users size={16} aria-hidden />
-                  Gérer l&apos;équipe
-                </button>
-              )}
-              {canEditProjectInfo && !editingProjectInfo && (
-                <button
-                  type="button"
-                  className="project-detail-soft-btn"
-                  onClick={() => setEditingProjectInfo(true)}
-                >
-                  <Pencil size={16} aria-hidden />
-                  Modifier le projet
-                </button>
-              )}
-            </div>
-          )}
-          {project.currentUserProjectRole ? (
-            <p className="project-detail-user-role">
-              Votre rôle : <strong>{project.currentUserProjectRole}</strong>
-            </p>
-          ) : null}
-        </div>
-      )}
+      {project.currentUserProjectRole ? (
+        <p className="project-detail-user-role">
+          Votre rôle : <strong>{project.currentUserProjectRole}</strong>
+        </p>
+      ) : null}
 
       <div className="project-detail-panel">
       <div className="project-detail-stats-row" aria-label="Statistiques du projet">

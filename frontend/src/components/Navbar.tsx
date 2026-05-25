@@ -304,17 +304,34 @@ const Navbar: React.FC = () => {
         </div>
       )}
       {showAdminContextHeader && adminPageHeader && (
-        <div
-          className={cn(
-            'navbar-admin-projects-copy',
-            !adminPageHeader.subtitle && 'navbar-admin-page-copy--title-only'
-          )}
-        >
-          <h1 className="navbar-admin-projects-heading">{adminPageHeader.title}</h1>
-          {adminPageHeader.subtitle ? (
-            <p className="navbar-admin-projects-sub">{adminPageHeader.subtitle}</p>
-          ) : null}
-        </div>
+        isAdminProjectDetailRoute && adminPageHeader.action ? (
+          <div className="navbar-admin-project-detail-bar">
+            <div
+              className={cn(
+                'navbar-admin-projects-copy',
+                !adminPageHeader.subtitle && 'navbar-admin-page-copy--title-only'
+              )}
+            >
+              <h1 className="navbar-admin-projects-heading">{adminPageHeader.title}</h1>
+              {adminPageHeader.subtitle ? (
+                <p className="navbar-admin-projects-sub">{adminPageHeader.subtitle}</p>
+              ) : null}
+            </div>
+            <div className="navbar-admin-project-detail-actions">{adminPageHeader.action}</div>
+          </div>
+        ) : (
+          <div
+            className={cn(
+              'navbar-admin-projects-copy',
+              !adminPageHeader.subtitle && 'navbar-admin-page-copy--title-only'
+            )}
+          >
+            <h1 className="navbar-admin-projects-heading">{adminPageHeader.title}</h1>
+            {adminPageHeader.subtitle ? (
+              <p className="navbar-admin-projects-sub">{adminPageHeader.subtitle}</p>
+            ) : null}
+          </div>
+        )
       )}
       {showMemberAssignedTitle && (
         <div className="navbar-page-title">
