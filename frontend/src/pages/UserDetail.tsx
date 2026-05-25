@@ -12,6 +12,8 @@ import {
 import { teamService } from '../services/team.service';
 import type { User } from '../types/auth.types';
 import { displayGlobalAccountRole } from '../lib/accountRoleDisplay';
+import { useAdminPageHeader } from '../context/AdminPageHeaderContext';
+import { usePermission } from '../hooks/usePermission';
 import BackButton from '../components/BackButton';
 import UserAvatar from '../components/UserAvatar';
 import './UserDetail.css';
@@ -139,9 +141,17 @@ function InfoField({ icon, label, value }: InfoFieldProps) {
 const UserDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { isSuperAdmin } = usePermission();
+  const { setHeader: setAdminPageHeader } = useAdminPageHeader();
   const [member, setMember] = useState<UserDetailRecord | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+
+  useEffect(() => {
+    if (isSuperAdmin) return;
+    setAdminPageHeader({ title: 'Détails profil membre' });
+    return () => setAdminPageHeader(null);
+  }, [isSuperAdmin, setAdminPageHeader]);
 
   useEffect(() => {
     if (!id) return;
@@ -215,6 +225,7 @@ const UserDetail: React.FC = () => {
 
   const fullName = `${member.prenom ?? ''} ${member.nom ?? ''}`.trim() || 'Utilisateur';
   const roleLabel = displayGlobalAccountRole(member);
+  const headerRoleLabel = member.poste?.trim() || roleLabel;
   const enterpriseName = member.entreprise?.nom || 'Indépendant';
   const canOpenEnterprise = Boolean(member.id_entreprise);
   const projects = member.projects?.filter((p) => p?.name) ?? [];
@@ -240,10 +251,7 @@ const UserDetail: React.FC = () => {
           <div className="user-detail-hero-main">
             <h1 className="user-detail-name">{fullName}</h1>
             <div className="user-detail-header-meta">
-              <span className={roleBadgeClass(roleLabel)}>{roleLabel}</span>
-              {member.poste ? (
-                <span className="user-detail-poste">{member.poste}</span>
-              ) : null}
+              <span className={roleBadgeClass(headerRoleLabel)}>{headerRoleLabel}</span>
               {renderStatusBadge(member)}
             </div>
           </div>

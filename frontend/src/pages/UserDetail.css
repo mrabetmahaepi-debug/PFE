@@ -138,12 +138,6 @@
   gap: 0.5rem 0.65rem;
 }
 
-.user-detail-poste {
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: var(--ud-text-muted);
-}
-
 /* Role badges */
 .user-detail-role-badge {
   display: inline-flex;
@@ -259,34 +253,32 @@
   border: 1px solid rgba(245, 158, 11, 0.22);
 }
 
-/* Grid layout */
+/* Cards stack — profil pleine largeur, entreprise en dessous */
 .user-detail-cards-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
   gap: 1rem;
-  align-items: start;
+  width: 100%;
 }
 
 .user-detail-profile-card {
-  grid-column: 1;
-  grid-row: 1;
+  width: 100%;
 }
 
 .user-detail-enterprise-card {
-  grid-column: 2;
-  grid-row: 1;
+  width: 100%;
   display: flex;
   flex-direction: column;
 }
 
 .user-detail-projects-card {
-  grid-column: 1 / -1;
+  width: 100%;
 }
 
 /* Info fields */
 .user-detail-fields {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0.85rem 1.1rem;
 }
 
@@ -510,16 +502,9 @@ button.user-detail-enterprise-pill {
   background: #ebe6ff;
 }
 
-@media (max-width: 900px) {
-  .user-detail-cards-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .user-detail-profile-card,
-  .user-detail-enterprise-card,
-  .user-detail-projects-card {
-    grid-column: 1;
-    grid-row: auto;
+@media (max-width: 1024px) {
+  .user-detail-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
