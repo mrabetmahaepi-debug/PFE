@@ -456,8 +456,8 @@ const ProjectDetail: React.FC = () => {
       transition={{ duration: 0.28 }}
       className="project-detail-page"
     >
-      <header className="project-detail-topbar">
-        <div className="project-detail-topbar-titles">
+      <header className="project-detail-header">
+        <div className="project-detail-header-text">
           <p className="project-detail-project-name">{project.nom_p}</p>
           <p className="project-detail-project-desc">
             {project.description_p || 'Aucune description fournie.'}
@@ -468,35 +468,63 @@ const ProjectDetail: React.FC = () => {
             </p>
           ) : null}
         </div>
+        {(canManageMembers || canEditProjectInfo) && (
+          <div className="project-detail-actions-row">
+            {canManageMembers && (
+              <button
+                type="button"
+                className="project-detail-soft-btn"
+                onClick={() => setTeamModalOpen(true)}
+              >
+                <Users size={16} aria-hidden />
+                Gérer l&apos;équipe
+              </button>
+            )}
+            {canEditProjectInfo && !editingProjectInfo && (
+              <button
+                type="button"
+                className="project-detail-soft-btn"
+                onClick={() => setEditingProjectInfo(true)}
+              >
+                <Pencil size={16} aria-hidden />
+                Modifier le projet
+              </button>
+            )}
+          </div>
+        )}
       </header>
 
-      <div className="project-overview-grid">
-        <div className="project-detail-main">
-          {(canManageMembers || canEditProjectInfo) && (
-            <div className="project-detail-actions-row">
-              {canManageMembers && (
-                <button
-                  type="button"
-                  className="project-detail-soft-btn"
-                  onClick={() => setTeamModalOpen(true)}
-                >
-                  <Users size={16} aria-hidden />
-                  Gérer l&apos;équipe
-                </button>
-              )}
-              {canEditProjectInfo && !editingProjectInfo && (
-                <button
-                  type="button"
-                  className="project-detail-soft-btn"
-                  onClick={() => setEditingProjectInfo(true)}
-                >
-                  <Pencil size={16} aria-hidden />
-                  Modifier le projet
-                </button>
-              )}
-            </div>
-          )}
+      <div className="project-detail-stats-row" aria-label="Statistiques du projet">
+        <div className="project-detail-stat-card">
+          <span className="project-detail-stat-icon project-detail-stat-icon--tasks" aria-hidden>
+            <CheckSquare size={18} />
+          </span>
+          <div className="project-detail-stat-body">
+            <span className="project-detail-stat-label">Tâches</span>
+            <span className="project-detail-stat-value">{taskCount}</span>
+          </div>
+        </div>
+        <div className="project-detail-stat-card">
+          <span className="project-detail-stat-icon project-detail-stat-icon--members" aria-hidden>
+            <Users size={18} />
+          </span>
+          <div className="project-detail-stat-body">
+            <span className="project-detail-stat-label">Membres</span>
+            <span className="project-detail-stat-value">{memberCount}</span>
+          </div>
+        </div>
+        <div className="project-detail-stat-card">
+          <span className="project-detail-stat-icon project-detail-stat-icon--progress" aria-hidden>
+            <TrendingUp size={18} />
+          </span>
+          <div className="project-detail-stat-body">
+            <span className="project-detail-stat-label">Avancement</span>
+            <span className="project-detail-stat-value">{progressPercent}%</span>
+          </div>
+        </div>
+      </div>
 
+      <div className="project-detail-content">
           <section className="project-detail-card project-detail-card--info">
             <h2 className="project-detail-card-title">Informations générales</h2>
             {canEditProjectInfo && editingProjectInfo && (
@@ -779,37 +807,6 @@ const ProjectDetail: React.FC = () => {
               </div>
             </section>
           )}
-        </div>
-
-        <aside className="project-detail-aside">
-          <div className="project-detail-stat-card">
-            <span className="project-detail-stat-icon project-detail-stat-icon--tasks" aria-hidden>
-              <CheckSquare size={18} />
-            </span>
-            <div className="project-detail-stat-body">
-              <span className="project-detail-stat-label">Tâches</span>
-              <span className="project-detail-stat-value">{taskCount}</span>
-            </div>
-          </div>
-          <div className="project-detail-stat-card">
-            <span className="project-detail-stat-icon project-detail-stat-icon--members" aria-hidden>
-              <Users size={18} />
-            </span>
-            <div className="project-detail-stat-body">
-              <span className="project-detail-stat-label">Membres</span>
-              <span className="project-detail-stat-value">{memberCount}</span>
-            </div>
-          </div>
-          <div className="project-detail-stat-card">
-            <span className="project-detail-stat-icon project-detail-stat-icon--progress" aria-hidden>
-              <TrendingUp size={18} />
-            </span>
-            <div className="project-detail-stat-body">
-              <span className="project-detail-stat-label">Avancement</span>
-              <span className="project-detail-stat-value">{progressPercent}%</span>
-            </div>
-          </div>
-        </aside>
       </div>
 
       <EditProjectTeamModal

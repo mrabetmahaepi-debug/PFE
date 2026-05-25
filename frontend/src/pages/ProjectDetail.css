@@ -20,10 +20,12 @@
     #8b9cf8 100%
   );
 
+  display: flex;
+  flex-direction: column;
   width: 100%;
   max-width: min(1240px, calc(100% - 0.5rem));
   margin: 0 auto;
-  padding: clamp(0.85rem, 1.5vw, 1.15rem) clamp(1rem, 1.75vw, 1.25rem) 2rem;
+  padding: clamp(0.85rem, 1.5vw, 1.15rem) clamp(1rem, 1.75vw, 1.25rem) 1.5rem;
   box-sizing: border-box;
   color: var(--pd-text);
 }
@@ -44,12 +46,15 @@
   font-size: 0.9rem;
 }
 
-/* ---- Top header (titre seul — icônes dans navbar) ---- */
-.project-detail-topbar {
-  margin-bottom: 0.75rem;
+/* ---- Header (titre + actions — icônes dans navbar) ---- */
+.project-detail-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin-bottom: 0.85rem;
 }
 
-.project-detail-topbar-titles {
+.project-detail-header-text {
   min-width: 0;
 }
 
@@ -82,34 +87,22 @@
   font-weight: 600;
 }
 
-/* ---- Layout grid ---- */
-.project-overview-grid {
+/* ---- Stats row (pleine largeur) ---- */
+.project-detail-stats-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(288px, 32%);
-  gap: 0.85rem;
-  align-items: start;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+  width: 100%;
+  margin-bottom: 0.85rem;
 }
 
-.project-detail-main {
+/* ---- Contenu principal (cartes empilées) ---- */
+.project-detail-content {
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
-  min-width: 0;
-}
-
-/* Aligner les stats avec la carte « Informations générales » (sous la rangée d’actions) */
-.project-overview-grid:has(.project-detail-actions-row) .project-detail-aside {
-  margin-top: calc(34px + 0.85rem + 0.35rem);
-}
-
-.project-detail-aside {
-  display: flex;
-  flex-direction: row;
-  align-items: stretch;
-  align-self: start;
-  gap: 0.5rem;
-  min-width: 0;
   width: 100%;
+  min-width: 0;
 }
 
 /* ---- Action buttons (style Inviter un membre) ---- */
@@ -678,18 +671,16 @@
   border: 1px solid #e2e8f0;
 }
 
-/* ---- Stat cards (aside) — une ligne horizontale ---- */
+/* ---- Stat cards ---- */
 .project-detail-stat-card {
   display: flex;
-  flex: 1 1 0;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 0.35rem;
   min-width: 0;
-  min-height: 96px;
-  height: auto;
-  padding: 0.55rem 0.4rem 0.6rem;
+  min-height: 88px;
+  padding: 0.55rem 0.5rem 0.6rem;
   text-align: center;
   background: var(--pd-surface);
   border: 1px solid var(--pd-border);
@@ -757,46 +748,18 @@
   line-height: 1.1;
 }
 
-@media (max-width: 960px) {
-  .project-overview-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .project-overview-grid:has(.project-detail-actions-row) .project-detail-aside {
-    margin-top: 0;
-  }
-
-  .project-detail-aside {
-    flex-direction: row;
-    flex-wrap: nowrap;
-    width: 100%;
-    align-self: stretch;
-  }
-
-  .project-detail-stat-card {
-    flex: 1 1 0;
-    min-width: 0;
-  }
-}
-
 @media (max-width: 640px) {
+  .project-detail-stats-row {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+
   .project-detail-info-grid {
     grid-template-columns: 1fr;
   }
 
   .project-detail-edit-dates {
     grid-template-columns: 1fr;
-  }
-
-  .project-detail-aside {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .project-detail-stat-card {
-    flex: 1 1 auto;
-    min-height: 88px;
-    width: 100%;
   }
 
   .project-detail-card {
