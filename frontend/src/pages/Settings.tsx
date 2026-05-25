@@ -10,7 +10,6 @@ import {
   Loader,
   CheckCircle2,
   AlertCircle,
-  Pencil,
   Trash2,
   Languages,
 } from 'lucide-react';
@@ -23,7 +22,7 @@ import {
 } from '../lib/permissions';
 import { resolveProfilePhotoUrl, getUserInitials } from '../lib/profilePhoto';
 import { userProfileService } from '../services/userProfile.service';
-import BackButton from '../components/BackButton';
+import { useAdminPageHeader } from '../context/AdminPageHeaderContext';
 import './Settings.css';
 import './MemberSettings.css';
 
@@ -59,6 +58,7 @@ function formFromUser(
 const Settings: React.FC = () => {
   const { t, i18n } = useTranslation();
   const { user, updateUser, refreshUser } = useAuth();
+  const { setHeader: setAdminPageHeader } = useAdminPageHeader();
   const isMember = isGlobalMember(user);
   const superAdmin = detectSuperAdmin(user);
   const roleStr =
@@ -88,7 +88,6 @@ const Settings: React.FC = () => {
   );
   const [uploading, setUploading] = useState(false);
   const [deletingPhoto, setDeletingPhoto] = useState(false);
-  const [photoMenuOpen, setPhotoMenuOpen] = useState(false);
   const [deletePhotoModalOpen, setDeletePhotoModalOpen] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
@@ -98,9 +97,16 @@ const Settings: React.FC = () => {
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const photoBlockRef = useRef<HTMLDivElement>(null);
 
   const hasProfilePhoto = Boolean(user?.photoUrl);
+
+  useEffect(() => {
+    if (isMember) return undefined;
+    setAdminPageHeader({
+      title: superAdmin ? t('settings.titleSuperAdmin') : 'Paramètres',
+    });
+    return () => setAdminPageHeader(null);
+  }, [isMember, superAdmin, setAdminPageHeader, t]);
 
   useEffect(() => {
     const base = formFromUser(user);
@@ -120,20 +126,6 @@ const Settings: React.FC = () => {
     return () => i18n.off('languageChanged', clearFeedback);
   }, [i18n]);
 
-  useEffect(() => {
-    if (!photoMenuOpen) return;
-    const onDocClick = (e: MouseEvent) => {
-      if (
-        photoBlockRef.current &&
-        !photoBlockRef.current.contains(e.target as Node)
-      ) {
-        setPhotoMenuOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', onDocClick);
-    return () => document.removeEventListener('mousedown', onDocClick);
-  }, [photoMenuOpen]);
-
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
     setFormData({
@@ -151,24 +143,12 @@ const Settings: React.FC = () => {
     setPasswords({ ...passwords, [name]: value });
   };
 
-  const handleAvatarClick = () => {
-    if (uploading || deletingPhoto) return;
-    setPhotoMenuOpen((open) => !open);
-  };
-
-  const handleModifyPhoto = () => {
-    setPhotoMenuOpen(false);
-    setUploadError(null);
-    fileInputRef.current?.click();
-  };
-
   const handleChangePhotoClick = () => {
     setUploadError(null);
     fileInputRef.current?.click();
   };
 
   const handleRequestDeletePhoto = () => {
-    setPhotoMenuOpen(false);
     setDeletePhotoModalOpen(true);
   };
 
@@ -669,14 +649,7 @@ const Settings: React.FC = () => {
   }
 
   return (
-    <div className="settings-page">
-      <BackButton />
-      <header className="page-header settings-page-header">
-        <h1>
-          {superAdmin ? t('settings.titleSuperAdmin') : t('settings.title')}
-        </h1>
-      </header>
-
+    <div className="settings-page settings-page--admin">
       <div className="settings-container">
         <aside className="settings-nav premium-card">
           <button
@@ -716,9 +689,7 @@ const Settings: React.FC = () => {
         <main className="settings-content">
           {activeTab === 'profile' && (
             <section className="settings-section premium-card">
-              <div className="section-header section-header--profile">
-                <h2 className="settings-profile-heading">{t('settings.personalInfo')}</h2>
-              </div>
+              <h2 className="settings-section-title">{t('settings.personalInfo')}</h2>
 
               <input
                 ref={fileInputRef}
@@ -728,87 +699,55 @@ const Settings: React.FC = () => {
                 onChange={handleFileChange}
               />
 
-              <div className="profile-upload">
-                <div className="profile-photo-block" ref={photoBlockRef}>
+              <div className="settings-profile-row">
+                <div
+                  className={`settings-avatar ${uploading || deletingPhoto ? 'is-loading' : ''}`}
+                  aria-hidden
+                >
+                  {uploading || deletingPhoto ? (
+                    <Loader size={22} className="spin" />
+                  ) : photoPreview ? (
+                    <img src={photoPreview} alt="" className="settings-avatar-photo" />
+                  ) : (
+                    <span className="settings-avatar-initials">{initials}</span>
+                  )}
+                </div>
+                <div className="settings-profile-photo-actions">
                   <button
                     type="button"
-                    className="avatar-large avatar-clickable"
-                    onClick={handleAvatarClick}
-                    title={t('settings.manageProfilePhoto')}
+                    className="settings-btn settings-btn--ghost settings-btn--compact"
+                    onClick={handleChangePhotoClick}
                     disabled={uploading || deletingPhoto}
-                    aria-expanded={photoMenuOpen}
-                    aria-haspopup="menu"
                   >
-                    {uploading || deletingPhoto ? (
-                      <span className="avatar-loader">
-                        <Loader size={24} className="spin" />
-                      </span>
-                    ) : photoPreview ? (
-                      <img
-                        src={photoPreview}
-                        alt={t('settings.profilePhoto')}
-                        className="avatar-photo"
-                      />
-                    ) : (
-                      <span className="avatar-initials">{initials}</span>
-                    )}
-                    <span className="avatar-hover-overlay" aria-hidden>
-                      <Camera size={22} />
-                      <span className="avatar-hover-label">{t('settings.editPhotoHover')}</span>
-                    </span>
+                    <Camera size={14} aria-hidden />
+                    {t('settings.changePhoto')}
                   </button>
-
-                  {photoMenuOpen && (
-                    <div
-                      className="profile-photo-menu"
-                      role="menu"
-                      aria-label={t('settings.photoActionsAria')}
+                  {hasProfilePhoto ? (
+                    <button
+                      type="button"
+                      className="settings-btn settings-btn--ghost settings-btn--compact settings-btn--danger-text"
+                      onClick={handleRequestDeletePhoto}
+                      disabled={uploading || deletingPhoto}
                     >
-                      <button
-                        type="button"
-                        role="menuitem"
-                        className="profile-photo-menu-item"
-                        onClick={handleModifyPhoto}
-                      >
-                        <Pencil size={16} aria-hidden />
-                        <span>{t('settings.modifyPhoto')}</span>
-                      </button>
-                      {hasProfilePhoto && (
-                        <button
-                          type="button"
-                          role="menuitem"
-                          className="profile-photo-menu-item profile-photo-menu-item--danger"
-                          onClick={handleRequestDeletePhoto}
-                        >
-                          <Trash2 size={16} aria-hidden />
-                          <span>{t('settings.deletePhoto')}</span>
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-                <div className="upload-info">
-                  <h3>{t('settings.profilePhoto')}</h3>
-                  {uploadError && (
-                    <p
-                      className="settings-feedback settings-feedback--error"
-                      role="alert"
-                    >
-                      <AlertCircle size={14} aria-hidden />
-                      {uploadError}
-                    </p>
-                  )}
-                  {uploadSuccess && (
-                    <p
-                      className="settings-feedback settings-feedback--success"
-                      role="status"
-                    >
-                      <CheckCircle2 size={14} aria-hidden />
-                      {uploadSuccess}
-                    </p>
-                  )}
+                      <Trash2 size={14} aria-hidden />
+                      {t('common.delete')}
+                    </button>
+                  ) : null}
                 </div>
               </div>
+
+              {uploadError ? (
+                <p className="settings-feedback settings-feedback--error" role="alert">
+                  <AlertCircle size={14} aria-hidden />
+                  {uploadError}
+                </p>
+              ) : null}
+              {uploadSuccess ? (
+                <p className="settings-feedback settings-feedback--success" role="status">
+                  <CheckCircle2 size={14} aria-hidden />
+                  {uploadSuccess}
+                </p>
+              ) : null}
 
               <div className="settings-form">
                 <div className="form-grid">
@@ -907,10 +846,8 @@ const Settings: React.FC = () => {
 
           {activeTab === 'security' && (
             <section className="settings-section premium-card">
-              <div className="section-header">
-                <h2>{t('settings.securityTitle')}</h2>
-                <p>{t('settings.securitySubtitle')}</p>
-              </div>
+              <h2 className="settings-section-title">{t('settings.securityTitle')}</h2>
+              <p className="settings-section-sub">{t('settings.securitySubtitle')}</p>
 
               <div className="security-form">
                 <div className="password-section">
@@ -998,10 +935,8 @@ const Settings: React.FC = () => {
 
           {activeTab === 'notifications' && (
             <section className="settings-section premium-card">
-              <div className="section-header">
-                <h2>{t('settings.notificationsTitle')}</h2>
-                <p>{t('settings.notificationsSubtitle')}</p>
-              </div>
+              <h2 className="settings-section-title">{t('settings.notificationsTitle')}</h2>
+              <p className="settings-section-sub">{t('settings.notificationsSubtitle')}</p>
 
               <div className="preferences-list">
                 <div className="pref-card">

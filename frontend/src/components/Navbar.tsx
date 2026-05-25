@@ -94,8 +94,16 @@ const Navbar: React.FC = () => {
     enterpriseAdmin && location.pathname === '/invite';
   const showAdminInviteHeader =
     isAdminInviteRoute && adminPageHeader != null;
+  const showAdminSettingsHeader =
+    enterpriseAdmin &&
+    !globalMember &&
+    location.pathname === '/settings' &&
+    adminPageHeader != null;
   const showAdminContextHeader =
-    showAdminProjectsHeader || showAdminTeamHeader || showAdminInviteHeader;
+    showAdminProjectsHeader ||
+    showAdminTeamHeader ||
+    showAdminInviteHeader ||
+    showAdminSettingsHeader;
   const showAdminHeaderActionBar =
     !!adminPageHeader?.action &&
     (isAdminProjectDetailRoute || isAdminInviteRoute);
