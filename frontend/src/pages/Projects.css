@@ -1135,6 +1135,7 @@ button.project-info-chip--link:hover .project-info-chip-value {
   display: flex;
   align-items: center;
   padding: 0 0.15rem;
+  margin-top: 0.35rem;
 }
 
 .projects-admin-count-row .projects-admin-count-badge {
