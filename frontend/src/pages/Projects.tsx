@@ -30,6 +30,7 @@ import { ProjectStatus } from '../types/project';
 import {
   STATUS_FILTER_OPTIONS,
   formatProjectStatus,
+  formatResolvedProjectStatus,
   normalizeProjectStatus,
   isArchivedProject,
   projectMatchesStatusFilter,
@@ -332,7 +333,7 @@ const Projects: React.FC = () => {
           safeLower(p.nom_p).includes(searchLower) ||
           safeLower(p.responsable).includes(searchLower) ||
           safeLower(p.entreprise?.nom).includes(searchLower) ||
-          formatProjectStatus(p.statut_p ?? p.status).toLowerCase().includes(searchLower);
+          formatResolvedProjectStatus(p).toLowerCase().includes(searchLower);
         const matchesFilter = projectMatchesStatusFilter(p, filter);
         const matchesEnterprise =
           enterpriseFilter === 'ALL' || p.id_entreprise?.toString() === enterpriseFilter;
@@ -584,6 +585,7 @@ const Projects: React.FC = () => {
           loading={loading}
           user={user}
           eligibleMembers={eligibleMembers}
+          teamMembers={teamMembers}
           memberSearch={memberSearch}
           onMemberSearchChange={setMemberSearch}
           dropdownOpenId={dropdownOpenId}

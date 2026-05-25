@@ -26,7 +26,6 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import UserAvatar from './UserAvatar';
-import { resolveProfilePhotoUrl, getUserInitials } from '../lib/profilePhoto';
 import { usePermission } from '../hooks/usePermission';
 import { isSuperAdmin, isEnterpriseAdmin, isGlobalMember } from '../lib/permissions';
 import { spaceService } from '../services/space.service';
@@ -786,14 +785,11 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggleCollapsed }) => {
             )}
           >
             <div className="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-cu-primary text-[11px] font-bold text-white">
-              {resolveProfilePhotoUrl(user.photoUrl) ? (
-                <UserAvatar
-                  user={user}
-                  imgClassName="h-full w-full rounded-full object-cover"
-                />
-              ) : (
-                getUserInitials(user)
-              )}
+              <UserAvatar
+                user={user}
+                className="flex h-full w-full items-center justify-center"
+                imgClassName="h-full w-full rounded-full object-cover"
+              />
               {globalMember && (
                 <span
                   className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-[#1e1f25] bg-emerald-500"

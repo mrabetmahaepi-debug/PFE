@@ -40,6 +40,7 @@ export interface Projet {
   membre_projet?: any[];
   affectation?: any[];
   responsable?: string;
+  responsablePhotoUrl?: string | null;
   responsable_role?: string;
   chef_id?: number | null;
   chef_de_projet_id?: number | null;
@@ -48,6 +49,7 @@ export interface Projet {
     email: string;
     prenom: string;
     nom: string;
+    photoUrl?: string | null;
     roleProjet: string;
   }[];
   /** From GET /projets/:id — role `membre_projet.role_projet` for the current user in this project. */

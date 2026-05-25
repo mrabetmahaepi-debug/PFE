@@ -53,6 +53,7 @@ type ProjetMembreRow = {
     nom: string | null;
     prenom: string | null;
     email: string | null;
+    photoUrl?: string | null;
   } | null;
 };
 
@@ -66,6 +67,7 @@ function mapProjetMembreRows(rows: ProjetMembreRow[]) {
         email: u.email ?? "",
         prenom: u.prenom ?? "",
         nom: u.nom ?? "",
+        photoUrl: u.photoUrl ?? null,
         roleProjet: m.role_projet?.trim() || "Membre",
       };
     })
@@ -909,6 +911,7 @@ export const getAllProjets = async (req: Request, res: Response) => {
         progressPercent: avancement,
         dashboardBucket: resolveProjectDashboardBucket(stats, p.statut_p),
         responsable: finalResponsable,
+        responsablePhotoUrl: chef?.photoUrl ?? admin?.photoUrl ?? null,
         responsable_role: chef ? CHEF_DE_PROJET_ROLE_LABEL : admin ? "Admin" : null,
         chef_id: chef ? chef.id_utilisateur : null,
         chef_de_projet_id: p.chef_de_projet_id ?? (chef ? chef.id_utilisateur : null),
@@ -1097,6 +1100,7 @@ export const getProjetById = async (req: Request, res: Response) => {
             : projet.membre_projet?.length ?? 0,
       },
       responsable: finalResponsable,
+      responsablePhotoUrl: chef?.photoUrl ?? null,
       responsable_role: chef ? CHEF_DE_PROJET_ROLE_LABEL : "Non assigné",
       chef_id: chef ? chef.id_utilisateur : null,
       chef_de_projet_id: projet.chef_de_projet_id ?? (chef ? chef.id_utilisateur : null),

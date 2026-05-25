@@ -16,22 +16,10 @@ import { entrepriseService } from '../services/entreprise.service';
 import { usePermission } from '../hooks/usePermission';
 import type { User } from '../types/auth.types';
 import BackButton from '../components/BackButton';
-import { getUserInitials, resolveProfilePhotoUrl } from '../lib/profilePhoto';
+import UserAvatar from '../components/UserAvatar';
 import { displayGlobalAccountRole } from '../lib/accountRoleDisplay';
 import './Dashboard.css';
 import './Team.css';
-
-const API_ORIGIN =
-  import.meta.env.VITE_API_URL?.replace(/\/api\/?$/, '') || 'http://localhost:5000';
-
-function memberAvatarUrl(member: User): string {
-  const photo = (member as User & { photoUrl?: string | null }).photoUrl;
-  if (photo) {
-    return photo.startsWith('http') ? photo : `${API_ORIGIN}${photo}`;
-  }
-  const name = encodeURIComponent(`${member.prenom || ''} ${member.nom || ''}`.trim() || 'User');
-  return `https://ui-avatars.com/api/?name=${name}&background=0ea5b7&color=fff`;
-}
 
 function normalizeRoleKey(nom: string): string {
   return String(nom ?? '')
@@ -163,28 +151,19 @@ type MemberTableProps = {
 };
 
 function renderTeamAvatar(member: User, superAdminTable: boolean) {
-  const photo = resolveProfilePhotoUrl(
-    (member as User & { photoUrl?: string | null }).photoUrl
-  );
-  const initials = getUserInitials(member);
-
-  if (superAdminTable) {
-    return (
-      <div className="team-user-avatar-wrap team-user-avatar-wrap--super">
-        {photo ? (
-          <img src={photo} alt="" className="team-user-avatar" />
-        ) : (
-          <span className="team-user-avatar--initials" aria-hidden>
-            {initials}
-          </span>
-        )}
-      </div>
-    );
-  }
-
   return (
-    <div className="team-user-avatar-wrap">
-      <img src={memberAvatarUrl(member)} alt="" className="team-user-avatar" />
+    <div
+      className={
+        superAdminTable
+          ? 'team-user-avatar-wrap team-user-avatar-wrap--super'
+          : 'team-user-avatar-wrap'
+      }
+    >
+      <UserAvatar
+        user={member}
+        className="team-user-avatar--initials"
+        imgClassName="team-user-avatar"
+      />
     </div>
   );
 }

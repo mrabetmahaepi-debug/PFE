@@ -71,6 +71,7 @@ export const utilisateurPublicChefSelect = {
   nom: true,
   prenom: true,
   email: true,
+  photoUrl: true,
   id_role: true,
   id_entreprise: true,
   role: { select: { nom: true, id_role: true } },

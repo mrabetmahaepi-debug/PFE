@@ -10,7 +10,6 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import UserAvatar from './UserAvatar';
-import { resolveProfilePhotoUrl } from '../lib/profilePhoto';
 import {
   fetchMyNotifications,
   markNotificationRead,
@@ -468,19 +467,12 @@ const Navbar: React.FC = () => {
             aria-label={t('navbar.openProfileMenu')}
           >
             <span className="profile-avatar-wrap">
-              {resolveProfilePhotoUrl(user?.photoUrl) ? (
-                <UserAvatar
-                  user={user}
-                  imgClassName="profile-avatar-img"
-                  title={t('navbar.userAvatar')}
-                />
-              ) : (
-                <img
-                  src={`https://ui-avatars.com/api/?name=${encodeURIComponent(`${user?.prenom || ''} ${user?.nom || ''}`.trim() || user?.email || 'U')}&background=0d9488&color=fff`}
-                  alt={t('navbar.userAvatar')}
-                  className="profile-avatar-img"
-                />
-              )}
+              <UserAvatar
+                user={user}
+                className="profile-avatar-initials"
+                imgClassName="profile-avatar-img"
+                title={t('navbar.userAvatar')}
+              />
               <span className="profile-status-dot" aria-hidden />
             </span>
             <span className="header-user-name">{displayName}</span>
@@ -500,17 +492,11 @@ const Navbar: React.FC = () => {
               >
                 <div className="profile-dropdown-header">
                   <span className="profile-dropdown-avatar">
-                    {resolveProfilePhotoUrl(user?.photoUrl) ? (
-                      <UserAvatar
-                        user={user}
-                        imgClassName="profile-dropdown-avatar-img"
-                      />
-                    ) : (
-                      <>
-                        {(user?.prenom?.[0] || user?.email?.[0] || '?').toUpperCase()}
-                        {(user?.nom?.[0] || '').toUpperCase()}
-                      </>
-                    )}
+                    <UserAvatar
+                      user={user}
+                      className="profile-dropdown-avatar-initials"
+                      imgClassName="profile-dropdown-avatar-img"
+                    />
                   </span>
                   <div className="profile-dropdown-meta">
                     <strong>{displayName}</strong>

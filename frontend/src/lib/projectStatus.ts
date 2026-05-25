@@ -1,4 +1,5 @@
-import { ProjectStatus } from '../types/project';
+import { ProjectStatus, type Projet } from '../types/project';
+import { resolveAdminDashboardProjectBucket } from './adminDashboardAnalytics';
 
 export const PROJECT_STATUS_ENUM_VALUES = new Set<string>(Object.values(ProjectStatus));
 
@@ -95,12 +96,34 @@ export function isArchivedProject(project: {
   return normalizeProjectStatus(getRawProjectStatus(project)) === ProjectStatus.ARCHIVED;
 }
 
+/** Statut affiché admin : tâches / avancement / dashboardBucket, puis statut_p. */
+export function resolveProjectDisplayStatus(project: Projet): ProjectStatus {
+  const bucket = resolveAdminDashboardProjectBucket(project);
+  switch (bucket) {
+    case 'completed':
+      return ProjectStatus.COMPLETED;
+    case 'delayed':
+      return ProjectStatus.DELAYED;
+    case 'in_progress':
+      return ProjectStatus.IN_PROGRESS;
+    default:
+      return ProjectStatus.PLANNING;
+  }
+}
+
+export function formatResolvedProjectStatus(project: Projet): string {
+  return formatProjectStatus(resolveProjectDisplayStatus(project));
+}
+
 export function projectMatchesStatusFilter(
-  project: { statut_p?: unknown; status?: unknown; statut?: unknown },
+  project: Projet,
   filter: ProjectStatus | 'ALL',
 ): boolean {
   if (filter === 'ALL') return true;
-  return normalizeProjectStatus(getRawProjectStatus(project)) === filter;
+  if (filter === ProjectStatus.ON_HOLD) {
+    return normalizeProjectStatus(getRawProjectStatus(project)) === ProjectStatus.ON_HOLD;
+  }
+  return resolveProjectDisplayStatus(project) === filter;
 }
 
 export function getProjectStatusColor(status: unknown): string {

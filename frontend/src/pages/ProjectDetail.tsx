@@ -26,6 +26,7 @@ import type { User } from '../types/auth.types';
 import { projectCan } from '../lib/projectPermissions';
 import EditProjectTeamModal from '../components/EditProjectTeamModal';
 import DeleteConfirmModal from '../components/DeleteConfirmModal';
+import UserAvatar, { type UserAvatarUser } from '../components/UserAvatar';
 import {
   dispatchProjectTeamChanged,
   PROJECTS_UPDATED_EVENT,
@@ -97,6 +98,30 @@ function displayGlobalAccountRole(member: User): string {
   if (/^membre$|^member$/i.test(n)) return 'Membre';
   if (/chef|développeur|developpeur|developer|tester|testeur|designer|analyste|\bpm\b|lead|responsable/i.test(n)) return 'Membre';
   return n;
+}
+
+function resolveChefAvatarUser(project: Projet, teamMembers: User[]): UserAvatarUser | null {
+  const chefId = project.chef_id ?? project.chef_de_projet_id ?? null;
+  if (chefId != null) {
+    const member = teamMembers.find((m) => Number(m.id_utilisateur) === Number(chefId));
+    if (member) {
+      return {
+        prenom: member.prenom,
+        nom: member.nom,
+        email: member.email,
+        photoUrl: member.photoUrl,
+      };
+    }
+  }
+  const photoUrl = project.responsablePhotoUrl;
+  const name = String(project.responsable ?? '').trim();
+  if (!photoUrl && (!name || name === 'Non assigné')) return null;
+  const parts = name.split(/\s+/).filter(Boolean);
+  return {
+    prenom: parts[0],
+    nom: parts.slice(1).join(' ') || undefined,
+    photoUrl: photoUrl ?? undefined,
+  };
 }
 
 const ProjectDetail: React.FC = () => {
@@ -348,6 +373,8 @@ const ProjectDetail: React.FC = () => {
     return fullName.includes(memberSearch.toLowerCase()) || m.email.toLowerCase().includes(memberSearch.toLowerCase());
   });
 
+  const chefAvatarUser = project ? resolveChefAvatarUser(project, teamMembers) : null;
+
   if (loading) return <div className="loading-screen">Chargement...</div>;
   if (forbidden) {
     return (
@@ -491,7 +518,11 @@ const ProjectDetail: React.FC = () => {
                 <span className="project-detail-info-label">Responsable</span>
                 <div className="project-detail-info-value project-detail-info-value--responsable">
                   <div className="responsable-avatar">
-                    {String(project.responsable || '?')[0].toUpperCase()}
+                    <UserAvatar
+                      user={chefAvatarUser}
+                      className="responsable-avatar-inner"
+                      imgClassName="responsable-avatar-img"
+                    />
                   </div>
                   {canManageMembers || isSuperAdmin ? (
                     <div style={{ position: 'relative' }}>
@@ -556,12 +587,14 @@ const ProjectDetail: React.FC = () => {
                                     onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-main)'}
                                     onMouseOut={(e) => e.currentTarget.style.backgroundColor = project.chef_id === m.id_utilisateur ? 'var(--primary-light)' : 'transparent'}
                                   >
-                                    <div className="responsable-avatar" style={{
-                                      width: '32px', height: '32px', fontSize: '0.85rem',
-                                      background: project.chef_id === m.id_utilisateur ? 'var(--primary)' : 'var(--bg-main)',
-                                      color: project.chef_id === m.id_utilisateur ? 'white' : 'var(--text-main)'
-                                    }}>
-                                      {String(m.prenom?.[0] || m.email[0]).toUpperCase()}
+                                    <div
+                                      className={`responsable-avatar${project.chef_id === m.id_utilisateur ? ' is-active' : ''}`}
+                                    >
+                                      <UserAvatar
+                                        user={m}
+                                        className="responsable-avatar-inner"
+                                        imgClassName="responsable-avatar-img"
+                                      />
                                     </div>
                                     <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
                                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -618,7 +651,21 @@ const ProjectDetail: React.FC = () => {
                       return (
                       <tr key={`${row.userId}-${row.email}`}>
                         <td className="project-detail-team-name">
-                          {memberLabel}
+                          <span className="project-detail-team-name-cell">
+                            <span className="project-detail-team-avatar">
+                              <UserAvatar
+                                user={{
+                                  prenom: row.prenom,
+                                  nom: row.nom,
+                                  email: row.email,
+                                  photoUrl: row.photoUrl,
+                                }}
+                                className="project-detail-team-avatar-inner"
+                                imgClassName="project-detail-team-avatar-img"
+                              />
+                            </span>
+                            <span>{memberLabel}</span>
+                          </span>
                           {isProjectChef && (
                             <span className="project-detail-team-responsable-tag">
                               Responsable

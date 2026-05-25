@@ -20,6 +20,23 @@ export function resolveProfilePhotoUrl(
   return `${origin}${path.startsWith('/') ? path : `/${path}`}`;
 }
 
+/** Sources possibles côté API (photoUrl = champ Prisma). */
+export type UserPhotoFields = {
+  photoUrl?: string | null;
+  avatar?: string | null;
+  profileImage?: string | null;
+};
+
+/** Première URL de photo profil disponible. */
+export function resolveUserPhotoUrl(user?: UserPhotoFields | null): string | null {
+  if (!user) return null;
+  for (const key of ['photoUrl', 'avatar', 'profileImage'] as const) {
+    const resolved = resolveProfilePhotoUrl(user[key]);
+    if (resolved) return resolved;
+  }
+  return null;
+}
+
 export function getUserInitials(
   user?: { prenom?: string; nom?: string; email?: string } | null
 ): string {

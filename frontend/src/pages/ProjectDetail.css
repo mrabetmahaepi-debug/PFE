@@ -422,6 +422,43 @@
   color: var(--pd-text);
 }
 
+.project-detail-team-name-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.project-detail-team-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 800;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.project-detail-team-avatar-inner {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.project-detail-team-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  display: block;
+}
+
 .project-detail-team-email {
   color: var(--pd-text-muted);
   font-size: 0.875rem;

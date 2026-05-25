@@ -1,27 +1,70 @@
 import React from 'react';
 import { ArrowRight, MoreVertical, Search } from 'lucide-react';
 import { ProjectStatus } from '../types/project';
-import { formatProjectStatus, normalizeProjectStatus } from '../lib/projectStatus';
+import {
+  formatResolvedProjectStatus,
+  resolveProjectDisplayStatus,
+} from '../lib/projectStatus';
+import UserAvatar, { type UserAvatarUser } from './UserAvatar';
 import { canManageProject, type ProjectManageContext } from '../lib/projectManageAccess';
 import type { User } from '../types/auth.types';
+import type { Projet } from '../types/project';
 
-export type AdminProjectTableRow = ProjectManageContext & {
-  id_projet: number;
-  nom_p?: string;
-  description_p?: string;
-  date_debut?: string | null;
-  date_fin?: string | null;
-  createdAt?: string | null;
-  statut_p?: unknown;
-  status?: unknown;
-  avancement?: number;
-  progressPercent?: number;
-  membresCount?: number;
-  tachesCount?: number;
-  responsable?: string;
-  responsable_role?: string;
-  chef_id?: number | null;
-};
+export type AdminProjectTableRow = ProjectManageContext &
+  Pick<
+    Projet,
+    | 'description_p'
+    | 'date_debut'
+    | 'date_fin'
+    | 'createdAt'
+    | 'statut_p'
+    | 'avancement'
+    | 'progressPercent'
+    | 'membresCount'
+    | 'tachesCount'
+    | 'totalTasks'
+    | 'completedTasks'
+    | 'inProgressTasks'
+    | 'lateTasks'
+    | 'dashboardBucket'
+    | 'responsablePhotoUrl'
+  > & {
+    id_projet: number;
+    nom_p?: string;
+    status?: unknown;
+    responsable?: string;
+    responsable_role?: string;
+    chef_id?: number | null;
+  };
+
+function resolveChefAvatarUser(
+  project: AdminProjectTableRow,
+  teamMembers: User[]
+): UserAvatarUser | null {
+  const chefId = project.chef_id;
+  if (chefId != null) {
+    const member = teamMembers.find((m) => Number(m.id_utilisateur) === Number(chefId));
+    if (member) {
+      return {
+        prenom: member.prenom,
+        nom: member.nom,
+        email: member.email,
+        photoUrl: member.photoUrl,
+      };
+    }
+  }
+
+  const photoUrl = project.responsablePhotoUrl;
+  const name = String(project.responsable ?? '').trim();
+  if (!photoUrl && (!name || name === 'Non assigné')) return null;
+
+  const parts = name.split(/\s+/).filter(Boolean);
+  return {
+    prenom: parts[0],
+    nom: parts.slice(1).join(' ') || undefined,
+    photoUrl: photoUrl ?? undefined,
+  };
+}
 
 function formatProjectShortDate(iso: string | undefined | null): string {
   if (!iso) return '—';
@@ -34,17 +77,14 @@ function formatProjectShortDate(iso: string | undefined | null): string {
   }).format(d);
 }
 
-function projectStatusBadgeClass(status: unknown): string {
-  const norm = normalizeProjectStatus(status);
-  switch (norm) {
+function projectStatusBadgeClass(status: ProjectStatus): string {
+  switch (status) {
     case ProjectStatus.IN_PROGRESS:
       return 'projects-table-status--en-cours';
     case ProjectStatus.COMPLETED:
       return 'projects-table-status--terminee';
     case ProjectStatus.DELAYED:
       return 'projects-table-status--en-retard';
-    case ProjectStatus.ON_HOLD:
-      return 'projects-table-status--attente';
     default:
       return 'projects-table-status--planning';
   }
@@ -55,6 +95,7 @@ export interface AdminProjectsTableProps {
   loading: boolean;
   user: User | null;
   eligibleMembers: User[];
+  teamMembers: User[];
   memberSearch: string;
   onMemberSearchChange: (value: string) => void;
   dropdownOpenId: number | null;
@@ -66,11 +107,23 @@ export interface AdminProjectsTableProps {
   onNavigateDetails: (projectId: number) => void;
 }
 
+const TABLE_COLUMNS = [
+  '#',
+  'Nom du projet',
+  'Chef de projet',
+  'Membres',
+  'Tâches',
+  'Date début',
+  'Date fin',
+  'Statut',
+] as const;
+
 const AdminProjectsTable: React.FC<AdminProjectsTableProps> = ({
   projects,
   loading,
   user,
   eligibleMembers,
+  teamMembers,
   memberSearch,
   onMemberSearchChange,
   dropdownOpenId,
@@ -87,21 +140,16 @@ const AdminProjectsTable: React.FC<AdminProjectsTableProps> = ({
         <table className="projects-table">
           <thead>
             <tr>
-              <th>#</th>
-              <th>Nom du projet</th>
-              <th>Chef de projet</th>
-              <th>Membres</th>
-              <th>Tâches</th>
-              <th>Date début</th>
-              <th>Date fin</th>
-              <th>Statut</th>
-              <th>Actions</th>
+              {TABLE_COLUMNS.map((label) => (
+                <th key={label}>{label}</th>
+              ))}
+              <th className="projects-table-col-actions" aria-label="Actions" />
             </tr>
           </thead>
           <tbody>
             {Array.from({ length: 8 }).map((_, i) => (
               <tr key={i} className="projects-table-row--skeleton">
-                {Array.from({ length: 9 }).map((__, j) => (
+                {Array.from({ length: TABLE_COLUMNS.length + 1 }).map((__, j) => (
                   <td key={j}>
                     <span className="projects-table-skeleton-bar" />
                   </td>
@@ -140,20 +188,18 @@ const AdminProjectsTable: React.FC<AdminProjectsTableProps> = ({
             <th className="projects-table-col-date" scope="col">
               Date fin
             </th>
-            <th className="projects-table-col-progress" scope="col">
-              Progression
-            </th>
             <th className="projects-table-col-status" scope="col">
               Statut
             </th>
-            <th className="projects-table-col-actions" scope="col">
-              Actions
-            </th>
+            <th className="projects-table-col-actions" scope="col" aria-label="Actions" />
           </tr>
         </thead>
         <tbody>
           {projects.map((project, index) => {
             const canEditChef = canManageProject(user, project);
+            const displayStatus = resolveProjectDisplayStatus(project as Projet);
+            const statusLabel = formatResolvedProjectStatus(project as Projet);
+            const chefAvatarUser = resolveChefAvatarUser(project, teamMembers);
 
             return (
               <tr key={project.id_projet} className="projects-table-row">
@@ -182,12 +228,11 @@ const AdminProjectsTable: React.FC<AdminProjectsTableProps> = ({
                           aria-expanded={dropdownOpenId === project.id_projet}
                         >
                           <span className="projects-table-chef-avatar">
-                            {(project.responsable && project.responsable !== 'Non assigné'
-                              ? project.responsable
-                              : '?'
-                            )
-                              .charAt(0)
-                              .toUpperCase()}
+                            <UserAvatar
+                              user={chefAvatarUser}
+                              className="projects-table-chef-avatar-inner"
+                              imgClassName="projects-table-chef-avatar-img"
+                            />
                           </span>
                           <span className="projects-table-chef-name">
                             {project.responsable && project.responsable !== 'Non assigné'
@@ -230,7 +275,11 @@ const AdminProjectsTable: React.FC<AdminProjectsTableProps> = ({
                                     }}
                                   >
                                     <span className="projects-table-chef-avatar">
-                                      {String(m.prenom?.[0] || m.email?.[0] || '?').toUpperCase()}
+                                      <UserAvatar
+                                        user={m}
+                                        className="projects-table-chef-avatar-inner"
+                                        imgClassName="projects-table-chef-avatar-img"
+                                      />
                                     </span>
                                     <span>
                                       {m.prenom} {m.nom}
@@ -244,6 +293,13 @@ const AdminProjectsTable: React.FC<AdminProjectsTableProps> = ({
                       </div>
                     ) : (
                       <span className="projects-table-chef-static">
+                        <span className="projects-table-chef-avatar">
+                          <UserAvatar
+                            user={chefAvatarUser}
+                            className="projects-table-chef-avatar-inner"
+                            imgClassName="projects-table-chef-avatar-img"
+                          />
+                        </span>
                         {project.responsable && project.responsable !== 'Non assigné'
                           ? project.responsable
                           : 'Non assigné'}
@@ -265,15 +321,13 @@ const AdminProjectsTable: React.FC<AdminProjectsTableProps> = ({
                 </td>
                 <td className="projects-table-col-status">
                   <span
-                    className={`projects-table-status ${projectStatusBadgeClass(
-                      project.statut_p ?? project.status
-                    )}`}
+                    className={`projects-table-status ${projectStatusBadgeClass(displayStatus)}`}
                   >
-                    {formatProjectStatus(project.statut_p ?? project.status)}
+                    {statusLabel}
                   </span>
                 </td>
                 <td className="projects-table-col-actions">
-                  <div className="projects-table-actions">
+                  <div className="projects-table-actions-group" role="group" aria-label="Actions">
                     <button
                       type="button"
                       className="projects-table-details-btn"
@@ -287,7 +341,7 @@ const AdminProjectsTable: React.FC<AdminProjectsTableProps> = ({
                       className={`projects-table-menu-btn${
                         cardMenuAnchor?.projectId === project.id_projet ? ' is-active' : ''
                       }`}
-                      aria-label="Actions du projet"
+                      aria-label="Plus d'actions"
                       aria-expanded={cardMenuAnchor?.projectId === project.id_projet}
                       disabled={archivingProjectId === project.id_projet}
                       onClick={(e) => onToggleCardMenu(e, project.id_projet)}

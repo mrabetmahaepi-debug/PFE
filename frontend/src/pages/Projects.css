@@ -855,6 +855,31 @@ button.project-info-chip--link:hover .project-info-chip-value {
   font-weight: 800;
   font-size: 0.875rem;
   box-shadow: 0 4px 10px rgba(79, 70, 229, 0.2);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.responsable-avatar-inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-weight: 800;
+  font-size: 0.875rem;
+}
+
+.responsable-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  display: block;
+}
+
+.responsable-avatar.is-active {
+  background: var(--primary);
+  color: #fff;
 }
 
 .responsable-info {
@@ -1352,19 +1377,35 @@ button.project-info-chip--link:hover .project-info-chip-value {
 .projects-page--admin .projects-table-wrap {
   flex: 1;
   min-height: 0;
-  overflow: auto;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: visible;
   border: 1px solid rgba(123, 104, 238, 0.14);
   border-radius: 14px;
   background: #fff;
   box-shadow: 0 6px 22px rgba(123, 104, 238, 0.07);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(123, 104, 238, 0.35) transparent;
+}
+
+.projects-page--admin .projects-table-wrap::-webkit-scrollbar {
+  height: 6px;
+}
+
+.projects-page--admin .projects-table-wrap::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(123, 104, 238, 0.35);
+}
+
+.projects-page--admin .projects-table-wrap::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 .projects-table {
   width: 100%;
-  min-width: 1100px;
   border-collapse: collapse;
   font-size: 13px;
-  table-layout: fixed;
+  table-layout: auto;
 }
 
 .projects-table thead {
@@ -1410,29 +1451,24 @@ button.project-info-chip--link:hover .project-info-chip-value {
 }
 
 .projects-table-col-num {
-  width: 48px;
+  width: 3rem;
   text-align: center;
   font-variant-numeric: tabular-nums;
   color: #87909e;
 }
 
 .projects-table-col-name {
-  width: 14%;
-  min-width: 140px;
-}
-
-.projects-table-col-desc {
-  width: 18%;
-  min-width: 160px;
+  min-width: 10rem;
+  max-width: 18rem;
 }
 
 .projects-table-col-chef {
-  width: 14%;
-  min-width: 150px;
+  min-width: 9rem;
+  max-width: 14rem;
 }
 
 .projects-table-col-count {
-  width: 72px;
+  width: 4.5rem;
   text-align: center;
 }
 
@@ -1443,22 +1479,26 @@ button.project-info-chip--link:hover .project-info-chip-value {
 }
 
 .projects-table-col-date {
-  width: 108px;
+  width: 6.75rem;
   white-space: nowrap;
   font-size: 12px;
   color: #646f79;
 }
 
-.projects-table-col-progress {
-  width: 120px;
-}
-
 .projects-table-col-status {
-  width: 108px;
+  width: 6.5rem;
 }
 
 .projects-table-col-actions {
-  width: 148px;
+  width: 1%;
+  white-space: nowrap;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+.projects-table-col-actions:empty,
+.projects-table th.projects-table-col-actions:empty {
+  padding: 10px 8px;
 }
 
 .projects-table-name-btn {
@@ -1535,6 +1575,31 @@ button.project-info-chip--link:hover .project-info-chip-value {
   font-size: 11px;
   font-weight: 800;
   flex-shrink: 0;
+  overflow: hidden;
+}
+
+.projects-table-chef-avatar-inner {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.projects-table-chef-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  display: block;
+}
+
+.projects-table-chef-static {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
 }
 
 .projects-table-chef-name {
@@ -1546,7 +1611,13 @@ button.project-info-chip--link:hover .project-info-chip-value {
   color: #292d34;
 }
 
-.projects-table-chef-static {
+.projects-table-chef-static:not(:has(.projects-table-chef-avatar)) {
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+}
+
+.projects-table-chef-static:has(.projects-table-chef-avatar) {
   font-size: 12px;
   font-weight: 600;
   color: #475569;
@@ -1694,43 +1765,47 @@ button.project-info-chip--link:hover .project-info-chip-value {
   border-color: rgba(245, 158, 11, 0.25);
 }
 
-.projects-table-actions {
-  display: flex;
-  align-items: center;
+.projects-table-actions-group {
+  display: inline-flex;
+  align-items: stretch;
   justify-content: flex-end;
-  gap: 0.35rem;
+  border: 1px solid rgba(123, 104, 238, 0.2);
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(123, 104, 238, 0.06);
 }
 
 .projects-table-details-btn {
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
-  padding: 0.38rem 0.65rem;
-  border: 1px solid rgba(123, 104, 238, 0.22);
-  border-radius: 8px;
-  background: rgba(123, 104, 238, 0.08);
+  padding: 0.38rem 0.6rem;
+  border: none;
+  border-right: 1px solid rgba(123, 104, 238, 0.18);
+  border-radius: 0;
+  background: transparent;
   color: #7b68ee;
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
-  transition: background 0.15s ease, border-color 0.15s ease;
+  transition: background 0.15s ease;
 }
 
 .projects-table-details-btn:hover {
-  background: rgba(123, 104, 238, 0.14);
-  border-color: rgba(123, 104, 238, 0.35);
+  background: rgba(123, 104, 238, 0.12);
 }
 
 .projects-table-menu-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  min-width: 34px;
+  height: auto;
   padding: 0;
   border: none;
-  border-radius: 8px;
+  border-radius: 0;
   background: transparent;
   color: #87909e;
   cursor: pointer;
@@ -1739,7 +1814,7 @@ button.project-info-chip--link:hover .project-info-chip-value {
 
 .projects-table-menu-btn:hover,
 .projects-table-menu-btn.is-active {
-  background: #f3f0ff;
+  background: rgba(123, 104, 238, 0.14);
   color: #7b68ee;
 }
 
@@ -1782,5 +1857,20 @@ button.project-info-chip--link:hover .project-info-chip-value {
 
   .projects-page--admin .projects-table-wrap {
     border-radius: 10px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .projects-table-col-name {
+    max-width: 12rem;
+  }
+
+  .projects-table-actions-group {
+    flex-shrink: 0;
+  }
+}
+
+@media (min-width: 1100px) {
+  .projects-page--admin .projects-table-wrap {
+    overflow-x: hidden;
   }
 }
