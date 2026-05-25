@@ -33,6 +33,7 @@ import {
   WORKSPACE_REFRESH_EVENT,
 } from '../lib/workspaceEvents';
 import { isChefDeProjetMemberRole } from '../lib/projectRoleLabels';
+import { useAdminPageHeader } from '../context/AdminPageHeaderContext';
 import './ProjectDetail.css';
 
 function toDateInputValue(iso: string | undefined | null): string {
@@ -159,6 +160,7 @@ const ProjectDetail: React.FC = () => {
   const { isSuperAdmin } = usePermission();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { setHeader: setAdminPageHeader } = useAdminPageHeader();
   const [project, setProject] = useState<Projet | null>(null);
   const [loading, setLoading] = useState(true);
   const [forbidden, setForbidden] = useState(false);
@@ -299,6 +301,18 @@ const ProjectDetail: React.FC = () => {
       }
     }
   }, [id]);
+
+  useEffect(() => {
+    if (loading || forbidden || !project) {
+      setAdminPageHeader(null);
+      return;
+    }
+    setAdminPageHeader({
+      title: project.nom_p,
+      subtitle: project.description_p?.trim() || 'Aucune description fournie.',
+    });
+    return () => setAdminPageHeader(null);
+  }, [loading, forbidden, project, setAdminPageHeader]);
 
   useEffect(() => {
     if (!id) return;
@@ -456,43 +470,39 @@ const ProjectDetail: React.FC = () => {
       transition={{ duration: 0.28 }}
       className="project-detail-page"
     >
-      <header className="project-detail-header">
-        <div className="project-detail-header-text">
-          <p className="project-detail-project-name">{project.nom_p}</p>
-          <p className="project-detail-project-desc">
-            {project.description_p || 'Aucune description fournie.'}
-          </p>
+      {(canManageMembers || canEditProjectInfo || project.currentUserProjectRole) && (
+        <div className="project-detail-toolbar">
+          {(canManageMembers || canEditProjectInfo) && (
+            <div className="project-detail-actions-row">
+              {canManageMembers && (
+                <button
+                  type="button"
+                  className="project-detail-soft-btn"
+                  onClick={() => setTeamModalOpen(true)}
+                >
+                  <Users size={16} aria-hidden />
+                  Gérer l&apos;équipe
+                </button>
+              )}
+              {canEditProjectInfo && !editingProjectInfo && (
+                <button
+                  type="button"
+                  className="project-detail-soft-btn"
+                  onClick={() => setEditingProjectInfo(true)}
+                >
+                  <Pencil size={16} aria-hidden />
+                  Modifier le projet
+                </button>
+              )}
+            </div>
+          )}
           {project.currentUserProjectRole ? (
             <p className="project-detail-user-role">
               Votre rôle : <strong>{project.currentUserProjectRole}</strong>
             </p>
           ) : null}
         </div>
-        {(canManageMembers || canEditProjectInfo) && (
-          <div className="project-detail-actions-row">
-            {canManageMembers && (
-              <button
-                type="button"
-                className="project-detail-soft-btn"
-                onClick={() => setTeamModalOpen(true)}
-              >
-                <Users size={16} aria-hidden />
-                Gérer l&apos;équipe
-              </button>
-            )}
-            {canEditProjectInfo && !editingProjectInfo && (
-              <button
-                type="button"
-                className="project-detail-soft-btn"
-                onClick={() => setEditingProjectInfo(true)}
-              >
-                <Pencil size={16} aria-hidden />
-                Modifier le projet
-              </button>
-            )}
-          </div>
-        )}
-      </header>
+      )}
 
       <div className="project-detail-panel">
       <div className="project-detail-stats-row" aria-label="Statistiques du projet">

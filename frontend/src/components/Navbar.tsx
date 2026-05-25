@@ -79,9 +79,10 @@ const Navbar: React.FC = () => {
   const showAdminRecommendationsTitle =
     enterpriseAdmin && location.pathname === '/recommendations';
   const { header: adminPageHeader } = useAdminPageHeader();
+  const isAdminProjectDetailRoute = /^\/projects\/\d+\/?$/.test(location.pathname);
   const showAdminProjectsHeader =
     enterpriseAdmin &&
-    location.pathname === '/projects' &&
+    (location.pathname === '/projects' || isAdminProjectDetailRoute) &&
     adminPageHeader != null;
   const showAdminTeamHeader =
     enterpriseAdmin &&
