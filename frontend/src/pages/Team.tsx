@@ -229,6 +229,7 @@ function MemberTable({
   superAdminTable = false,
 }: MemberTableProps) {
   const isAdminSection = sectionTitle === 'Administrateurs';
+  const showIdColumn = superAdminTable;
 
   return (
     <section
@@ -264,7 +265,7 @@ function MemberTable({
         <table className="team-table">
           <colgroup>
             <col className="team-col-w-user" />
-            <col className="team-col-w-id" />
+            {showIdColumn ? <col className="team-col-w-id" /> : null}
             <col className="team-col-w-role" />
             <col className="team-col-w-projects" />
             <col className="team-col-w-email" />
@@ -275,7 +276,7 @@ function MemberTable({
           <thead>
             <tr>
               <th>Utilisateur</th>
-              <th className="team-col-id">ID</th>
+              {showIdColumn ? <th className="team-col-id">ID</th> : null}
               <th className="team-col-role">Rôle</th>
               <th>{isAdminSection ? 'Entreprise' : 'Projet(s)'}</th>
               <th>Email</th>
@@ -309,9 +310,11 @@ function MemberTable({
                         </div>
                       </div>
                     </td>
-                    <td className="team-cell-id">
-                      <code className="team-id-code">#{memberId}</code>
-                    </td>
+                    {showIdColumn ? (
+                      <td className="team-cell-id">
+                        <code className="team-id-code">#{memberId}</code>
+                      </td>
+                    ) : null}
                     <td className="team-cell-role">
                       <span className={roleBadgeClass(roleLabel, isAdminSection)}>
                         {roleLabel}
