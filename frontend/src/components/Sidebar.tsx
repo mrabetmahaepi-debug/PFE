@@ -33,6 +33,7 @@ import type { SpaceTreeNode } from '../types/hierarchy';
 import ClickUpSidebarTree from './ClickUpSidebarTree';
 import MemberSpaceSidebarTree from './MemberSpaceSidebarTree';
 import './SidebarMemberDark.css';
+import './SidebarAdminBrown.css';
 import './SidebarInboxBadge.css';
 import SidebarCorbeille from './SidebarCorbeille';
 import MemberSidebarCorbeille from './MemberSidebarCorbeille';
@@ -521,7 +522,8 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggleCollapsed }) => {
       className={cn(
         cu.sidebar,
         collapsed ? cu.sidebarCollapsed : cu.sidebarExpanded,
-        globalMember && 'cu-sidebar--member-dark'
+        globalMember && 'cu-sidebar--member-dark',
+        !globalMember && 'cu-sidebar--admin'
       )}
     >
       <div

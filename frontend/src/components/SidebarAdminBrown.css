@@ -1,0 +1,324 @@
+/**
+ * Admin sidebar — thème marron moderne ClickUp
+ * Scoped via `.cu-sidebar--admin` (tous les rôles sauf membre global).
+ */
+
+.cu-sidebar--admin {
+  --asb-bg: #4e342e;
+  --asb-bg-elevated: #5d4037;
+  --asb-hover: #6d4c41;
+  --asb-active: #8d6e63;
+  --asb-text: #f5f5f5;
+  --asb-text-secondary: #d7ccc8;
+  --asb-text-muted: #d7ccc8;
+  --asb-badge-bg: #a1887f;
+  --asb-badge-text: #f5f5f5;
+  --asb-divider: rgba(255, 255, 255, 0.08);
+  --asb-border: rgba(255, 255, 255, 0.1);
+  --asb-shadow: 2px 0 14px rgba(0, 0, 0, 0.1);
+
+  background: var(--asb-bg) !important;
+  border-right-color: var(--asb-border) !important;
+  box-shadow: var(--asb-shadow) !important;
+  color: var(--asb-text);
+}
+
+.cu-sidebar--admin .text-cu-text,
+.cu-sidebar--admin .text-cu-text-secondary {
+  color: var(--asb-text) !important;
+}
+
+.cu-sidebar--admin .text-cu-text-muted {
+  color: var(--asb-text-muted) !important;
+}
+
+/* Header */
+.cu-sidebar--admin .cu-sidebar-header,
+.cu-sidebar--admin > div:first-child {
+  border-bottom: 1px solid var(--asb-divider);
+}
+
+.cu-sidebar--admin .cu-sidebar-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 3px;
+}
+
+.cu-sidebar--admin .cu-sidebar-scroll {
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+}
+
+/* Divider */
+.cu-sidebar--admin .cu-divider,
+.cu-sidebar--admin .bg-cu-border {
+  background: var(--asb-divider) !important;
+}
+
+/* Section labels (SPACES, Administration) */
+.cu-sidebar--admin section .text-\\[11px\\],
+.cu-sidebar--admin .uppercase.tracking-wider {
+  color: var(--asb-text-secondary) !important;
+}
+
+/* Nav links & buttons */
+.cu-sidebar--admin nav a,
+.cu-sidebar--admin nav button:not(.cu-create-btn) {
+  color: var(--asb-text) !important;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.cu-sidebar--admin nav a:hover,
+.cu-sidebar--admin nav button:not(.cu-create-btn):hover:not(:disabled) {
+  background: var(--asb-hover) !important;
+  color: var(--asb-text) !important;
+}
+
+.cu-sidebar--admin nav a[aria-current='page'],
+.cu-sidebar--admin nav a.bg-cu-primary-soft {
+  background: var(--asb-active) !important;
+  color: var(--asb-text) !important;
+  font-weight: 500 !important;
+  box-shadow: inset 3px 0 0 rgba(255, 255, 255, 0.22);
+}
+
+.cu-sidebar--admin nav a.text-cu-primary {
+  color: var(--asb-text) !important;
+}
+
+.cu-sidebar--admin nav a svg,
+.cu-sidebar--admin nav a .lucide,
+.cu-sidebar--admin nav button svg {
+  color: var(--asb-text-secondary);
+  transition: color 0.15s ease;
+}
+
+.cu-sidebar--admin nav a:hover svg,
+.cu-sidebar--admin nav a[aria-current='page'] svg {
+  color: var(--asb-text) !important;
+}
+
+.cu-sidebar--admin nav a[aria-current='page'] svg {
+  color: var(--asb-text) !important;
+}
+
+/* More dropdown nested */
+.cu-sidebar--admin nav .mt-px a {
+  color: var(--asb-text-secondary) !important;
+}
+
+.cu-sidebar--admin nav .mt-px a:hover,
+.cu-sidebar--admin nav .mt-px a[aria-current='page'] {
+  color: var(--asb-text) !important;
+}
+
+/* Section header row (+ button) */
+.cu-sidebar--admin section button.h-6 {
+  color: var(--asb-text-secondary) !important;
+}
+
+.cu-sidebar--admin section button.h-6:hover {
+  background: var(--asb-hover) !important;
+  color: var(--asb-text) !important;
+}
+
+/* Footer */
+.cu-sidebar--admin .cu-sidebar-footer,
+.cu-sidebar--admin .border-t.border-cu-border {
+  background: var(--asb-bg-elevated) !important;
+  border-top-color: var(--asb-divider) !important;
+}
+
+.cu-sidebar--admin .cu-sidebar-footer .hover\\:bg-cu-hover:hover,
+.cu-sidebar--admin .cu-sidebar-footer > div:hover {
+  background: var(--asb-hover) !important;
+}
+
+.cu-sidebar--admin .cu-sidebar-footer p.text-cu-text,
+.cu-sidebar--admin .cu-sidebar-footer .text-cu-text {
+  color: var(--asb-text) !important;
+}
+
+.cu-sidebar--admin .cu-sidebar-footer .text-cu-text-muted,
+.cu-sidebar--admin .cu-sidebar-user-poste {
+  color: var(--asb-text-secondary) !important;
+}
+
+.cu-sidebar--admin .cu-sidebar-footer button:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #ffcdd2 !important;
+}
+
+.cu-sidebar--admin .cu-sidebar-footer .bg-cu-primary {
+  background: var(--asb-badge-bg) !important;
+  color: var(--asb-text) !important;
+}
+
+/* Collapse / ghost buttons in header */
+.cu-sidebar--admin .cu-sidebar-header button,
+.cu-sidebar--admin > div:first-child button {
+  color: var(--asb-text-secondary) !important;
+}
+
+.cu-sidebar--admin .cu-sidebar-header button:hover,
+.cu-sidebar--admin > div:first-child button:hover {
+  background: var(--asb-hover) !important;
+  color: var(--asb-text) !important;
+}
+
+/* Spaces tree */
+.cu-sidebar--admin .cu-spaces-tree-row {
+  color: var(--asb-text-secondary) !important;
+  background: transparent !important;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.cu-sidebar--admin .cu-spaces-tree-row:hover {
+  background: var(--asb-hover) !important;
+  color: var(--asb-text) !important;
+}
+
+.cu-sidebar--admin .cu-spaces-tree-row:hover .cu-spaces-tree-label,
+.cu-sidebar--admin .cu-spaces-tree-row:hover .cu-spaces-tree-label--space,
+.cu-sidebar--admin .cu-spaces-tree-row:hover .cu-spaces-tree-label--project,
+.cu-sidebar--admin .cu-spaces-tree-row:hover .cu-spaces-tree-label--sprint,
+.cu-sidebar--admin .cu-spaces-tree-row:hover .cu-spaces-tree-label--list,
+.cu-sidebar--admin .cu-spaces-tree-row:hover .cu-spaces-tree-label--task,
+.cu-sidebar--admin .cu-spaces-tree-row:hover .cu-spaces-tree-label--subtask {
+  color: var(--asb-text) !important;
+}
+
+.cu-sidebar--admin .cu-spaces-tree-row.is-active {
+  background: var(--asb-active) !important;
+  color: var(--asb-text) !important;
+  box-shadow: inset 3px 0 0 rgba(255, 255, 255, 0.2) !important;
+}
+
+.cu-sidebar--admin .cu-spaces-tree-row.is-active .cu-spaces-tree-label,
+.cu-sidebar--admin .cu-spaces-tree-row.is-active .cu-spaces-tree-label--space,
+.cu-sidebar--admin .cu-spaces-tree-row.is-active .cu-spaces-tree-label--project,
+.cu-sidebar--admin .cu-spaces-tree-row.is-active .cu-spaces-tree-label--sprint,
+.cu-sidebar--admin .cu-spaces-tree-row.is-active .cu-spaces-tree-label--list,
+.cu-sidebar--admin .cu-spaces-tree-row.is-active .cu-spaces-tree-label--task,
+.cu-sidebar--admin .cu-spaces-tree-row.is-active .cu-spaces-tree-label--subtask {
+  color: var(--asb-text) !important;
+}
+
+.cu-sidebar--admin .cu-spaces-tree-main,
+.cu-sidebar--admin .cu-spaces-tree-main--subtask-edit {
+  background: transparent !important;
+}
+
+.cu-sidebar--admin .cu-spaces-tree-icon,
+.cu-sidebar--admin .cu-spaces-tree-chevron {
+  color: var(--asb-text-secondary) !important;
+}
+
+.cu-sidebar--admin .cu-spaces-tree-chevron:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+.cu-sidebar--admin .cu-spaces-tree-label--space {
+  color: var(--asb-text) !important;
+  font-weight: 600;
+}
+
+.cu-sidebar--admin .cu-spaces-tree-label--project,
+.cu-sidebar--admin .cu-spaces-tree-label--sprint,
+.cu-sidebar--admin .cu-spaces-tree-label--list,
+.cu-sidebar--admin .cu-spaces-tree-label--task,
+.cu-sidebar--admin .cu-spaces-tree-label--subtask {
+  color: var(--asb-text-secondary) !important;
+}
+
+.cu-sidebar--admin .cu-spaces-tree-count {
+  color: var(--asb-badge-text) !important;
+  background: var(--asb-badge-bg);
+  border-radius: 10px;
+  padding: 0 6px;
+}
+
+.cu-sidebar--admin .cu-spaces-tree-menu-btn,
+.cu-sidebar--admin .cu-spaces-tree-add-btn {
+  color: var(--asb-text-secondary) !important;
+}
+
+.cu-sidebar--admin .cu-spaces-tree-row:hover .cu-spaces-tree-menu-btn,
+.cu-sidebar--admin .cu-spaces-tree-row:hover .cu-spaces-tree-add-btn,
+.cu-sidebar--admin .cu-spaces-tree-menu-btn:hover,
+.cu-sidebar--admin .cu-spaces-tree-add-btn:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: var(--asb-text) !important;
+}
+
+.cu-sidebar--admin .cu-spaces-tree-task-dot {
+  border-color: var(--asb-text-secondary);
+}
+
+.cu-sidebar--admin .cu-spaces-tree-row.is-active .cu-spaces-tree-task-dot {
+  border-color: var(--asb-text) !important;
+  background: var(--asb-text) !important;
+}
+
+.cu-sidebar--admin .cu-spaces-tree-empty {
+  color: var(--asb-text-secondary) !important;
+}
+
+/* Corbeille */
+.cu-sidebar--admin .cu-corbeille-toggle {
+  color: var(--asb-text-secondary) !important;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.cu-sidebar--admin .cu-corbeille-toggle:hover {
+  background: var(--asb-hover) !important;
+  color: var(--asb-text) !important;
+}
+
+.cu-sidebar--admin .cu-corbeille-toggle[aria-expanded='true'] {
+  background: var(--asb-active) !important;
+  color: var(--asb-text) !important;
+}
+
+.cu-sidebar--admin .cu-corbeille-toggle-icon,
+.cu-sidebar--admin .cu-corbeille-chevron {
+  color: var(--asb-text-secondary) !important;
+}
+
+.cu-sidebar--admin .cu-corbeille-count {
+  background: var(--asb-badge-bg) !important;
+  color: var(--asb-badge-text) !important;
+}
+
+.cu-sidebar--admin .cu-corbeille-empty {
+  color: var(--asb-text-secondary) !important;
+}
+
+.cu-sidebar--admin .cu-corbeille-row:hover {
+  background: var(--asb-hover);
+}
+
+.cu-sidebar--admin .cu-corbeille-row-type {
+  color: var(--asb-text-secondary) !important;
+}
+
+.cu-sidebar--admin .cu-corbeille-row-name {
+  color: var(--asb-text) !important;
+}
+
+/* Inbox badge */
+.cu-sidebar--admin .sidebar-inbox-badge--admin {
+  background: #ef6c57;
+  color: #ffffff;
+}
+
+.cu-sidebar--admin .sidebar-inbox-badge--admin.sidebar-inbox-badge--compact {
+  box-shadow: 0 0 0 2px var(--asb-bg);
+}
+
+.cu-sidebar--admin nav a:hover .sidebar-inbox-badge--admin,
+.cu-sidebar--admin nav a[aria-current='page'] .sidebar-inbox-badge--admin {
+  background: #e64a19;
+  color: #ffffff;
+}
