@@ -923,6 +923,34 @@
   text-align: left;
 }
 
+/* Membres — rapprocher la colonne Rôle de Utilisateur */
+.team-page--admin-equipe .team-table-section--members .team-table td.team-cell-user {
+  padding-right: 0.35rem;
+}
+
+.team-page--admin-equipe .team-table-section--members .team-table th.team-col-role,
+.team-page--admin-equipe .team-table-section--members .team-table td.team-cell-role {
+  text-align: left;
+  padding-left: 0.3rem;
+  padding-right: 0.65rem;
+}
+
+.team-page--admin-equipe .team-table-section--members .team-table thead th.team-col-role {
+  text-align: left;
+}
+
+.team-page--admin-equipe .team-table-section--members .team-table td.team-cell-role .team-role-badge {
+  margin-inline: 0;
+}
+
+.team-page--admin-equipe .team-table-section--members .team-table col.team-col-w-role {
+  width: 9%;
+}
+
+.team-page--admin-equipe .team-table-section--members .team-table col.team-col-w-user {
+  width: 25%;
+}
+
 .team-page--admin-equipe .team-table-section--members .team-project-cell {
   vertical-align: middle;
 }
