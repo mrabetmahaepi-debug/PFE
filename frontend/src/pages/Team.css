@@ -1106,7 +1106,8 @@
 .team-page--admin-equipe .team-project-badge--more {
   display: inline-flex;
   align-items: center;
-  cursor: default;
+  cursor: pointer;
+  font-family: inherit;
   font-size: 0.6875rem;
   font-weight: 600;
   line-height: 1;
@@ -1128,30 +1129,52 @@
   display: none;
   position: absolute;
   left: 0;
-  top: calc(100% + 5px);
-  z-index: 30;
-  min-width: 9.5rem;
-  max-width: min(18rem, 70vw);
-  padding: 0.45rem 0.5rem;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 7px;
+  top: calc(100% + 6px);
+  z-index: 40;
+  min-width: 10rem;
+  max-width: min(20rem, 72vw);
+  padding: 0.5rem 0.55rem;
   background: #fff;
   border: 1px solid #ececf3;
-  border-radius: 8px;
-  box-shadow: 0 8px 22px rgba(123, 104, 238, 0.14);
+  border-radius: 10px;
+  box-shadow:
+    0 4px 16px rgba(15, 23, 42, 0.08),
+    0 2px 8px rgba(123, 104, 238, 0.1);
   pointer-events: none;
 }
 
-.team-page--admin-equipe .team-project-more-popover .team-project-badge {
+.team-page--admin-equipe .team-project-more-popover-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.team-page--admin-equipe .team-project-more-popover-item {
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.35;
+  color: #475569;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   max-width: 100%;
-  white-space: normal;
-  word-break: break-word;
 }
 
 .team-page--admin-equipe .team-project-more-wrap:hover .team-project-more-popover,
-.team-page--admin-equipe .team-project-more-wrap:focus-within .team-project-more-popover {
-  display: flex;
+.team-page--admin-equipe .team-project-more-wrap:focus-within .team-project-more-popover,
+.team-page--admin-equipe .team-project-more-wrap--open .team-project-more-popover {
+  display: block;
+  pointer-events: auto;
+}
+
+.team-page--admin-equipe .team-project-more-wrap--open .team-project-badge--more {
+  background: #f3f0ff;
+  color: #7b68ee;
+  border-color: rgba(123, 104, 238, 0.22);
 }
 
 .team-page--admin-equipe .team-project-badge {

@@ -139,8 +139,21 @@ function teamProjectLabel(p: TeamProjectRow): string {
 }
 
 function TeamMemberProjectsCell({ projects }: { projects: TeamProjectRow[] }) {
+  const [moreOpen, setMoreOpen] = useState(false);
+  const moreWrapRef = useRef<HTMLSpanElement>(null);
   const visible = projects.slice(0, TEAM_PROJECTS_VISIBLE);
-  const overflowCount = Math.max(0, projects.length - TEAM_PROJECTS_VISIBLE);
+  const hidden = projects.slice(TEAM_PROJECTS_VISIBLE);
+  const overflowCount = hidden.length;
+
+  useEffect(() => {
+    if (!moreOpen) return;
+    const closeOnOutside = (event: MouseEvent) => {
+      if (moreWrapRef.current?.contains(event.target as Node)) return;
+      setMoreOpen(false);
+    };
+    document.addEventListener('click', closeOnOutside);
+    return () => document.removeEventListener('click', closeOnOutside);
+  }, [moreOpen]);
 
   return (
     <div className="team-project-badges">
@@ -154,25 +167,32 @@ function TeamMemberProjectsCell({ projects }: { projects: TeamProjectRow[] }) {
       })}
       {overflowCount > 0 ? (
         <span
-          className="team-project-more-wrap"
-          title={projects.map(teamProjectLabel).join('\n')}
+          ref={moreWrapRef}
+          className={`team-project-more-wrap${moreOpen ? ' team-project-more-wrap--open' : ''}`}
         >
-          <span className="team-project-badge team-project-badge--more" tabIndex={0}>
+          <button
+            type="button"
+            className="team-project-badge team-project-badge--more"
+            aria-expanded={moreOpen}
+            aria-haspopup="true"
+            onClick={(e) => {
+              e.stopPropagation();
+              setMoreOpen((open) => !open);
+            }}
+          >
             +{overflowCount} autre{overflowCount > 1 ? 's' : ''}
-          </span>
+          </button>
           <div className="team-project-more-popover" role="tooltip">
-            {projects.map((p) => {
-              const label = teamProjectLabel(p);
-              return (
-                <span
-                  key={p.id}
-                  className={projectBadgeClass(p.roleProjet)}
-                  title={label}
-                >
-                  {label}
-                </span>
-              );
-            })}
+            <ul className="team-project-more-popover-list">
+              {hidden.map((p) => {
+                const label = teamProjectLabel(p);
+                return (
+                  <li key={p.id} className="team-project-more-popover-item" title={label}>
+                    {label}
+                  </li>
+                );
+              })}
+            </ul>
           </div>
         </span>
       ) : null}
