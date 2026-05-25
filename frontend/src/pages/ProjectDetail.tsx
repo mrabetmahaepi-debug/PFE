@@ -7,10 +7,12 @@ import {
   Building2,
   Users,
   CheckSquare,
-  Clock,
+  TrendingUp,
   Search,
   Pencil,
   Trash2,
+  Bell,
+  Settings,
 } from 'lucide-react';
 import { projectService } from '../services/project.service';
 import { teamService } from '../services/team.service';
@@ -46,6 +48,17 @@ function toDateInputValue(iso: string | undefined | null): string {
   return `${y}-${m}-${day}`;
 }
 
+function formatProjectDate(iso: string | undefined | null): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString('fr-FR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+}
+
 function validateProjectDates(debut: string, fin: string): string | null {
   if (!debut.trim() || !fin.trim()) {
     return 'Veuillez renseigner la date de début et la date de fin.';
@@ -59,6 +72,26 @@ function validateProjectDates(debut: string, fin: string): string | null {
     return 'La date de fin ne peut pas être antérieure à la date de début.';
   }
   return null;
+}
+
+function normalizeRoleKey(nom: string): string {
+  return String(nom ?? '')
+    .trim()
+    .toUpperCase()
+    .replace(/[\s_-]/g, '');
+}
+
+function projectRoleBadgeClass(roleProjet: string): string {
+  const key = normalizeRoleKey(roleProjet);
+  if (key.includes('CHEF') || key.includes('PROJET') || key === 'PM' || key.includes('LEAD')) {
+    return 'project-detail-role-badge project-detail-role-badge--chef';
+  }
+  if (key.includes('DEV') || key.includes('DEVELOP')) {
+    return 'project-detail-role-badge project-detail-role-badge--dev';
+  }
+  if (key.includes('DESIGN')) return 'project-detail-role-badge project-detail-role-badge--designer';
+  if (key.includes('ANALYST')) return 'project-detail-role-badge project-detail-role-badge--analyste';
+  return 'project-detail-role-badge project-detail-role-badge--default';
 }
 
 function projectEntrepriseName(project: Projet): string {
@@ -375,53 +408,144 @@ const ProjectDetail: React.FC = () => {
 
   const chefAvatarUser = project ? resolveChefAvatarUser(project, teamMembers) : null;
 
-  if (loading) return <div className="loading-screen">Chargement...</div>;
+  const taskCount =
+    taskStats?.totalTasks ??
+    project?.totalTasks ??
+    project?.tachesCount ??
+    project?._count?.tache ??
+    0;
+  const memberCount =
+    project?.projectTeam?.length ?? project?.membre_projet?.length ?? 0;
+  const progressPercent =
+    taskStats?.avancement ??
+    project?.avancement ??
+    project?.progressPercent ??
+    0;
+
+  if (loading) {
+    return (
+      <div className="project-detail-page project-detail-page--loading">
+        <div className="project-detail-loading" role="status">
+          Chargement…
+        </div>
+      </div>
+    );
+  }
+
   if (forbidden) {
     return (
-      <div className="error-screen" style={{ padding: '2rem', textAlign: 'center' }}>
-        <h2 style={{ marginBottom: '0.5rem' }}>Accès refusé</h2>
-        <p style={{ color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
-          Vous n&apos;êtes pas assigné à ce projet.
-        </p>
-        <button type="button" className="primary-btn" onClick={() => navigate('/projects')}>
+      <div className="project-detail-page project-detail-page--error">
+        <h2>Accès refusé</h2>
+        <p>Vous n&apos;êtes pas assigné à ce projet.</p>
+        <button type="button" className="project-detail-soft-btn" onClick={() => navigate('/projects')}>
           Retour aux projets
         </button>
       </div>
     );
   }
-  if (!project) return <div className="error-screen">Projet non trouvé.</div>;
+
+  if (!project) {
+    return (
+      <div className="project-detail-page project-detail-page--error">
+        <p>Projet non trouvé.</p>
+      </div>
+    );
+  }
 
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 20 }}
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.28 }}
       className="project-detail-page"
-      style={{ padding: '2rem' }}
     >
-      <header className="project-detail-header">
-        <motion.div className="project-detail-header-left">
-          <button type="button" className="icon-btn" onClick={() => navigate(-1)} aria-label="Retour">
-            <ArrowLeft size={20} />
+      <header className="project-detail-topbar">
+        <div className="project-detail-topbar-left">
+          <button
+            type="button"
+            className="project-detail-back-btn"
+            onClick={() => navigate(-1)}
+            aria-label="Retour"
+          >
+            <ArrowLeft size={18} aria-hidden />
+            <span>Retour</span>
           </button>
-          <div className="project-detail-header-titles">
-            <h1 className="project-detail-title">{project.nom_p}</h1>
-            {project.currentUserProjectRole && (
-              <p className="subtitle project-detail-role">
-                Votre rôle dans ce projet :{' '}
-                <strong>{project.currentUserProjectRole}</strong>
-              </p>
-            )}
-            <p className="project-detail-description">
+          <div className="project-detail-topbar-titles">
+            <p className="project-detail-project-name">{project.nom_p}</p>
+            <p className="project-detail-project-desc">
               {project.description_p || 'Aucune description fournie.'}
             </p>
+            {project.currentUserProjectRole ? (
+              <p className="project-detail-user-role">
+                Votre rôle : <strong>{project.currentUserProjectRole}</strong>
+              </p>
+            ) : null}
           </div>
-        </motion.div>
+        </div>
+        <div className="project-detail-topbar-actions" aria-label="Actions rapides">
+          <button
+            type="button"
+            className="project-detail-icon-btn"
+            title="Notifications"
+            aria-label="Notifications"
+            onClick={() => navigate('/inbox')}
+          >
+            <Bell size={18} strokeWidth={2} aria-hidden />
+          </button>
+          <button
+            type="button"
+            className="project-detail-icon-btn"
+            title="Paramètres"
+            aria-label="Paramètres"
+            onClick={() => navigate('/settings')}
+          >
+            <Settings size={18} strokeWidth={2} aria-hidden />
+          </button>
+          <button
+            type="button"
+            className="project-detail-profile-btn"
+            title="Profil"
+            aria-label="Profil"
+            onClick={() => navigate('/settings')}
+          >
+            <UserAvatar
+              user={user}
+              className="project-detail-profile-avatar"
+              imgClassName="project-detail-profile-avatar-img"
+            />
+          </button>
+        </div>
       </header>
 
       <div className="project-overview-grid">
-        <div className="main-info">
-          <section className="premium-card project-detail-card project-detail-card--info">
-            <h3 className="project-detail-card-title">Informations générales</h3>
+        <div className="project-detail-main">
+          {(canManageMembers || canEditProjectInfo) && (
+            <div className="project-detail-actions-row">
+              {canManageMembers && (
+                <button
+                  type="button"
+                  className="project-detail-soft-btn"
+                  onClick={() => setTeamModalOpen(true)}
+                >
+                  <Users size={16} aria-hidden />
+                  Gérer l&apos;équipe
+                </button>
+              )}
+              {canEditProjectInfo && !editingProjectInfo && (
+                <button
+                  type="button"
+                  className="project-detail-soft-btn"
+                  onClick={() => setEditingProjectInfo(true)}
+                >
+                  <Pencil size={16} aria-hidden />
+                  Modifier le projet
+                </button>
+              )}
+            </div>
+          )}
+
+          <section className="project-detail-card project-detail-card--info">
+            <h2 className="project-detail-card-title">Informations générales</h2>
             {canEditProjectInfo && editingProjectInfo && (
               <form
                 className="project-detail-edit-form"
@@ -479,12 +603,12 @@ const ProjectDetail: React.FC = () => {
                   </p>
                 )}
                 <div className="project-detail-edit-actions">
-                  <button type="submit" className="primary-btn" disabled={savingInfo}>
+                  <button type="submit" className="project-detail-soft-btn project-detail-soft-btn--primary" disabled={savingInfo}>
                     Enregistrer
                   </button>
                   <button
                     type="button"
-                    className="secondary-btn"
+                    className="project-detail-soft-btn"
                     disabled={savingInfo}
                     onClick={() => {
                       setEditingProjectInfo(false);
@@ -509,112 +633,103 @@ const ProjectDetail: React.FC = () => {
                 <div className="project-detail-info-value">
                   <Calendar size={16} className="project-detail-info-icon" aria-hidden />
                   <span>
-                    {new Date(project.date_debut || '').toLocaleDateString()} –{' '}
-                    {new Date(project.date_fin || '').toLocaleDateString()}
+                    {formatProjectDate(project.date_debut)} → {formatProjectDate(project.date_fin)}
                   </span>
                 </div>
               </div>
               <div className="project-detail-info-item project-detail-info-item--responsable">
                 <span className="project-detail-info-label">Responsable</span>
                 <div className="project-detail-info-value project-detail-info-value--responsable">
-                  <div className="responsable-avatar">
+                  <div className="project-detail-responsable-avatar">
                     <UserAvatar
                       user={chefAvatarUser}
-                      className="responsable-avatar-inner"
-                      imgClassName="responsable-avatar-img"
+                      className="project-detail-responsable-avatar-inner"
+                      imgClassName="project-detail-responsable-avatar-img"
                     />
                   </div>
                   {canManageMembers || isSuperAdmin ? (
-                    <div style={{ position: 'relative' }}>
-                      <div 
+                    <div className="project-detail-responsable-picker">
+                      <button
+                        type="button"
+                        className="project-detail-responsable-trigger"
                         onClick={() => setEditingResponsable(!editingResponsable)}
-                        style={{
-                          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem',
-                          padding: '0.25rem 0.5rem', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)',
-                          background: 'var(--bg-main)', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600
-                        }}
+                        aria-expanded={editingResponsable}
                       >
-                        <span>{project.responsable && project.responsable !== 'Non assigné' ? project.responsable : 'Choisir responsable'}</span>
-                        <span style={{ opacity: 0.5, fontSize: '0.7rem' }}>▼</span>
-                      </div>
+                        <span>
+                          {project.responsable && project.responsable !== 'Non assigné'
+                            ? project.responsable
+                            : 'Choisir responsable'}
+                        </span>
+                        <span className="project-detail-responsable-chevron" aria-hidden>
+                          ▼
+                        </span>
+                      </button>
 
                       {editingResponsable && (
-                        <div 
-                          style={{
-                            position: 'absolute', top: '110%', left: 0, minWidth: '260px',
-                            background: 'var(--bg-surface)', border: '1px solid var(--border)',
-                            borderRadius: 'var(--radius-lg)', padding: '0.75rem',
-                            boxShadow: '0 20px 40px -10px rgba(0,0,0,0.2)', zIndex: 100,
-                            maxHeight: '300px', overflowY: 'auto'
-                          }}
-                        >
-                          <div className="search-box" style={{ marginBottom: '0.75rem', padding: '0.25rem 0.5rem', height: '32px' }}>
-                            <Search size={14} />
-                            <input 
-                              type="text" 
-                              placeholder="Chercher un membre..." 
+                        <div className="project-detail-responsable-dropdown">
+                          <div className="project-detail-responsable-search">
+                            <Search size={14} aria-hidden />
+                            <input
+                              type="text"
+                              placeholder="Chercher un membre…"
                               value={memberSearch}
                               onChange={(e) => setMemberSearch(e.target.value)}
-                              style={{ fontSize: '0.8rem' }}
                               autoFocus
                             />
                           </div>
 
-                          <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 800, padding: '0.25rem 0.5rem', letterSpacing: '0.05em' }}>
-                            Responsables Éligibles
+                          <div className="project-detail-responsable-dropdown-label">
+                            Responsables éligibles
                           </div>
-                          
-                          <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+
+                          <ul className="project-detail-responsable-list">
                             {eligibleMembers.length === 0 ? (
-                              <div style={{ padding: '1rem', textAlign: 'center', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                                Aucun membre trouvé
-                              </div>
+                              <li className="project-detail-responsable-empty">Aucun membre trouvé</li>
                             ) : (
-                              eligibleMembers.map(m => {
-                                return (
-                                  <div 
-                                    key={m.id_utilisateur}
+                              eligibleMembers.map((m) => (
+                                <li key={m.id_utilisateur}>
+                                  <button
+                                    type="button"
+                                    className={`project-detail-responsable-option${
+                                      project.chef_id === m.id_utilisateur ? ' is-selected' : ''
+                                    }`}
                                     onClick={() => {
                                       handleAssignResponsable(project.id_projet, Number(m.id_utilisateur));
                                       setEditingResponsable(false);
                                       setMemberSearch('');
                                     }}
-                                    style={{
-                                      display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.625rem',
-                                      cursor: 'pointer', borderRadius: 'var(--radius-md)', transition: 'all 0.2s',
-                                      backgroundColor: project.chef_id === m.id_utilisateur ? 'var(--primary-light)' : 'transparent'
-                                    }}
-                                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-main)'}
-                                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = project.chef_id === m.id_utilisateur ? 'var(--primary-light)' : 'transparent'}
                                   >
-                                    <div
-                                      className={`responsable-avatar${project.chef_id === m.id_utilisateur ? ' is-active' : ''}`}
+                                    <span
+                                      className={`project-detail-responsable-option-avatar${
+                                        project.chef_id === m.id_utilisateur ? ' is-active' : ''
+                                      }`}
                                     >
                                       <UserAvatar
                                         user={m}
-                                        className="responsable-avatar-inner"
-                                        imgClassName="responsable-avatar-img"
+                                        className="project-detail-responsable-avatar-inner"
+                                        imgClassName="project-detail-responsable-avatar-img"
                                       />
-                                    </div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
-                                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-main)' }}>{m.prenom} {m.nom}</span>
-                                        {project.chef_id === m.id_utilisateur && <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--primary)' }}></div>}
-                                      </div>
-                                      <span style={{ fontSize: '0.7rem', color: 'var(--primary)', fontWeight: 600, textTransform: 'uppercase' }}>
+                                    </span>
+                                    <span className="project-detail-responsable-option-meta">
+                                      <span className="project-detail-responsable-option-name">
+                                        {m.prenom} {m.nom}
+                                      </span>
+                                      <span className="project-detail-responsable-option-role">
                                         {displayGlobalAccountRole(m)}
                                       </span>
-                                    </div>
-                                  </div>
-                                );
-                              })
+                                    </span>
+                                  </button>
+                                </li>
+                              ))
                             )}
-                          </div>
+                          </ul>
                         </div>
                       )}
                     </div>
                   ) : (
-                    <span className="responsable-name" style={{ fontWeight: 600 }}>{project.responsable || 'Non assigné'}</span>
+                    <span className="project-detail-responsable-name">
+                      {project.responsable || 'Non assigné'}
+                    </span>
                   )}
                 </div>
               </div>
@@ -622,15 +737,15 @@ const ProjectDetail: React.FC = () => {
           </section>
 
           {project.projectTeam && project.projectTeam.length > 0 && (
-            <section className="premium-card project-detail-card project-detail-card--team">
-              <h3 className="project-detail-card-title">Équipe du projet</h3>
+            <section className="project-detail-card project-detail-card--team">
+              <h2 className="project-detail-card-title">Équipe du projet</h2>
               <div className="project-detail-table-wrap">
                 <table className="project-detail-team-table">
                   <thead>
                     <tr>
                       <th>Membre</th>
                       <th>Email</th>
-                      <th>Rôle dans le projet</th>
+                      <th>Rôle</th>
                       {canManageMembers && <th className="project-detail-team-actions-th">Actions</th>}
                     </tr>
                   </thead>
@@ -674,7 +789,9 @@ const ProjectDetail: React.FC = () => {
                         </td>
                         <td className="project-detail-team-email">{row.email}</td>
                         <td>
-                          <span className="project-detail-role-badge">{row.roleProjet}</span>
+                          <span className={projectRoleBadgeClass(row.roleProjet)}>
+                            {row.roleProjet}
+                          </span>
                         </td>
                         {canManageMembers && (
                           <td className="project-detail-team-actions">
@@ -711,66 +828,35 @@ const ProjectDetail: React.FC = () => {
           )}
         </div>
 
-        <div className="side-info project-detail-sidebar">
-          {(canManageMembers || canEditProjectInfo) && (
-            <section className="premium-card project-detail-sidebar-card project-detail-actions-card">
-              <h3 className="project-detail-sidebar-title">Actions</h3>
-              <div className="project-detail-actions-list">
-                {canManageMembers && (
-                  <button
-                    type="button"
-                    className="primary-btn project-detail-action-btn"
-                    onClick={() => setTeamModalOpen(true)}
-                  >
-                    <Users size={18} aria-hidden />
-                    Gérer l&apos;équipe
-                  </button>
-                )}
-                {canEditProjectInfo && !editingProjectInfo && (
-                  <button
-                    type="button"
-                    className="primary-btn project-detail-action-btn"
-                    onClick={() => setEditingProjectInfo(true)}
-                  >
-                    <Pencil size={18} aria-hidden />
-                    Modifier le projet
-                  </button>
-                )}
-              </div>
-            </section>
-          )}
-
-          <section className="premium-card project-detail-sidebar-card project-detail-stats-card">
-            <h3 className="project-detail-sidebar-title">Statistiques du projet</h3>
-            <div className="project-detail-stats-strip">
-              <div className="project-detail-mini-stat project-detail-mini-stat--tasks">
-                <CheckSquare size={18} className="project-detail-mini-stat-icon" aria-hidden />
-                <span>
-                  {taskStats?.totalTasks ??
-                    project.totalTasks ??
-                    project.tachesCount ??
-                    project._count?.tache ??
-                    0}{' '}
-                  Tâches
-                </span>
-              </div>
-              <div className="project-detail-mini-stat project-detail-mini-stat--members">
-                <Users size={18} className="project-detail-mini-stat-icon" aria-hidden />
-                <span>{project.projectTeam?.length ?? project.membre_projet?.length ?? 0} Membres</span>
-              </div>
-              <div className="project-detail-mini-stat project-detail-mini-stat--progress">
-                <Clock size={18} className="project-detail-mini-stat-icon" aria-hidden />
-                <span>
-                  {taskStats?.avancement ??
-                    project.avancement ??
-                    project.progressPercent ??
-                    0}
-                  % Avancement
-                </span>
-              </div>
+        <aside className="project-detail-aside">
+          <div className="project-detail-stat-card">
+            <span className="project-detail-stat-icon project-detail-stat-icon--tasks" aria-hidden>
+              <CheckSquare size={18} />
+            </span>
+            <div className="project-detail-stat-body">
+              <span className="project-detail-stat-label">Tâches</span>
+              <span className="project-detail-stat-value">{taskCount}</span>
             </div>
-          </section>
-        </div>
+          </div>
+          <div className="project-detail-stat-card">
+            <span className="project-detail-stat-icon project-detail-stat-icon--members" aria-hidden>
+              <Users size={18} />
+            </span>
+            <div className="project-detail-stat-body">
+              <span className="project-detail-stat-label">Membres</span>
+              <span className="project-detail-stat-value">{memberCount}</span>
+            </div>
+          </div>
+          <div className="project-detail-stat-card">
+            <span className="project-detail-stat-icon project-detail-stat-icon--progress" aria-hidden>
+              <TrendingUp size={18} />
+            </span>
+            <div className="project-detail-stat-body">
+              <span className="project-detail-stat-label">Avancement</span>
+              <span className="project-detail-stat-value">{progressPercent}%</span>
+            </div>
+          </div>
+        </aside>
       </div>
 
       <EditProjectTeamModal
