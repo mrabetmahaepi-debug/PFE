@@ -1,8 +1,14 @@
 /* Tenant admin dashboard — ClickUp-inspired layout */
 .tadb {
+  --tadb-side-gap: clamp(0.65rem, 1.75vw, 1.125rem);
+  --tadb-content-width: min(1120px, calc(100% - 2 * var(--tadb-side-gap)));
+  width: var(--tadb-content-width);
+  max-width: 100%;
+  margin-left: auto;
+  margin-right: auto;
   min-height: 100%;
-  padding: 16px 24px 32px;
-  background: #f6f7fb;
+  padding: 14px 0 28px;
+  background: transparent;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -40,7 +46,8 @@
 
 @media (max-width: 760px) {
   .tadb {
-    padding: 16px 16px 24px;
+    --tadb-side-gap: 0.65rem;
+    padding: 12px 0 22px;
   }
 
   .tadb-stats-grid {
