@@ -129,6 +129,54 @@ function renderMemberStatutCell(member: User): React.ReactNode {
 }
 
 
+const TEAM_PROJECTS_VISIBLE = 2;
+
+type TeamProjectRow = { id: number; name: string; roleProjet?: string };
+
+function teamProjectLabel(p: TeamProjectRow): string {
+  const rp = p.roleProjet?.trim();
+  return rp ? `${p.name} — ${rp}` : p.name;
+}
+
+function TeamMemberProjectsCell({ projects }: { projects: TeamProjectRow[] }) {
+  const visible = projects.slice(0, TEAM_PROJECTS_VISIBLE);
+  const overflowCount = Math.max(0, projects.length - TEAM_PROJECTS_VISIBLE);
+
+  return (
+    <div className="team-project-badges">
+      {visible.map((p) => {
+        const label = teamProjectLabel(p);
+        return (
+          <span key={p.id} className={projectBadgeClass(p.roleProjet)} title={label}>
+            {label}
+          </span>
+        );
+      })}
+      {overflowCount > 0 ? (
+        <span className="team-project-more-wrap">
+          <span className="team-project-badge team-project-badge--more" tabIndex={0}>
+            +{overflowCount} autre{overflowCount > 1 ? 's' : ''}
+          </span>
+          <div className="team-project-more-popover" role="tooltip">
+            {projects.map((p) => {
+              const label = teamProjectLabel(p);
+              return (
+                <span
+                  key={p.id}
+                  className={projectBadgeClass(p.roleProjet)}
+                  title={label}
+                >
+                  {label}
+                </span>
+              );
+            })}
+          </div>
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
 function formatLastLogin(value: string | undefined | null): string {
   if (!value) return 'Jamais connecté';
   const d = new Date(value);
@@ -270,24 +318,7 @@ function MemberTable({
                       {isAdminSection ? (
                         renderEnterpriseCell(member)
                       ) : member.projects && member.projects.length > 0 ? (
-                        <div className="team-project-badges">
-                          {member.projects.map((p) => {
-                            const rp =
-                              'roleProjet' in p
-                                ? (p as { roleProjet?: string }).roleProjet
-                                : undefined;
-                            const label = rp ? `${p.name} — ${rp}` : p.name;
-                            return (
-                              <span
-                                key={p.id}
-                                className={projectBadgeClass(rp)}
-                                title={label}
-                              >
-                                {label}
-                              </span>
-                            );
-                          })}
-                        </div>
+                        <TeamMemberProjectsCell projects={member.projects} />
                       ) : (
                         <span className="team-project-none">Aucun projet</span>
                       )}
@@ -743,7 +774,7 @@ const Team: React.FC = () => {
                   type="button"
                   onClick={() => navigate('/invite')}
                 >
-                  <UserPlus size={18} aria-hidden />
+                  <UserPlus size={15} aria-hidden />
                   <span>Inviter un membre</span>
                 </button>
               )}

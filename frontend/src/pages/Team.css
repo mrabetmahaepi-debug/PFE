@@ -55,9 +55,13 @@
   color: transparent;
 }
 
-/* Admin Équipe — titre dans la navbar ; toolbar directement en dessous */
-.team-page--admin-equipe.team-page--navbar-title {
-  padding-top: 0.15rem;
+/* Admin Équipe — léger espace sous la navbar */
+.coach-layout--team .navbar.navbar--admin-projects .navbar-admin-page-copy--title-only {
+  padding-top: 6px;
+}
+
+.coach-layout--team .navbar.navbar--admin-projects .navbar-admin-page-copy--title-only .navbar-admin-projects-heading {
+  margin-top: 3px;
 }
 
 /* Super Admin — compact header (title only) */
@@ -128,7 +132,7 @@
   flex-direction: column;
   align-items: flex-start;
   box-sizing: border-box;
-  padding: 0.15rem var(--team-admin-side-gap) 2rem;
+  padding: 0.65rem var(--team-admin-side-gap) 2rem;
   gap: 0;
   background: transparent;
   /* Grille colonnes partagée (Administrateurs + Membres) */
@@ -262,6 +266,38 @@
     transform 0.15s ease,
     box-shadow 0.15s ease,
     filter 0.15s ease;
+}
+
+/* Inviter — compact, violet clair ClickUp */
+.team-page--admin-equipe .team-equipe-actions-group .team-invite-btn.team-equipe-premium-btn {
+  height: 34px;
+  min-height: 34px;
+  padding: 0 0.75rem;
+  border-radius: 8px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  background: linear-gradient(135deg, #a899f5 0%, #9b8af0 100%) !important;
+  color: #fff !important;
+  box-shadow: 0 1px 5px rgba(123, 104, 238, 0.14) !important;
+}
+
+.team-page--admin-equipe .team-equipe-actions-group .team-invite-btn.team-equipe-premium-btn:hover,
+.team-page--admin-equipe .team-equipe-actions-group .team-invite-btn.team-equipe-premium-btn:focus-within {
+  background: linear-gradient(135deg, #b3a6f7 0%, #a594f2 100%) !important;
+  box-shadow: 0 2px 8px rgba(123, 104, 238, 0.18) !important;
+  transform: none;
+  filter: none;
+}
+
+.team-page--admin-equipe .team-equipe-actions-group .team-invite-btn.team-equipe-premium-btn svg {
+  width: 15px;
+  height: 15px;
+}
+
+.team-page--admin-equipe .team-equipe-actions-group .team-status-select--premium {
+  height: 34px;
+  min-height: 34px;
+  border-radius: 8px;
 }
 
 .team-page--admin-equipe button.team-equipe-premium-btn {
@@ -676,14 +712,15 @@
 }
 
 .team-page--admin-equipe .team-table-section-head {
-  padding: 1rem 1.25rem;
+  padding: 0.75rem 1.15rem;
 }
 
 .team-page--admin-equipe .team-table-section-head-inner {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
+  gap: 0.75rem;
+  min-height: 28px;
 }
 
 .team-page--admin-equipe .team-table-section-head h2 {
@@ -692,20 +729,26 @@
   font-weight: 700;
   color: var(--equipe-text-main);
   letter-spacing: -0.02em;
+  line-height: 1.25;
+  min-width: 0;
 }
 
 .team-page--admin-equipe .team-table-count {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 2rem;
-  height: 2rem;
-  padding: 0 0.65rem;
+  flex-shrink: 0;
+  justify-self: end;
+  min-width: 1.42rem;
+  height: 1.42rem;
+  padding: 0 0.42rem;
   border-radius: 999px;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: #6b5ce7;
-  background: #f3f0ff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  color: #7b68ee;
+  background: rgba(123, 104, 238, 0.1);
   border: 1px solid rgba(123, 104, 238, 0.18);
   box-shadow: none;
 }
@@ -970,6 +1013,11 @@
   vertical-align: middle;
 }
 
+.team-page--admin-equipe .team-table td.team-project-cell {
+  overflow: visible;
+  position: relative;
+}
+
 .team-page--admin-equipe .team-project-badges {
   display: inline-flex;
   flex-wrap: wrap;
@@ -977,6 +1025,56 @@
   align-items: center;
   max-width: 100%;
   line-height: 1.2;
+}
+
+.team-page--admin-equipe .team-project-more-wrap {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.team-page--admin-equipe .team-project-badge--more {
+  cursor: default;
+  background: #f3f0ff;
+  color: #6b5ce7;
+  border-color: rgba(123, 104, 238, 0.22);
+  max-width: none;
+}
+
+.team-page--admin-equipe .team-project-more-wrap:hover .team-project-badge--more,
+.team-page--admin-equipe .team-project-more-wrap:focus-within .team-project-badge--more {
+  background: #ebe6ff;
+  border-color: rgba(123, 104, 238, 0.32);
+}
+
+.team-page--admin-equipe .team-project-more-popover {
+  display: none;
+  position: absolute;
+  left: 0;
+  top: calc(100% + 5px);
+  z-index: 30;
+  min-width: 9.5rem;
+  max-width: min(18rem, 70vw);
+  padding: 0.45rem 0.5rem;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.3rem;
+  background: #fff;
+  border: 1px solid #ececf3;
+  border-radius: 8px;
+  box-shadow: 0 8px 22px rgba(123, 104, 238, 0.14);
+  pointer-events: none;
+}
+
+.team-page--admin-equipe .team-project-more-popover .team-project-badge {
+  max-width: 100%;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.team-page--admin-equipe .team-project-more-wrap:hover .team-project-more-popover,
+.team-page--admin-equipe .team-project-more-wrap:focus-within .team-project-more-popover {
+  display: flex;
 }
 
 .team-page--admin-equipe .team-project-badge {
