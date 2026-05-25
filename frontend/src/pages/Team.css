@@ -903,13 +903,14 @@
 .team-page--admin-equipe .team-table th.team-col-role,
 .team-page--admin-equipe .team-table td.team-cell-role {
   text-align: left;
-  padding-left: 0.35rem;
+  padding-left: 0.15rem;
   padding-right: 0.7rem;
   vertical-align: middle;
 }
 
 .team-page--admin-equipe .team-table td.team-cell-role .team-role-badge {
   margin-inline: 0;
+  margin-left: -10px;
 }
 
 .team-page--admin-equipe .team-table td.team-cell-user {
