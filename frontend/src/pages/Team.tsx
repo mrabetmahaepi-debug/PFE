@@ -130,8 +130,67 @@ function renderMemberStatutCell(member: User): React.ReactNode {
 
 
 const TEAM_PROJECTS_VISIBLE = 2;
+const TEAM_PROJECT_POPOVER_MARGIN = 8;
+const TEAM_PROJECT_POPOVER_GAP = 6;
 
 type TeamProjectRow = { id: number; name: string; roleProjet?: string };
+
+type TeamProjectPopoverCoords = {
+  top: number;
+  left: number;
+  minWidth: number;
+  ready: boolean;
+};
+
+function placeTeamProjectMorePopover(
+  trigger: HTMLElement,
+  popover: HTMLElement | null,
+  hiddenCount: number,
+): Pick<TeamProjectPopoverCoords, 'top' | 'left' | 'minWidth'> {
+  const rect = trigger.getBoundingClientRect();
+  const minWidth = Math.max(rect.width, 168);
+  const viewportW = window.innerWidth;
+  const viewportH = window.innerHeight;
+  const maxWidth = viewportW - TEAM_PROJECT_POPOVER_MARGIN * 2;
+
+  const estimatedRow = 22;
+  const estimatedHeight = hiddenCount * estimatedRow + 18;
+  const popoverHeight = popover?.offsetHeight || estimatedHeight;
+  const popoverWidth = Math.min(
+    Math.max(popover?.offsetWidth || minWidth, minWidth),
+    maxWidth,
+  );
+
+  const spaceBelow = viewportH - rect.bottom - TEAM_PROJECT_POPOVER_GAP - TEAM_PROJECT_POPOVER_MARGIN;
+  const spaceAbove = rect.top - TEAM_PROJECT_POPOVER_GAP - TEAM_PROJECT_POPOVER_MARGIN;
+  const openBelow = spaceBelow >= popoverHeight || spaceBelow >= spaceAbove;
+
+  let top = openBelow
+    ? rect.bottom + TEAM_PROJECT_POPOVER_GAP
+    : rect.top - TEAM_PROJECT_POPOVER_GAP - popoverHeight;
+  top = Math.max(
+    TEAM_PROJECT_POPOVER_MARGIN,
+    Math.min(top, viewportH - popoverHeight - TEAM_PROJECT_POPOVER_MARGIN),
+  );
+
+  let left = rect.left;
+  if (left + popoverWidth > viewportW - TEAM_PROJECT_POPOVER_MARGIN) {
+    left = viewportW - TEAM_PROJECT_POPOVER_MARGIN - popoverWidth;
+  }
+  if (left < TEAM_PROJECT_POPOVER_MARGIN) {
+    left = TEAM_PROJECT_POPOVER_MARGIN;
+  }
+  left = Math.max(
+    TEAM_PROJECT_POPOVER_MARGIN,
+    Math.min(left, viewportW - popoverWidth - TEAM_PROJECT_POPOVER_MARGIN),
+  );
+
+  return {
+    top,
+    left,
+    minWidth: Math.min(minWidth, maxWidth),
+  };
+}
 
 function teamProjectLabel(p: TeamProjectRow): string {
   const rp = p.roleProjet?.trim();
@@ -144,7 +203,12 @@ function TeamMemberProjectsCell({ projects }: { projects: TeamProjectRow[] }) {
   const triggerRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const hoverCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [popoverCoords, setPopoverCoords] = useState({ top: 0, left: 0, minWidth: 168 });
+  const [popoverCoords, setPopoverCoords] = useState<TeamProjectPopoverCoords>({
+    top: -9999,
+    left: 0,
+    minWidth: 168,
+    ready: false,
+  });
 
   const visible = projects.slice(0, TEAM_PROJECTS_VISIBLE);
   const hiddenProjects = projects.slice(TEAM_PROJECTS_VISIBLE);
@@ -154,13 +218,13 @@ function TeamMemberProjectsCell({ projects }: { projects: TeamProjectRow[] }) {
   const updatePopoverCoords = useCallback(() => {
     const trigger = triggerRef.current;
     if (!trigger) return;
-    const rect = trigger.getBoundingClientRect();
-    setPopoverCoords({
-      top: rect.bottom + 6,
-      left: rect.left,
-      minWidth: Math.max(rect.width, 168),
-    });
-  }, []);
+    const next = placeTeamProjectMorePopover(
+      trigger,
+      popoverRef.current,
+      overflowCount,
+    );
+    setPopoverCoords((prev) => ({ ...prev, ...next, ready: true }));
+  }, [overflowCount]);
 
   const clearHoverCloseTimer = useCallback(() => {
     if (hoverCloseTimerRef.current) {
@@ -182,15 +246,20 @@ function TeamMemberProjectsCell({ projects }: { projects: TeamProjectRow[] }) {
   }, [clearHoverCloseTimer, moreOpen]);
 
   useLayoutEffect(() => {
-    if (!showPopover || overflowCount === 0) return;
+    if (!showPopover || overflowCount === 0) {
+      setPopoverCoords((prev) => ({ ...prev, ready: false }));
+      return;
+    }
     updatePopoverCoords();
+    const refine = requestAnimationFrame(() => updatePopoverCoords());
     window.addEventListener('scroll', updatePopoverCoords, true);
     window.addEventListener('resize', updatePopoverCoords);
     return () => {
+      cancelAnimationFrame(refine);
       window.removeEventListener('scroll', updatePopoverCoords, true);
       window.removeEventListener('resize', updatePopoverCoords);
     };
-  }, [showPopover, overflowCount, updatePopoverCoords]);
+  }, [showPopover, overflowCount, updatePopoverCoords, hiddenProjects.length]);
 
   useEffect(() => {
     if (!moreOpen) return;
@@ -217,6 +286,7 @@ function TeamMemberProjectsCell({ projects }: { projects: TeamProjectRow[] }) {
               top: popoverCoords.top,
               left: popoverCoords.left,
               minWidth: popoverCoords.minWidth,
+              visibility: popoverCoords.ready ? 'visible' : 'hidden',
             }}
             onMouseEnter={beginHover}
             onMouseLeave={scheduleHoverEnd}
