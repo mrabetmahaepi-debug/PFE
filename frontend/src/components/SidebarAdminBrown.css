@@ -1,21 +1,22 @@
 /**
- * Admin sidebar — thème marron moderne ClickUp
+ * Admin sidebar — thème marron-beige soft premium (ClickUp)
  * Scoped via `.cu-sidebar--admin` (tous les rôles sauf membre global).
  */
 
 .cu-sidebar--admin {
-  --asb-bg: #4e342e;
-  --asb-bg-elevated: #5d4037;
-  --asb-hover: #6d4c41;
-  --asb-active: #8d6e63;
-  --asb-text: #f5f5f5;
-  --asb-text-secondary: #d7ccc8;
-  --asb-text-muted: #d7ccc8;
-  --asb-badge-bg: #a1887f;
-  --asb-badge-text: #f5f5f5;
-  --asb-divider: rgba(255, 255, 255, 0.08);
-  --asb-border: rgba(255, 255, 255, 0.1);
-  --asb-shadow: 2px 0 14px rgba(0, 0, 0, 0.1);
+  --asb-bg: #faf6f2;
+  --asb-bg-elevated: #f3ece6;
+  --asb-hover: #efe3d9;
+  --asb-active: #e0cfc2;
+  --asb-text: #4e342e;
+  --asb-text-secondary: #8d6e63;
+  --asb-text-muted: #8d6e63;
+  --asb-icon: #6d4c41;
+  --asb-badge-bg: #bcaaa4;
+  --asb-badge-text: #4e342e;
+  --asb-divider: rgba(78, 52, 46, 0.08);
+  --asb-border: rgba(78, 52, 46, 0.1);
+  --asb-shadow: 1px 0 0 var(--asb-border), 2px 0 12px rgba(78, 52, 46, 0.04);
 
   background: var(--asb-bg) !important;
   border-right-color: var(--asb-border) !important;
@@ -35,16 +36,17 @@
 /* Header */
 .cu-sidebar--admin .cu-sidebar-header,
 .cu-sidebar--admin > div:first-child {
+  background: var(--asb-bg);
   border-bottom: 1px solid var(--asb-divider);
 }
 
 .cu-sidebar--admin .cu-sidebar-scroll::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.18);
+  background: rgba(78, 52, 46, 0.16);
   border-radius: 3px;
 }
 
 .cu-sidebar--admin .cu-sidebar-scroll {
-  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+  scrollbar-color: rgba(78, 52, 46, 0.16) transparent;
 }
 
 /* Divider */
@@ -63,10 +65,10 @@
 .cu-sidebar--admin nav a,
 .cu-sidebar--admin nav button:not(.cu-create-btn) {
   color: var(--asb-text) !important;
+  border-radius: 10px;
   transition:
     background 0.15s ease,
-    color 0.15s ease,
-    box-shadow 0.15s ease;
+    color 0.15s ease;
 }
 
 .cu-sidebar--admin nav a:hover,
@@ -80,7 +82,7 @@
   background: var(--asb-active) !important;
   color: var(--asb-text) !important;
   font-weight: 500 !important;
-  box-shadow: inset 3px 0 0 rgba(255, 255, 255, 0.22);
+  box-shadow: inset 3px 0 0 #8d6e63;
 }
 
 .cu-sidebar--admin nav a.text-cu-primary {
@@ -90,17 +92,13 @@
 .cu-sidebar--admin nav a svg,
 .cu-sidebar--admin nav a .lucide,
 .cu-sidebar--admin nav button svg {
-  color: var(--asb-text-secondary);
+  color: var(--asb-icon);
   transition: color 0.15s ease;
 }
 
 .cu-sidebar--admin nav a:hover svg,
 .cu-sidebar--admin nav a[aria-current='page'] svg {
-  color: var(--asb-text) !important;
-}
-
-.cu-sidebar--admin nav a[aria-current='page'] svg {
-  color: var(--asb-text) !important;
+  color: var(--asb-icon) !important;
 }
 
 /* More dropdown nested */
@@ -111,11 +109,12 @@
 .cu-sidebar--admin nav .mt-px a:hover,
 .cu-sidebar--admin nav .mt-px a[aria-current='page'] {
   color: var(--asb-text) !important;
+  background: var(--asb-hover) !important;
 }
 
 /* Section header row (+ button) */
 .cu-sidebar--admin section button.h-6 {
-  color: var(--asb-text-secondary) !important;
+  color: var(--asb-icon) !important;
 }
 
 .cu-sidebar--admin section button.h-6:hover {
@@ -146,8 +145,8 @@
 }
 
 .cu-sidebar--admin .cu-sidebar-footer button:hover {
-  background: rgba(255, 255, 255, 0.08) !important;
-  color: #ffcdd2 !important;
+  background: rgba(239, 68, 68, 0.08) !important;
+  color: #c62828 !important;
 }
 
 .cu-sidebar--admin .cu-sidebar-footer .bg-cu-primary {
@@ -158,7 +157,7 @@
 /* Collapse / ghost buttons in header */
 .cu-sidebar--admin .cu-sidebar-header button,
 .cu-sidebar--admin > div:first-child button {
-  color: var(--asb-text-secondary) !important;
+  color: var(--asb-icon) !important;
 }
 
 .cu-sidebar--admin .cu-sidebar-header button:hover,
@@ -171,6 +170,7 @@
 .cu-sidebar--admin .cu-spaces-tree-row {
   color: var(--asb-text-secondary) !important;
   background: transparent !important;
+  border-radius: 8px;
   transition: background 0.15s ease, color 0.15s ease;
 }
 
@@ -192,7 +192,7 @@
 .cu-sidebar--admin .cu-spaces-tree-row.is-active {
   background: var(--asb-active) !important;
   color: var(--asb-text) !important;
-  box-shadow: inset 3px 0 0 rgba(255, 255, 255, 0.2) !important;
+  box-shadow: inset 3px 0 0 #8d6e63 !important;
 }
 
 .cu-sidebar--admin .cu-spaces-tree-row.is-active .cu-spaces-tree-label,
@@ -203,6 +203,7 @@
 .cu-sidebar--admin .cu-spaces-tree-row.is-active .cu-spaces-tree-label--task,
 .cu-sidebar--admin .cu-spaces-tree-row.is-active .cu-spaces-tree-label--subtask {
   color: var(--asb-text) !important;
+  font-weight: 500;
 }
 
 .cu-sidebar--admin .cu-spaces-tree-main,
@@ -212,11 +213,11 @@
 
 .cu-sidebar--admin .cu-spaces-tree-icon,
 .cu-sidebar--admin .cu-spaces-tree-chevron {
-  color: var(--asb-text-secondary) !important;
+  color: var(--asb-icon) !important;
 }
 
 .cu-sidebar--admin .cu-spaces-tree-chevron:hover {
-  background: rgba(255, 255, 255, 0.08) !important;
+  background: var(--asb-hover) !important;
 }
 
 .cu-sidebar--admin .cu-spaces-tree-label--space {
@@ -232,33 +233,38 @@
   color: var(--asb-text-secondary) !important;
 }
 
+.cu-sidebar--admin .cu-spaces-tree-row.is-active .cu-spaces-tree-icon {
+  color: var(--asb-icon) !important;
+}
+
 .cu-sidebar--admin .cu-spaces-tree-count {
   color: var(--asb-badge-text) !important;
   background: var(--asb-badge-bg);
   border-radius: 10px;
   padding: 0 6px;
+  font-weight: 600;
 }
 
 .cu-sidebar--admin .cu-spaces-tree-menu-btn,
 .cu-sidebar--admin .cu-spaces-tree-add-btn {
-  color: var(--asb-text-secondary) !important;
+  color: var(--asb-icon) !important;
 }
 
 .cu-sidebar--admin .cu-spaces-tree-row:hover .cu-spaces-tree-menu-btn,
 .cu-sidebar--admin .cu-spaces-tree-row:hover .cu-spaces-tree-add-btn,
 .cu-sidebar--admin .cu-spaces-tree-menu-btn:hover,
 .cu-sidebar--admin .cu-spaces-tree-add-btn:hover {
-  background: rgba(255, 255, 255, 0.1) !important;
+  background: var(--asb-hover) !important;
   color: var(--asb-text) !important;
 }
 
 .cu-sidebar--admin .cu-spaces-tree-task-dot {
-  border-color: var(--asb-text-secondary);
+  border-color: var(--asb-icon);
 }
 
 .cu-sidebar--admin .cu-spaces-tree-row.is-active .cu-spaces-tree-task-dot {
-  border-color: var(--asb-text) !important;
-  background: var(--asb-text) !important;
+  border-color: var(--asb-icon) !important;
+  background: var(--asb-icon) !important;
 }
 
 .cu-sidebar--admin .cu-spaces-tree-empty {
@@ -268,6 +274,7 @@
 /* Corbeille */
 .cu-sidebar--admin .cu-corbeille-toggle {
   color: var(--asb-text-secondary) !important;
+  border-radius: 8px;
   transition: background 0.15s ease, color 0.15s ease;
 }
 
@@ -283,7 +290,7 @@
 
 .cu-sidebar--admin .cu-corbeille-toggle-icon,
 .cu-sidebar--admin .cu-corbeille-chevron {
-  color: var(--asb-text-secondary) !important;
+  color: var(--asb-icon) !important;
 }
 
 .cu-sidebar--admin .cu-corbeille-count {
@@ -297,6 +304,7 @@
 
 .cu-sidebar--admin .cu-corbeille-row:hover {
   background: var(--asb-hover);
+  border-radius: 6px;
 }
 
 .cu-sidebar--admin .cu-corbeille-row-type {
@@ -307,7 +315,7 @@
   color: var(--asb-text) !important;
 }
 
-/* Inbox badge */
+/* Inbox badge — conserve contraste sur fond clair */
 .cu-sidebar--admin .sidebar-inbox-badge--admin {
   background: #ef6c57;
   color: #ffffff;
