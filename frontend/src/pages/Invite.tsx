@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAdminPageHeader } from '../context/AdminPageHeaderContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Mail,
@@ -57,6 +58,7 @@ const defaultExpiryIso = () => {
 
 const Invite: React.FC = () => {
   const navigate = useNavigate();
+  const { setHeader: setAdminPageHeader } = useAdminPageHeader();
   const [email, setEmail] = useState('');
   const [prenom, setPrenom] = useState('');
   const [nom, setNom] = useState('');
@@ -120,6 +122,39 @@ const Invite: React.FC = () => {
       new Date(expiresAt).getTime() > Date.now(),
     [submitting, email, prenom, nom, poste, projectIds, expiresAt],
   );
+
+  const navbarInviteAction = useMemo(
+    () => (
+      <button
+        type="submit"
+        form="invite-form"
+        className="invite-btn invite-btn--primary invite-navbar-submit"
+        disabled={!canSubmit}
+      >
+        {submitting ? (
+          <>
+            <Loader2 size={16} className="spin" aria-hidden />
+            Envoi…
+          </>
+        ) : (
+          <>
+            <Send size={16} aria-hidden />
+            Inviter
+          </>
+        )}
+      </button>
+    ),
+    [canSubmit, submitting],
+  );
+
+  useEffect(() => {
+    setAdminPageHeader({
+      title: 'Inviter un membre',
+      subtitle: 'Invitez une personne à rejoindre votre espace de travail.',
+      action: navbarInviteAction,
+    });
+    return () => setAdminPageHeader(null);
+  }, [navbarInviteAction, setAdminPageHeader]);
 
   const toggleProject = (id: number) => {
     setProjectIds((prev) =>
@@ -311,33 +346,6 @@ const Invite: React.FC = () => {
           </motion.div>
         )}
       </AnimatePresence>
-
-      <header className="invite-header">
-        <div className="invite-header-copy">
-          <h1>Inviter un membre</h1>
-          <p className="invite-header-sub">
-            Invitez une personne à rejoindre votre espace de travail.
-          </p>
-        </div>
-        <button
-          type="submit"
-          form="invite-form"
-          className="invite-btn invite-btn--primary invite-header-submit"
-          disabled={!canSubmit}
-        >
-          {submitting ? (
-            <>
-              <Loader2 size={16} className="spin" aria-hidden />
-              Envoi…
-            </>
-          ) : (
-            <>
-              <Send size={16} aria-hidden />
-              Inviter
-            </>
-          )}
-        </button>
-      </header>
 
       {smtpSetupError && (
         <motion.div

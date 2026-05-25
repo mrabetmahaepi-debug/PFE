@@ -90,7 +90,15 @@ const Navbar: React.FC = () => {
     enterpriseAdmin &&
     (location.pathname === '/team' || location.pathname.startsWith('/team/')) &&
     adminPageHeader != null;
-  const showAdminContextHeader = showAdminProjectsHeader || showAdminTeamHeader;
+  const isAdminInviteRoute =
+    enterpriseAdmin && location.pathname === '/invite';
+  const showAdminInviteHeader =
+    isAdminInviteRoute && adminPageHeader != null;
+  const showAdminContextHeader =
+    showAdminProjectsHeader || showAdminTeamHeader || showAdminInviteHeader;
+  const showAdminHeaderActionBar =
+    !!adminPageHeader?.action &&
+    (isAdminProjectDetailRoute || isAdminInviteRoute);
   const showMemberSettingsTitle =
     globalMember && location.pathname === '/settings';
   const showMemberTaskDetailBack =
@@ -312,7 +320,7 @@ const Navbar: React.FC = () => {
         </div>
       )}
       {showAdminContextHeader && adminPageHeader && (
-        isAdminProjectDetailRoute && adminPageHeader.action ? (
+        showAdminHeaderActionBar ? (
           <div className="navbar-admin-project-detail-bar">
             <div
               className={cn(
