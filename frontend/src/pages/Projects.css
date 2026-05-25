@@ -1125,10 +1125,27 @@ button.project-info-chip--link:hover .project-info-chip-value {
 
 /* ── Admin projects page (ClickUp-style) ── */
 .projects-page--admin {
+  --projects-admin-content-width: min(1160px, 100%);
   min-height: 100%;
-  padding: 0.5rem clamp(1rem, 3vw, 2rem) 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-sizing: border-box;
+  padding: 0.5rem clamp(1.25rem, 5vw, 2.75rem) 2rem;
   background: linear-gradient(180deg, #fafafd 0%, #f5f3ff 38%, #ffffff 100%);
   gap: 0.5rem;
+}
+
+.projects-page--admin > .projects-admin-panel,
+.projects-page--admin > .projects-table-wrap,
+.projects-page--admin > .empty-super-state,
+.projects-page--admin > .filter-banner,
+.projects-page--admin > .superadmin-banner {
+  width: 100%;
+  max-width: var(--projects-admin-content-width);
+  margin-left: auto;
+  margin-right: auto;
+  box-sizing: border-box;
 }
 
 /* Cadre blanc : badge + créer, puis recherche / filtres */
@@ -1848,7 +1865,7 @@ button.project-info-chip--link:hover .project-info-chip-value {
 
 @media (max-width: 720px) {
   .projects-page--admin {
-    padding: 0.85rem 0.85rem 1.75rem;
+    padding: 0.5rem clamp(1rem, 4vw, 1.25rem) 1.75rem;
   }
 
   .projects-admin-panel {
