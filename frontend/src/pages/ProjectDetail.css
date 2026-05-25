@@ -97,6 +97,11 @@
   min-width: 0;
 }
 
+/* Aligner les stats avec la carte « Informations générales » (sous la rangée d’actions) */
+.project-overview-grid:has(.project-detail-actions-row) .project-detail-aside {
+  margin-top: calc(34px + 0.85rem + 0.35rem);
+}
+
 .project-detail-aside {
   display: flex;
   flex-direction: row;
@@ -755,6 +760,10 @@
 @media (max-width: 960px) {
   .project-overview-grid {
     grid-template-columns: 1fr;
+  }
+
+  .project-overview-grid:has(.project-detail-actions-row) .project-detail-aside {
+    margin-top: 0;
   }
 
   .project-detail-aside {
