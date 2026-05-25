@@ -27,6 +27,8 @@ const DashboardLayoutInner: React.FC = () => {
     isEnterpriseAdmin(user) && location.pathname === '/recommendations';
   const isAdminPermissionsPage =
     isEnterpriseAdmin(user) && location.pathname === '/permissions';
+  const isAdminInvitePage =
+    isEnterpriseAdmin(user) && location.pathname === '/invite';
   const isAdminProjectsPage =
     isEnterpriseAdmin(user) && location.pathname === '/projects';
   const isMemberListPage =
@@ -95,6 +97,7 @@ const DashboardLayoutInner: React.FC = () => {
                 isAdminDashboardHome ||
                 isAdminRecommendationsPage ||
                 isAdminPermissionsPage ||
+                isAdminInvitePage ||
                 isMemberTasksPage ||
                 isMemberInboxPage ||
                 isMemberSettingsPage ||

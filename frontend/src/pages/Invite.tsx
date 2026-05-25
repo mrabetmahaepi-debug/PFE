@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Mail,
-  UserPlus,
+  User,
   Send,
   X,
   Loader2,
@@ -11,6 +12,7 @@ import {
   Settings,
   Calendar,
   FolderKanban,
+  Shield,
 } from 'lucide-react';
 import {
   invitationService,
@@ -54,6 +56,7 @@ const defaultExpiryIso = () => {
 };
 
 const Invite: React.FC = () => {
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [prenom, setPrenom] = useState('');
   const [nom, setNom] = useState('');
@@ -281,7 +284,7 @@ const Invite: React.FC = () => {
   };
 
   return (
-    <div className="invite-page">
+    <div className="invite-page invite-page--admin">
       <AnimatePresence>
         {toast && (
           <motion.div
@@ -309,18 +312,31 @@ const Invite: React.FC = () => {
         )}
       </AnimatePresence>
 
-      <header className="invite-hero">
-        <div className="invite-hero-text">
+      <header className="invite-header">
+        <div className="invite-header-copy">
           <h1>Inviter un membre</h1>
-          <p className="invite-hero-lead">
-            Définissez le profil, les projets accessibles et la date d&apos;expiration.
+          <p className="invite-header-sub">
+            Invitez une personne à rejoindre votre espace de travail.
           </p>
         </div>
-        <div className="invite-hero-illustration">
-          <div className="invite-hero-icon">
-            <UserPlus size={22} />
-          </div>
-        </div>
+        <button
+          type="submit"
+          form="invite-form"
+          className="invite-btn invite-btn--primary invite-header-submit"
+          disabled={!canSubmit}
+        >
+          {submitting ? (
+            <>
+              <Loader2 size={16} className="spin" aria-hidden />
+              Envoi…
+            </>
+          ) : (
+            <>
+              <Send size={16} aria-hidden />
+              Inviter
+            </>
+          )}
+        </button>
       </header>
 
       {smtpSetupError && (
@@ -345,17 +361,17 @@ const Invite: React.FC = () => {
       )}
 
       <div className="invite-card">
-        <form onSubmit={handleSubmit} className="invite-form">
-          <div className="invite-field">
+        <form id="invite-form" onSubmit={handleSubmit} className="invite-form">
+          <div className="invite-field invite-field--full">
             <label className="invite-label" htmlFor="invite-email">
+              <Mail size={14} aria-hidden />
               Email du membre
             </label>
-            <div className="invite-input-with-icon">
-              <Mail size={16} className="invite-field-icon" />
+            <div className="invite-input-wrap">
               <input
                 id="invite-email"
                 type="email"
-                className="invite-input-single"
+                className="invite-input"
                 placeholder="membre@entreprise.com"
                 value={email}
                 onChange={(e) => {
@@ -371,59 +387,68 @@ const Invite: React.FC = () => {
           <div className="invite-field-row">
             <div className="invite-field">
               <label className="invite-label" htmlFor="invite-prenom">
+                <User size={14} aria-hidden />
                 Prénom
               </label>
-              <input
-                id="invite-prenom"
-                type="text"
-                className="invite-input-single"
-                value={prenom}
-                onChange={(e) => setPrenom(e.target.value)}
-                required
-              />
+              <div className="invite-input-wrap">
+                <input
+                  id="invite-prenom"
+                  type="text"
+                  className="invite-input"
+                  value={prenom}
+                  onChange={(e) => setPrenom(e.target.value)}
+                  required
+                />
+              </div>
             </div>
             <div className="invite-field">
               <label className="invite-label" htmlFor="invite-nom">
+                <User size={14} aria-hidden />
                 Nom
               </label>
-              <input
-                id="invite-nom"
-                type="text"
-                className="invite-input-single"
-                value={nom}
-                onChange={(e) => setNom(e.target.value)}
-                required
-              />
+              <div className="invite-input-wrap">
+                <input
+                  id="invite-nom"
+                  type="text"
+                  className="invite-input"
+                  value={nom}
+                  onChange={(e) => setNom(e.target.value)}
+                  required
+                />
+              </div>
             </div>
           </div>
 
-          <div className="invite-field">
+          <div className="invite-field invite-field--full">
             <label className="invite-label" htmlFor="invite-poste">
+              <Shield size={14} aria-hidden />
               Profil de permissions
             </label>
-            <select
-              id="invite-poste"
-              className="invite-input-single invite-select"
-              value={poste}
-              onChange={(e) => setPoste(e.target.value)}
-              required
-            >
-              {INVITATION_PROFILE_OPTIONS.map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt}
-                </option>
-              ))}
-            </select>
+            <div className="invite-input-wrap">
+              <select
+                id="invite-poste"
+                className="invite-input invite-select"
+                value={poste}
+                onChange={(e) => setPoste(e.target.value)}
+                required
+              >
+                {INVITATION_PROFILE_OPTIONS.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </select>
+            </div>
             <p className="invite-field-hint">
               L&apos;espace membre s&apos;adapte aux permissions du profil (pas au
               rôle global).
             </p>
           </div>
 
-          <div className="invite-field">
+          <div className="invite-field invite-field--full">
             <label className="invite-label">
               <FolderKanban size={14} aria-hidden />
-              Projet accessible
+              Projets accessibles
             </label>
             {projectsLoading ? (
               <p className="invite-field-hint">Chargement des projets…</p>
@@ -452,20 +477,22 @@ const Invite: React.FC = () => {
             )}
           </div>
 
-          <div className="invite-field">
+          <div className="invite-field invite-field--full">
             <label className="invite-label" htmlFor="invite-expires">
               <Calendar size={14} aria-hidden />
-              Date d&apos;expiration de l&apos;invitation
+              Date expiration
             </label>
-            <input
-              id="invite-expires"
-              type="datetime-local"
-              className="invite-input-single"
-              value={expiresAt}
-              min={new Date().toISOString().slice(0, 16)}
-              onChange={(e) => setExpiresAt(e.target.value)}
-              required
-            />
+            <div className="invite-input-wrap">
+              <input
+                id="invite-expires"
+                type="datetime-local"
+                className="invite-input"
+                value={expiresAt}
+                min={new Date().toISOString().slice(0, 16)}
+                onChange={(e) => setExpiresAt(e.target.value)}
+                required
+              />
+            </div>
           </div>
 
           {formError && (
@@ -482,21 +509,28 @@ const Invite: React.FC = () => {
             </div>
           )}
 
-          <div className="invite-actions">
+          <div className="invite-form-footer">
+            <button
+              type="button"
+              className="invite-btn invite-btn--ghost"
+              onClick={() => navigate('/team')}
+            >
+              Annuler
+            </button>
             <button
               type="submit"
-              className="invite-submit"
+              className="invite-btn invite-btn--primary"
               disabled={!canSubmit}
             >
               {submitting ? (
                 <>
-                  <Loader2 size={16} className="spin" />
-                  Envoi en cours…
+                  <Loader2 size={16} className="spin" aria-hidden />
+                  Envoi…
                 </>
               ) : (
                 <>
-                  <Send size={16} />
-                  Envoyer l&apos;invitation
+                  <Send size={16} aria-hidden />
+                  Inviter
                 </>
               )}
             </button>
