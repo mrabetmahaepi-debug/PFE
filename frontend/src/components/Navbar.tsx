@@ -307,9 +307,8 @@ const Navbar: React.FC = () => {
         </div>
       )}
       {showAdminPermissionsTitle && (
-        <div className="navbar-page-title navbar-page-title--stacked">
-          <h1 className="navbar-page-heading">{t('navbar.permissionsTitle')}</h1>
-          <p className="navbar-page-sub">{t('navbar.permissionsSubtitle')}</p>
+        <div className="navbar-page-title">
+          <h1 className="navbar-page-heading">Role &amp; permissions</h1>
         </div>
       )}
       {showAdminContextHeader && adminPageHeader && (
