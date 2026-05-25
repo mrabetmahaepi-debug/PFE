@@ -11,13 +11,13 @@
   background: transparent;
   font-size: 12px;
   font-weight: 600;
-  color: #6d28d9;
+  color: #6b5ce7;
   cursor: pointer;
   transition: color 0.15s ease;
 }
 
 .admin-rec-scenario-toggle:hover {
-  color: #5b21b6;
+  color: #5a4fd4;
 }
 
 .admin-rec-scenario-toggle-icon {
@@ -36,8 +36,8 @@
   margin-top: 10px;
   padding: 12px 12px 4px;
   border-radius: 12px;
-  background: linear-gradient(180deg, #faf8ff 0%, #f8fafc 100%);
-  border: 1px solid #ececf3;
+  background: #faf9ff;
+  border: 1px solid rgba(123, 104, 238, 0.1);
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -70,28 +70,28 @@
 }
 
 .admin-rec-scenario-step--before .admin-rec-scenario-step-marker {
-  background: #f97316;
-  box-shadow: 0 0 0 1px #fed7aa;
+  background: #fbbf9a;
+  box-shadow: 0 0 0 1px #fde8d8;
 }
 
 .admin-rec-scenario-step--explain .admin-rec-scenario-step-marker {
-  background: #8b5cf6;
-  box-shadow: 0 0 0 1px #ddd6fe;
+  background: #c4b5fd;
+  box-shadow: 0 0 0 1px #ede9fe;
 }
 
 .admin-rec-scenario-step--action .admin-rec-scenario-step-marker {
-  background: #6366f1;
-  box-shadow: 0 0 0 1px #c7d2fe;
+  background: #a5b4fc;
+  box-shadow: 0 0 0 1px #e0e7ff;
 }
 
 .admin-rec-scenario-step--modify .admin-rec-scenario-step-marker {
-  background: #0ea5e9;
-  box-shadow: 0 0 0 1px #bae6fd;
+  background: #93c5fd;
+  box-shadow: 0 0 0 1px #dbeafe;
 }
 
 .admin-rec-scenario-step--result .admin-rec-scenario-step-marker {
-  background: #10b981;
-  box-shadow: 0 0 0 1px #a7f3d0;
+  background: #86efac;
+  box-shadow: 0 0 0 1px #dcfce7;
 }
 
 .admin-rec-scenario-step--time .admin-rec-scenario-step-marker {
@@ -142,10 +142,10 @@
   content: '•';
   position: absolute;
   left: 0;
-  color: #a78bfa;
+  color: #b8a9f5;
   font-weight: 700;
 }
 
 .admin-rec-scenario-step--result .admin-rec-scenario-step-list li::before {
-  color: #34d399;
+  color: #86efac;
 }

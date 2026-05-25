@@ -277,7 +277,7 @@ const AdminRecommendations: React.FC = () => {
   if (loading) {
     return (
       <motion.div
-        className="admin-rec-page admin-rec-page--loading"
+        className="admin-rec-page admin-rec-page--admin admin-rec-page--loading"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
       >
@@ -310,7 +310,7 @@ const AdminRecommendations: React.FC = () => {
   return (
     <>
       <motion.div
-        className="admin-rec-page"
+        className="admin-rec-page admin-rec-page--admin"
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.22 }}
