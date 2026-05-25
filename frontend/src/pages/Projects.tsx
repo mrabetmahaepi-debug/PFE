@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -45,7 +45,11 @@ import { teamService } from '../services/team.service';
 import { useAuth } from '../hooks/useAuth';
 import DeleteConfirmModal from '../components/DeleteConfirmModal';
 import { useAdminPageHeader } from '../context/AdminPageHeaderContext';
+import { placeFloatingPanel } from '../lib/floatingPlacement';
 import './Projects.css';
+
+const PROJECT_ACTION_MENU_WIDTH = 220;
+const PROJECT_ACTION_MENU_EST_HEIGHT = 188;
 
 const LOW_PROGRESS_THRESHOLD = 35;
 
@@ -163,11 +167,14 @@ const Projects: React.FC = () => {
   const [filter, setFilter] = useState<ProjectStatus | 'ALL'>('ALL');
   const [enterpriseFilter, setEnterpriseFilter] = useState<string>('ALL');
   const [teamMembers, setTeamMembers] = useState<User[]>([]);
-  const [cardMenuAnchor, setCardMenuAnchor] = useState<{
-    projectId: number;
-    top: number;
-    right: number;
-  } | null>(null);
+  const [cardMenuAnchor, setCardMenuAnchor] = useState<{ projectId: number } | null>(null);
+  const [cardMenuCoords, setCardMenuCoords] = useState({
+    top: -9999,
+    left: 0,
+    ready: false,
+  });
+  const cardMenuTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const cardMenuPanelRef = useRef<HTMLDivElement | null>(null);
   const [dropdownOpenId, setDropdownOpenId] = useState<number | null>(null);
   const [memberSearch, setMemberSearch] = useState('');
   const [sortOption, setSortOption] = useState<string>(
@@ -239,21 +246,46 @@ const Projects: React.FC = () => {
     return () => window.removeEventListener('projects:updated', handleProjectsUpdated);
   }, []);
 
+  const updateCardMenuCoords = useCallback(() => {
+    const trigger = cardMenuTriggerRef.current;
+    if (!trigger) return;
+    const rect = trigger.getBoundingClientRect();
+    const next = placeFloatingPanel({
+      anchorRect: rect,
+      panel: cardMenuPanelRef.current,
+      estimatedWidth: PROJECT_ACTION_MENU_WIDTH,
+      estimatedHeight: PROJECT_ACTION_MENU_EST_HEIGHT,
+      gap: 8,
+      alignX: 'end',
+    });
+    setCardMenuCoords({ top: next.top, left: next.left, ready: true });
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!cardMenuAnchor) {
+      setCardMenuCoords({ top: -9999, left: 0, ready: false });
+      return;
+    }
+    updateCardMenuCoords();
+    const refine = requestAnimationFrame(() => updateCardMenuCoords());
+    return () => cancelAnimationFrame(refine);
+  }, [cardMenuAnchor, updateCardMenuCoords]);
+
   useEffect(() => {
     if (!cardMenuAnchor) return;
     const close = () => setCardMenuAnchor(null);
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') close();
     };
-    window.addEventListener('resize', close);
-    window.addEventListener('scroll', close, true);
+    window.addEventListener('resize', updateCardMenuCoords);
+    window.addEventListener('scroll', updateCardMenuCoords, true);
     document.addEventListener('keydown', onKeyDown);
     return () => {
-      window.removeEventListener('resize', close);
-      window.removeEventListener('scroll', close, true);
+      window.removeEventListener('resize', updateCardMenuCoords);
+      window.removeEventListener('scroll', updateCardMenuCoords, true);
       document.removeEventListener('keydown', onKeyDown);
     };
-  }, [cardMenuAnchor]);
+  }, [cardMenuAnchor, updateCardMenuCoords]);
 
   useEffect(() => {
     if (!saveSuccessMessage) return;
@@ -378,24 +410,16 @@ const Projects: React.FC = () => {
     [filteredProjects, cardMenuAnchor?.projectId],
   );
 
-  const CARD_MENU_WIDTH = 220;
-  const CARD_MENU_EST_HEIGHT = 188;
-
   const toggleCardMenu = (e: React.MouseEvent<HTMLButtonElement>, projectId: number) => {
     e.stopPropagation();
     if (cardMenuAnchor?.projectId === projectId) {
       setCardMenuAnchor(null);
+      cardMenuTriggerRef.current = null;
       return;
     }
-    const rect = e.currentTarget.getBoundingClientRect();
-    let top = rect.bottom + 8;
-    if (top + CARD_MENU_EST_HEIGHT > window.innerHeight - 12) {
-      top = Math.max(12, rect.top - CARD_MENU_EST_HEIGHT - 8);
-    }
-    let right = window.innerWidth - rect.right;
-    const maxRight = window.innerWidth - CARD_MENU_WIDTH - 8;
-    right = Math.max(8, Math.min(right, maxRight));
-    setCardMenuAnchor({ projectId, top, right });
+    cardMenuTriggerRef.current = e.currentTarget;
+    setCardMenuCoords({ top: -9999, left: 0, ready: false });
+    setCardMenuAnchor({ projectId });
   };
 
   const closeCardMenu = () => setCardMenuAnchor(null);
@@ -699,11 +723,14 @@ const Projects: React.FC = () => {
                   onClick={closeCardMenu}
                 />
                 <motion.div
+                  ref={cardMenuPanelRef}
                   role="menu"
                   className="project-action-menu project-action-menu--portal"
                   style={{
-                    top: cardMenuAnchor.top,
-                    right: cardMenuAnchor.right,
+                    top: cardMenuCoords.top,
+                    left: cardMenuCoords.left,
+                    width: PROJECT_ACTION_MENU_WIDTH,
+                    visibility: cardMenuCoords.ready ? 'visible' : 'hidden',
                   }}
                   initial={{ opacity: 0, y: -8, scale: 0.98 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}

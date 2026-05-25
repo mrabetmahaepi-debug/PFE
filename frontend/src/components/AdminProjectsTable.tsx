@@ -101,7 +101,7 @@ export interface AdminProjectsTableProps {
   dropdownOpenId: number | null;
   onDropdownOpenIdChange: (id: number | null) => void;
   onAssignResponsable: (project: AdminProjectTableRow, userId: number) => void;
-  cardMenuAnchor: { projectId: number; top: number; right: number } | null;
+  cardMenuAnchor: { projectId: number } | null;
   onToggleCardMenu: (e: React.MouseEvent<HTMLButtonElement>, projectId: number) => void;
   archivingProjectId: number | null;
   onNavigateDetails: (projectId: number) => void;
