@@ -494,6 +494,7 @@ const ProjectDetail: React.FC = () => {
         )}
       </header>
 
+      <div className="project-detail-panel">
       <div className="project-detail-stats-row" aria-label="Statistiques du projet">
         <div className="project-detail-stat-card">
           <span className="project-detail-stat-icon project-detail-stat-icon--tasks" aria-hidden>
@@ -524,9 +525,9 @@ const ProjectDetail: React.FC = () => {
         </div>
       </div>
 
-      <div className="project-detail-content">
-          <section className="project-detail-card project-detail-card--info">
-            <h2 className="project-detail-card-title">Informations générales</h2>
+      <div className="project-detail-panel-body">
+          <section className="project-detail-section project-detail-section--info">
+            <h2 className="project-detail-section-title">Informations générales</h2>
             {canEditProjectInfo && editingProjectInfo && (
               <form
                 className="project-detail-edit-form"
@@ -718,8 +719,8 @@ const ProjectDetail: React.FC = () => {
           </section>
 
           {project.projectTeam && project.projectTeam.length > 0 && (
-            <section className="project-detail-card project-detail-card--team">
-              <h2 className="project-detail-card-title">Équipe du projet</h2>
+            <section className="project-detail-section project-detail-section--team">
+              <h2 className="project-detail-section-title">Équipe du projet</h2>
               <div className="project-detail-table-wrap">
                 <table className="project-detail-team-table">
                   <thead>
@@ -807,6 +808,7 @@ const ProjectDetail: React.FC = () => {
               </div>
             </section>
           )}
+      </div>
       </div>
 
       <EditProjectTeamModal

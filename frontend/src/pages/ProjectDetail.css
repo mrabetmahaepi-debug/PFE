@@ -12,13 +12,7 @@
   --pd-text-muted: #87909e;
   --pd-surface: #ffffff;
   --pd-border: #ececf3;
-  --pd-shadow: 0 1px 3px rgba(123, 104, 238, 0.06), 0 6px 22px rgba(123, 104, 238, 0.07);
-  --pd-top-accent: linear-gradient(
-    90deg,
-    #7b68ee 0%,
-    #6b9df5 45%,
-    #8b9cf8 100%
-  );
+  --pd-shadow: 0 1px 2px rgba(41, 45, 52, 0.04), 0 4px 16px rgba(123, 104, 238, 0.06);
 
   display: flex;
   flex-direction: column;
@@ -46,12 +40,12 @@
   font-size: 0.9rem;
 }
 
-/* ---- Header (titre + actions — icônes dans navbar) ---- */
+/* ---- Header compact (icônes dans navbar) ---- */
 .project-detail-header {
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
-  margin-bottom: 0.85rem;
+  gap: 0.45rem;
+  margin-bottom: 0.65rem;
 }
 
 .project-detail-header-text {
@@ -68,8 +62,8 @@
 }
 
 .project-detail-project-desc {
-  margin: 0.3rem 0 0;
-  font-size: 0.875rem;
+  margin: 0.2rem 0 0;
+  font-size: 0.8125rem;
   font-weight: 500;
   line-height: 1.45;
   color: var(--pd-text-muted);
@@ -87,37 +81,57 @@
   font-weight: 600;
 }
 
-/* ---- Stats row (pleine largeur) ---- */
+/* ---- Panneau unique (stats + info + équipe) ---- */
+.project-detail-panel {
+  background: var(--pd-surface);
+  border: 1px solid var(--pd-border);
+  border-radius: 12px;
+  box-shadow: var(--pd-shadow);
+  padding: 0.9rem 1rem 1rem;
+  width: 100%;
+  min-width: 0;
+}
+
 .project-detail-stats-row {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.65rem;
+  gap: 0.5rem;
   width: 100%;
+  padding-bottom: 0.85rem;
   margin-bottom: 0.85rem;
+  border-bottom: 1px solid var(--pd-border);
 }
 
-/* ---- Contenu principal (40 % info | 60 % équipe) ---- */
-.project-detail-content {
+/* ---- Corps : 40 % info | 60 % équipe ---- */
+.project-detail-panel-body {
   display: grid;
   grid-template-columns: 2fr 3fr;
-  gap: 0.85rem;
+  gap: 0;
   align-items: stretch;
   width: 100%;
   min-width: 0;
 }
 
-.project-detail-content > .project-detail-card {
-  height: 100%;
+.project-detail-panel-body > :only-child {
+  grid-column: 1 / -1;
+}
+
+.project-detail-section {
   min-width: 0;
   display: flex;
   flex-direction: column;
 }
 
-.project-detail-content > :only-child {
-  grid-column: 1 / -1;
+.project-detail-section--info {
+  padding-right: 1rem;
+  border-right: 1px solid var(--pd-border);
 }
 
-.project-detail-card--team .project-detail-table-wrap {
+.project-detail-section--team {
+  padding-left: 1rem;
+}
+
+.project-detail-section--team .project-detail-table-wrap {
   flex: 1;
   min-height: 0;
 }
@@ -182,31 +196,10 @@
   cursor: not-allowed;
 }
 
-/* ---- Cards ---- */
-.project-detail-card {
-  position: relative;
-  overflow: hidden;
-  background: var(--pd-surface);
-  border: 1px solid var(--pd-border);
-  border-radius: 20px;
-  box-shadow: var(--pd-shadow);
-  padding: 1.25rem 1.35rem;
-}
-
-.project-detail-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
-  background: var(--pd-top-accent);
-  border-radius: 20px 20px 0 0;
-}
-
-.project-detail-card-title {
-  margin: 0 0 1rem;
-  font-size: 0.9375rem;
+/* ---- Sections internes (sans card séparée) ---- */
+.project-detail-section-title {
+  margin: 0 0 0.75rem;
+  font-size: 0.875rem;
   font-weight: 700;
   letter-spacing: -0.01em;
   color: var(--pd-text);
@@ -277,7 +270,7 @@
 .project-detail-info-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1rem 1.25rem;
+  gap: 0.75rem 1rem;
 }
 
 .project-detail-info-item {
@@ -688,31 +681,27 @@
   border: 1px solid #e2e8f0;
 }
 
-/* ---- Stat cards ---- */
+/* ---- Stat cells (dans le panneau) ---- */
 .project-detail-stat-card {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.35rem;
+  gap: 0.3rem;
   min-width: 0;
-  min-height: 88px;
-  padding: 0.55rem 0.5rem 0.6rem;
+  min-height: 72px;
+  padding: 0.45rem 0.4rem 0.5rem;
   text-align: center;
-  background: var(--pd-surface);
-  border: 1px solid var(--pd-border);
-  border-radius: 12px;
-  box-shadow:
-    0 1px 2px rgba(123, 104, 238, 0.05),
-    0 4px 14px rgba(123, 104, 238, 0.08);
-  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+  background: #f6f7fb;
+  border: 1px solid #e8e8ef;
+  border-radius: 8px;
+  box-shadow: none;
+  transition: border-color 0.15s ease, background 0.15s ease;
 }
 
 .project-detail-stat-card:hover {
-  border-color: rgba(123, 104, 238, 0.22);
-  box-shadow:
-    0 2px 4px rgba(123, 104, 238, 0.08),
-    0 6px 18px rgba(123, 104, 238, 0.1);
+  border-color: #dddde8;
+  background: #faf9ff;
 }
 
 .project-detail-stat-icon {
@@ -766,15 +755,37 @@
 }
 
 @media (max-width: 900px) {
-  .project-detail-content {
+  .project-detail-panel-body {
     grid-template-columns: 1fr;
+    gap: 0.85rem;
+  }
+
+  .project-detail-section--info {
+    padding-right: 0;
+    padding-bottom: 0.85rem;
+    border-right: none;
+    border-bottom: 1px solid var(--pd-border);
+  }
+
+  .project-detail-section--team {
+    padding-left: 0;
   }
 }
 
 @media (max-width: 640px) {
+  .project-detail-panel {
+    padding: 0.75rem 0.85rem 0.9rem;
+  }
+
   .project-detail-stats-row {
     grid-template-columns: 1fr;
-    gap: 0.5rem;
+    gap: 0.4rem;
+    padding-bottom: 0.75rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .project-detail-stat-card {
+    min-height: 64px;
   }
 
   .project-detail-info-grid {
@@ -783,14 +794,5 @@
 
   .project-detail-edit-dates {
     grid-template-columns: 1fr;
-  }
-
-  .project-detail-card {
-    padding: 1.1rem 1.15rem;
-    border-radius: 16px;
-  }
-
-  .project-detail-card::before {
-    border-radius: 16px 16px 0 0;
   }
 }
