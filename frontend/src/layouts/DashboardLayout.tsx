@@ -10,6 +10,7 @@ import {
   MemberTopbarTitleProvider,
   useMemberTopbarTitle,
 } from '../context/MemberTopbarTitleContext';
+import { AdminPageHeaderProvider } from '../context/AdminPageHeaderContext';
 
 const DashboardLayoutInner: React.FC = () => {
   const [collapsed, setCollapsed] = useState(false);
@@ -24,6 +25,8 @@ const DashboardLayoutInner: React.FC = () => {
   const isAdminDashboardHome = isEnterpriseAdmin(user) && isDashboardHome;
   const isAdminRecommendationsPage =
     isEnterpriseAdmin(user) && location.pathname === '/recommendations';
+  const isAdminProjectsPage =
+    isEnterpriseAdmin(user) && location.pathname === '/projects';
   const isMemberListPage =
     isGlobalMember(user) && /^\/lists\/\d+\/?$/.test(location.pathname);
   const isMemberSpacesPage =
@@ -110,7 +113,9 @@ const DashboardLayoutInner: React.FC = () => {
 
 const DashboardLayout: React.FC = () => (
   <MemberTopbarTitleProvider>
-    <DashboardLayoutInner />
+    <AdminPageHeaderProvider>
+      <DashboardLayoutInner />
+    </AdminPageHeaderProvider>
   </MemberTopbarTitleProvider>
 );
 

@@ -1126,40 +1126,17 @@ button.project-info-chip--link:hover .project-info-chip-value {
 /* ── Admin projects page (ClickUp-style) ── */
 .projects-page--admin {
   min-height: 100%;
-  padding: 1.75rem clamp(1rem, 3vw, 2rem) 2.5rem;
+  padding: 1rem clamp(1rem, 3vw, 2rem) 2rem;
   background: linear-gradient(180deg, #fafafd 0%, #f5f3ff 38%, #ffffff 100%);
-  gap: 1.35rem;
+  gap: 1rem;
 }
 
-.projects-admin-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1.25rem;
-  flex-wrap: wrap;
-  padding-bottom: 0.35rem;
-}
-
-.projects-admin-header-main {
-  flex: 1;
-  min-width: min(100%, 280px);
-}
-
-.projects-admin-title-row {
+.projects-admin-title-row,
+.navbar-admin-projects-title-row {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 0.65rem;
-  margin-bottom: 0.35rem;
-}
-
-.projects-admin-title {
-  margin: 0;
-  font-size: clamp(1.65rem, 3vw, 2rem);
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  color: #292d34;
-  line-height: 1.15;
 }
 
 .projects-admin-count-badge {
@@ -1173,14 +1150,6 @@ button.project-info-chip--link:hover .project-info-chip-value {
   color: #7b68ee;
   background: rgba(123, 104, 238, 0.1);
   border: 1px solid rgba(123, 104, 238, 0.18);
-}
-
-.projects-admin-subtitle {
-  margin: 0;
-  font-size: 0.875rem;
-  color: #87909e;
-  line-height: 1.5;
-  max-width: 42rem;
 }
 
 .projects-admin-create-btn {
@@ -1838,17 +1807,7 @@ button.project-info-chip--link:hover .project-info-chip-value {
 
 @media (max-width: 720px) {
   .projects-page--admin {
-    padding: 1.15rem 0.85rem 1.75rem;
-  }
-
-  .projects-admin-header {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .projects-admin-create-btn {
-    width: 100%;
-    justify-content: center;
+    padding: 0.85rem 0.85rem 1.75rem;
   }
 
   .projects-toolbar--admin {

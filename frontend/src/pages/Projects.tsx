@@ -44,6 +44,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { teamService } from '../services/team.service';
 import { useAuth } from '../hooks/useAuth';
 import DeleteConfirmModal from '../components/DeleteConfirmModal';
+import { useAdminPageHeader } from '../context/AdminPageHeaderContext';
 import './Projects.css';
 
 const LOW_PROGRESS_THRESHOLD = 35;
@@ -184,6 +185,8 @@ const Projects: React.FC = () => {
   const [deletingProject, setDeletingProject] = useState(false);
   const [archivingProjectId, setArchivingProjectId] = useState<number | null>(null);
   const isTenantAdmin = isEnterpriseAdmin(user);
+  const { setHeader: setAdminPageHeader } = useAdminPageHeader();
+  const canCreateProject = can('PROJECT_CREATE') || isEnterpriseAdmin(user);
 
   useEffect(() => {
     if (searchParams.get('create') !== '1') return;
@@ -357,6 +360,30 @@ const Projects: React.FC = () => {
       });
   }, [projects, searchQuery, filter, enterpriseFilter, isLowProgress, sortOption]);
 
+  useEffect(() => {
+    const badge = !loading
+      ? `${filteredProjects.length} projet${filteredProjects.length !== 1 ? 's' : ''}`
+      : null;
+
+    setAdminPageHeader({
+      title: 'Projets',
+      subtitle: 'Gérez les projets de votre entreprise et suivez leur avancement.',
+      badge,
+      action: canCreateProject ? (
+        <button
+          type="button"
+          className="projects-admin-create-btn"
+          onClick={() => setIsModalOpen(true)}
+        >
+          <Plus size={16} aria-hidden />
+          <span>Créer un projet</span>
+        </button>
+      ) : null,
+    });
+
+    return () => setAdminPageHeader(null);
+  }, [setAdminPageHeader, loading, filteredProjects.length, canCreateProject]);
+
   const cardMenuProject = useMemo(
     () => filteredProjects.find((p) => p.id_projet === cardMenuAnchor?.projectId),
     [filteredProjects, cardMenuAnchor?.projectId],
@@ -445,32 +472,6 @@ const Projects: React.FC = () => {
 
   return (
     <div className="projects-page projects-page--admin">
-      <header className="projects-admin-header">
-        <div className="projects-admin-header-main">
-          <div className="projects-admin-title-row">
-            <h1 className="projects-admin-title">Projets</h1>
-            {!loading && (
-              <span className="projects-admin-count-badge">
-                {filteredProjects.length} projet{filteredProjects.length !== 1 ? 's' : ''}
-              </span>
-            )}
-          </div>
-          <p className="projects-admin-subtitle">
-            Gérez les projets de votre entreprise et suivez leur avancement.
-          </p>
-        </div>
-        {(can('PROJECT_CREATE') || isEnterpriseAdmin(user)) && (
-          <button
-            type="button"
-            className="projects-admin-create-btn"
-            onClick={() => setIsModalOpen(true)}
-          >
-            <Plus size={16} aria-hidden />
-            <span>Créer un projet</span>
-          </button>
-        )}
-      </header>
-
       {isSuperAdmin && (
         <div className="superadmin-banner">
           <ShieldAlert size={20} />

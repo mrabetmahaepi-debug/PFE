@@ -44,6 +44,7 @@ import {
 } from '../lib/memberNavbarGreeting';
 import { MON_ESPACE_NAME, isMemberMonEspaceNavbarPath } from '../lib/monEspaceRoute';
 import { useMemberTopbarTitle } from '../context/MemberTopbarTitleContext';
+import { useAdminPageHeader } from '../context/AdminPageHeaderContext';
 import { useTranslation } from 'react-i18next';
 import './Navbar.css';
 
@@ -77,6 +78,11 @@ const Navbar: React.FC = () => {
   const showAdminDashboardGreeting = isAdminDashboardHome && !showAdminInboxTitle;
   const showAdminRecommendationsTitle =
     enterpriseAdmin && location.pathname === '/recommendations';
+  const { header: adminPageHeader } = useAdminPageHeader();
+  const showAdminProjectsHeader =
+    enterpriseAdmin &&
+    location.pathname === '/projects' &&
+    adminPageHeader != null;
   const showMemberSettingsTitle =
     globalMember && location.pathname === '/settings';
   const showMemberTaskDetailBack =
@@ -290,6 +296,19 @@ const Navbar: React.FC = () => {
           <p className="navbar-page-sub">{t('navbar.recommendationsSubtitle')}</p>
         </div>
       )}
+      {showAdminProjectsHeader && adminPageHeader && (
+        <div className="navbar-page-title navbar-page-title--stacked navbar-page-title--admin-projects">
+          <div className="navbar-admin-projects-title-row">
+            <h1 className="navbar-page-heading">{adminPageHeader.title}</h1>
+            {adminPageHeader.badge ? (
+              <span className="projects-admin-count-badge">{adminPageHeader.badge}</span>
+            ) : null}
+          </div>
+          {adminPageHeader.subtitle ? (
+            <p className="navbar-page-sub">{adminPageHeader.subtitle}</p>
+          ) : null}
+        </div>
+      )}
       {showMemberAssignedTitle && (
         <div className="navbar-page-title">
           <h1 className="navbar-page-heading">{t('tasks.viewAssigned')}</h1>
@@ -328,6 +347,9 @@ const Navbar: React.FC = () => {
         </div>
       )}
       <div className="header-right">
+        {showAdminProjectsHeader && adminPageHeader?.action ? (
+          <div className="navbar-admin-projects-action">{adminPageHeader.action}</div>
+        ) : null}
         <div className="navbar-notif-wrap" ref={notifRef}>
           <button
             type="button"
