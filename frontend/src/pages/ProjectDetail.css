@@ -44,46 +44,9 @@
   font-size: 0.9rem;
 }
 
-/* ---- Top header ---- */
+/* ---- Top header (titre seul — icônes dans navbar) ---- */
 .project-detail-topbar {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 1rem;
-  flex-wrap: wrap;
-}
-
-.project-detail-topbar-left {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.85rem;
-  flex: 1;
-  min-width: 0;
-}
-
-.project-detail-back-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  flex-shrink: 0;
-  margin-top: 0.15rem;
-  padding: 0.35rem 0.55rem;
-  border: none;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--pd-text-muted);
-  font-size: 0.8125rem;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-  transition: color 0.15s ease, background 0.15s ease;
-}
-
-.project-detail-back-btn:hover,
-.project-detail-back-btn:focus-visible {
-  color: var(--pd-violet);
-  background: var(--pd-violet-soft);
+  margin-bottom: 0.75rem;
 }
 
 .project-detail-topbar-titles {
@@ -119,57 +82,11 @@
   font-weight: 600;
 }
 
-.project-detail-topbar-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  flex-shrink: 0;
-}
-
-.project-detail-icon-btn,
-.project-detail-profile-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  padding: 0;
-  border: 1px solid var(--pd-border);
-  border-radius: 10px;
-  background: var(--pd-surface);
-  color: #64748b;
-  cursor: pointer;
-  transition:
-    border-color 0.15s ease,
-    color 0.15s ease,
-    background 0.15s ease,
-    box-shadow 0.15s ease;
-}
-
-.project-detail-icon-btn:hover,
-.project-detail-profile-btn:hover {
-  border-color: var(--pd-violet-border);
-  color: var(--pd-violet);
-  background: var(--pd-violet-soft);
-}
-
-.project-detail-profile-btn {
-  overflow: hidden;
-}
-
-.project-detail-profile-avatar,
-.project-detail-profile-avatar-img {
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
 /* ---- Layout grid ---- */
 .project-overview-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(168px, 200px);
-  gap: 1rem;
+  grid-template-columns: minmax(0, 1fr) 156px;
+  gap: 0.85rem;
   align-items: start;
 }
 
@@ -183,53 +100,64 @@
 .project-detail-aside {
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
+  gap: 0.5rem;
   min-width: 0;
+  width: 156px;
 }
 
-/* ---- Soft action buttons ---- */
+/* ---- Action buttons (style Inviter un membre) ---- */
 .project-detail-actions-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: 0.45rem;
 }
 
 .project-detail-soft-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.4rem;
-  padding: 0.42rem 0.85rem;
+  gap: 0.35rem;
+  height: 34px;
+  min-height: 34px;
+  padding: 0 0.75rem;
+  border: none;
   border-radius: 8px;
-  border: 1px solid rgba(168, 153, 245, 0.45);
-  background: #f3f0ff;
-  color: #6b5ce7;
+  background: linear-gradient(135deg, #a899f5 0%, #9b8af0 100%);
+  color: #fff;
   font-size: 0.8125rem;
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(123, 104, 238, 0.1);
+  box-shadow: 0 2px 8px rgba(123, 104, 238, 0.14);
   transition:
     background 0.15s ease,
-    border-color 0.15s ease,
     box-shadow 0.15s ease,
     transform 0.12s ease;
 }
 
+.project-detail-soft-btn svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+
 .project-detail-soft-btn:hover:not(:disabled) {
-  background: #ebe6ff;
-  border-color: rgba(123, 104, 238, 0.35);
-  box-shadow: 0 4px 12px rgba(123, 104, 238, 0.14);
+  background: linear-gradient(135deg, #b3a6f7 0%, #a594f2 100%);
+  box-shadow: 0 2px 8px rgba(123, 104, 238, 0.18);
+  transform: translateY(-1px);
+}
+
+.project-detail-soft-btn:active:not(:disabled) {
+  transform: scale(0.98) translateY(0);
 }
 
 .project-detail-soft-btn--primary {
-  background: #a899f5;
-  border-color: rgba(123, 104, 238, 0.35);
+  background: linear-gradient(135deg, #a899f5 0%, #9b8af0 100%);
   color: #fff;
 }
 
 .project-detail-soft-btn--primary:hover:not(:disabled) {
-  background: #9b8af0;
+  background: linear-gradient(135deg, #b3a6f7 0%, #a594f2 100%);
 }
 
 .project-detail-soft-btn:disabled {
@@ -344,6 +272,7 @@
 
 .project-detail-info-item--responsable {
   grid-column: 1 / -1;
+  align-self: start;
 }
 
 .project-detail-info-label {
@@ -364,10 +293,13 @@
   line-height: 1.4;
 }
 
-.project-detail-info-value--responsable {
-  align-items: flex-start;
+.project-detail-responsable-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
   flex-wrap: wrap;
-  gap: 0.6rem;
+  width: fit-content;
+  max-width: 100%;
 }
 
 .project-detail-info-icon {
@@ -378,8 +310,8 @@
 
 .project-detail-responsable-avatar,
 .project-detail-responsable-avatar-inner {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   overflow: hidden;
   flex-shrink: 0;
@@ -400,17 +332,20 @@
 
 .project-detail-responsable-picker {
   position: relative;
-  flex: 1;
-  min-width: 180px;
+  flex: 0 0 auto;
+  width: auto;
+  max-width: 220px;
 }
 
 .project-detail-responsable-trigger {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
-  width: 100%;
-  padding: 0.45rem 0.65rem;
+  gap: 0.5rem;
+  width: auto;
+  min-width: 148px;
+  max-width: 220px;
+  padding: 0.35rem 0.55rem;
   border: 1px solid var(--pd-border);
   border-radius: 8px;
   background: #faf9ff;
@@ -571,7 +506,7 @@
 }
 
 .project-detail-team-table thead th {
-  padding: 0.6rem 0.85rem;
+  padding: 0.5rem 0.75rem;
   text-align: left;
   font-size: 0.6875rem;
   font-weight: 700;
@@ -599,7 +534,7 @@
 }
 
 .project-detail-team-table tbody td {
-  padding: 0.75rem 0.85rem;
+  padding: 0.48rem 0.75rem;
   border-bottom: 1px solid #f0eff8;
   vertical-align: middle;
 }
@@ -739,22 +674,36 @@
 /* ---- Stat cards (aside) ---- */
 .project-detail-stat-card {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 0.65rem;
-  padding: 0.75rem 0.85rem;
+  justify-content: center;
+  gap: 0.35rem;
+  width: 100%;
+  padding: 0.6rem 0.5rem 0.65rem;
+  text-align: center;
   background: var(--pd-surface);
   border: 1px solid var(--pd-border);
   border-radius: 12px;
-  box-shadow: var(--pd-shadow);
+  box-shadow:
+    0 1px 2px rgba(123, 104, 238, 0.05),
+    0 4px 14px rgba(123, 104, 238, 0.08);
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.project-detail-stat-card:hover {
+  border-color: rgba(123, 104, 238, 0.22);
+  box-shadow:
+    0 2px 4px rgba(123, 104, 238, 0.08),
+    0 6px 18px rgba(123, 104, 238, 0.1);
 }
 
 .project-detail-stat-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 9px;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
   flex-shrink: 0;
 }
 
@@ -764,8 +713,8 @@
 }
 
 .project-detail-stat-icon--members {
-  color: #3b82c6;
-  background: #eff6ff;
+  color: #6b5ce7;
+  background: #f3f0ff;
 }
 
 .project-detail-stat-icon--progress {
@@ -776,12 +725,14 @@
 .project-detail-stat-body {
   display: flex;
   flex-direction: column;
-  gap: 0.1rem;
+  align-items: center;
+  gap: 0.05rem;
   min-width: 0;
+  width: 100%;
 }
 
 .project-detail-stat-label {
-  font-size: 0.6875rem;
+  font-size: 0.625rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -789,7 +740,7 @@
 }
 
 .project-detail-stat-value {
-  font-size: 1.125rem;
+  font-size: 1rem;
   font-weight: 700;
   letter-spacing: -0.02em;
   color: var(--pd-text);
@@ -804,24 +755,17 @@
   .project-detail-aside {
     flex-direction: row;
     flex-wrap: wrap;
+    width: 100%;
   }
 
   .project-detail-stat-card {
     flex: 1;
-    min-width: 140px;
+    min-width: 100px;
+    max-width: none;
   }
 }
 
 @media (max-width: 640px) {
-  .project-detail-topbar {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .project-detail-topbar-actions {
-    justify-content: flex-end;
-  }
-
   .project-detail-info-grid {
     grid-template-columns: 1fr;
   }

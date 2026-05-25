@@ -2,7 +2,6 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
-  ArrowLeft,
   Calendar,
   Building2,
   Users,
@@ -11,8 +10,6 @@ import {
   Search,
   Pencil,
   Trash2,
-  Bell,
-  Settings,
 } from 'lucide-react';
 import { projectService } from '../services/project.service';
 import { teamService } from '../services/team.service';
@@ -460,60 +457,16 @@ const ProjectDetail: React.FC = () => {
       className="project-detail-page"
     >
       <header className="project-detail-topbar">
-        <div className="project-detail-topbar-left">
-          <button
-            type="button"
-            className="project-detail-back-btn"
-            onClick={() => navigate(-1)}
-            aria-label="Retour"
-          >
-            <ArrowLeft size={18} aria-hidden />
-            <span>Retour</span>
-          </button>
-          <div className="project-detail-topbar-titles">
-            <p className="project-detail-project-name">{project.nom_p}</p>
-            <p className="project-detail-project-desc">
-              {project.description_p || 'Aucune description fournie.'}
+        <div className="project-detail-topbar-titles">
+          <p className="project-detail-project-name">{project.nom_p}</p>
+          <p className="project-detail-project-desc">
+            {project.description_p || 'Aucune description fournie.'}
+          </p>
+          {project.currentUserProjectRole ? (
+            <p className="project-detail-user-role">
+              Votre rôle : <strong>{project.currentUserProjectRole}</strong>
             </p>
-            {project.currentUserProjectRole ? (
-              <p className="project-detail-user-role">
-                Votre rôle : <strong>{project.currentUserProjectRole}</strong>
-              </p>
-            ) : null}
-          </div>
-        </div>
-        <div className="project-detail-topbar-actions" aria-label="Actions rapides">
-          <button
-            type="button"
-            className="project-detail-icon-btn"
-            title="Notifications"
-            aria-label="Notifications"
-            onClick={() => navigate('/inbox')}
-          >
-            <Bell size={18} strokeWidth={2} aria-hidden />
-          </button>
-          <button
-            type="button"
-            className="project-detail-icon-btn"
-            title="Paramètres"
-            aria-label="Paramètres"
-            onClick={() => navigate('/settings')}
-          >
-            <Settings size={18} strokeWidth={2} aria-hidden />
-          </button>
-          <button
-            type="button"
-            className="project-detail-profile-btn"
-            title="Profil"
-            aria-label="Profil"
-            onClick={() => navigate('/settings')}
-          >
-            <UserAvatar
-              user={user}
-              className="project-detail-profile-avatar"
-              imgClassName="project-detail-profile-avatar-img"
-            />
-          </button>
+          ) : null}
         </div>
       </header>
 
@@ -639,7 +592,7 @@ const ProjectDetail: React.FC = () => {
               </div>
               <div className="project-detail-info-item project-detail-info-item--responsable">
                 <span className="project-detail-info-label">Responsable</span>
-                <div className="project-detail-info-value project-detail-info-value--responsable">
+                <div className="project-detail-responsable-inline">
                   <div className="project-detail-responsable-avatar">
                     <UserAvatar
                       user={chefAvatarUser}
