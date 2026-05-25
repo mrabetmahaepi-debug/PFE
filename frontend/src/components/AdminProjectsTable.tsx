@@ -1,11 +1,7 @@
 import React from 'react';
 import { ArrowRight, MoreVertical, Search } from 'lucide-react';
 import { ProjectStatus } from '../types/project';
-import {
-  formatProjectStatus,
-  getProjectStatusColor,
-  normalizeProjectStatus,
-} from '../lib/projectStatus';
+import { formatProjectStatus, normalizeProjectStatus } from '../lib/projectStatus';
 import { canManageProject, type ProjectManageContext } from '../lib/projectManageAccess';
 import type { User } from '../types/auth.types';
 
@@ -36,11 +32,6 @@ function formatProjectShortDate(iso: string | undefined | null): string {
     month: 'short',
     year: 'numeric',
   }).format(d);
-}
-
-function projectProgressPercent(project: AdminProjectTableRow): number {
-  const raw = project.avancement ?? project.progressPercent ?? 0;
-  return Math.max(0, Math.min(100, Math.round(Number(raw) || 0)));
 }
 
 function projectStatusBadgeClass(status: unknown): string {
@@ -98,13 +89,11 @@ const AdminProjectsTable: React.FC<AdminProjectsTableProps> = ({
             <tr>
               <th>#</th>
               <th>Nom du projet</th>
-              <th>Description</th>
               <th>Chef de projet</th>
               <th>Membres</th>
               <th>Tâches</th>
               <th>Date début</th>
               <th>Date fin</th>
-              <th>Progression</th>
               <th>Statut</th>
               <th>Actions</th>
             </tr>
@@ -112,7 +101,7 @@ const AdminProjectsTable: React.FC<AdminProjectsTableProps> = ({
           <tbody>
             {Array.from({ length: 8 }).map((_, i) => (
               <tr key={i} className="projects-table-row--skeleton">
-                {Array.from({ length: 11 }).map((__, j) => (
+                {Array.from({ length: 9 }).map((__, j) => (
                   <td key={j}>
                     <span className="projects-table-skeleton-bar" />
                   </td>
@@ -135,9 +124,6 @@ const AdminProjectsTable: React.FC<AdminProjectsTableProps> = ({
             </th>
             <th className="projects-table-col-name" scope="col">
               Nom du projet
-            </th>
-            <th className="projects-table-col-desc" scope="col">
-              Description
             </th>
             <th className="projects-table-col-chef" scope="col">
               Chef de projet
@@ -167,8 +153,6 @@ const AdminProjectsTable: React.FC<AdminProjectsTableProps> = ({
         </thead>
         <tbody>
           {projects.map((project, index) => {
-            const progress = projectProgressPercent(project);
-            const statusColor = getProjectStatusColor(project.statut_p ?? project.status);
             const canEditChef = canManageProject(user, project);
 
             return (
@@ -182,14 +166,6 @@ const AdminProjectsTable: React.FC<AdminProjectsTableProps> = ({
                   >
                     {project.nom_p || '—'}
                   </button>
-                </td>
-                <td className="projects-table-col-desc">
-                  <span
-                    className={`projects-table-desc${!project.description_p ? ' is-empty' : ''}`}
-                    title={project.description_p || undefined}
-                  >
-                    {project.description_p?.trim() || 'Aucune description'}
-                  </span>
                 </td>
                 <td className="projects-table-col-chef">
                   <div className="projects-table-chef-cell">
@@ -286,17 +262,6 @@ const AdminProjectsTable: React.FC<AdminProjectsTableProps> = ({
                 </td>
                 <td className="projects-table-col-date">
                   {formatProjectShortDate(project.date_fin)}
-                </td>
-                <td className="projects-table-col-progress">
-                  <div className="projects-table-progress">
-                    <span className="projects-table-progress-pct">{progress}%</span>
-                    <div className="projects-table-progress-bar" aria-hidden>
-                      <span
-                        className="projects-table-progress-fill"
-                        style={{ width: `${progress}%`, backgroundColor: statusColor }}
-                      />
-                    </div>
-                  </div>
                 </td>
                 <td className="projects-table-col-status">
                   <span
