@@ -700,13 +700,15 @@ const Team: React.FC = () => {
         isSuperAdmin ? ' team-page--super-admin' : ' team-page--admin-equipe team-page--navbar-title'
       }`}
     >
-      <BackButton fallback="/dashboard" />
       {isSuperAdmin ? (
-        <header className="page-header team-page-header">
-          <div className="team-page-header__main">
-            <h1 className="team-page-title">Gestion des Administrateurs</h1>
-          </div>
-        </header>
+        <>
+          <BackButton fallback="/dashboard" />
+          <header className="page-header team-page-header">
+            <div className="team-page-header__main">
+              <h1 className="team-page-title">Gestion des Administrateurs</h1>
+            </div>
+          </header>
+        </>
       ) : null}
 
       <div
