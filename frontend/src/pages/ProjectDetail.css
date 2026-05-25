@@ -85,7 +85,7 @@
 /* ---- Layout grid ---- */
 .project-overview-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 156px;
+  grid-template-columns: minmax(0, 1fr) minmax(288px, 32%);
   gap: 0.85rem;
   align-items: start;
 }
@@ -99,10 +99,12 @@
 
 .project-detail-aside {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  align-items: stretch;
+  align-self: start;
   gap: 0.5rem;
   min-width: 0;
-  width: 156px;
+  width: 100%;
 }
 
 /* ---- Action buttons (style Inviter un membre) ---- */
@@ -671,15 +673,18 @@
   border: 1px solid #e2e8f0;
 }
 
-/* ---- Stat cards (aside) ---- */
+/* ---- Stat cards (aside) — une ligne horizontale ---- */
 .project-detail-stat-card {
   display: flex;
+  flex: 1 1 0;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 0.35rem;
-  width: 100%;
-  padding: 0.6rem 0.5rem 0.65rem;
+  min-width: 0;
+  min-height: 96px;
+  height: auto;
+  padding: 0.55rem 0.4rem 0.6rem;
   text-align: center;
   background: var(--pd-surface);
   border: 1px solid var(--pd-border);
@@ -754,14 +759,14 @@
 
   .project-detail-aside {
     flex-direction: row;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     width: 100%;
+    align-self: stretch;
   }
 
   .project-detail-stat-card {
-    flex: 1;
-    min-width: 100px;
-    max-width: none;
+    flex: 1 1 0;
+    min-width: 0;
   }
 }
 
@@ -776,6 +781,13 @@
 
   .project-detail-aside {
     flex-direction: column;
+    align-items: stretch;
+  }
+
+  .project-detail-stat-card {
+    flex: 1 1 auto;
+    min-height: 88px;
+    width: 100%;
   }
 
   .project-detail-card {
