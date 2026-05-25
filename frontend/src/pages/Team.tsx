@@ -153,7 +153,10 @@ function TeamMemberProjectsCell({ projects }: { projects: TeamProjectRow[] }) {
         );
       })}
       {overflowCount > 0 ? (
-        <span className="team-project-more-wrap">
+        <span
+          className="team-project-more-wrap"
+          title={projects.map(teamProjectLabel).join('\n')}
+        >
           <span className="team-project-badge team-project-badge--more" tabIndex={0}>
             +{overflowCount} autre{overflowCount > 1 ? 's' : ''}
           </span>
