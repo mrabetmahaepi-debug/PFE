@@ -305,8 +305,7 @@
   }
 }
 
-.navbar.navbar--admin-recommendations,
-.navbar.navbar--admin-projects {
+.navbar.navbar--admin-recommendations {
   height: auto;
   min-height: 56px;
   margin: 0;
@@ -320,8 +319,7 @@
   gap: 16px;
 }
 
-.navbar.navbar--admin-recommendations .header-right,
-.navbar.navbar--admin-projects .header-right {
+.navbar.navbar--admin-recommendations .header-right {
   width: auto;
   flex-shrink: 0;
   display: flex;
@@ -329,8 +327,7 @@
   gap: 12px;
 }
 
-.navbar.navbar--admin-recommendations .navbar-page-sub,
-.navbar.navbar--admin-projects .navbar-page-sub {
+.navbar.navbar--admin-recommendations .navbar-page-sub {
   white-space: normal;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -339,14 +336,76 @@
   max-width: min(52ch, 100%);
 }
 
-.navbar-page-title--admin-projects {
-  gap: 2px;
+/* Admin Projets — titre + badge + CTA sur une ligne, sous-titre en dessous */
+.navbar.navbar--admin-projects {
+  height: auto;
+  min-height: 52px;
+  margin: 0;
+  padding: 6px 20px 6px 16px;
+  background: #ffffff;
+  border-bottom: 1px solid #ececf3;
+  border-radius: 0;
+  box-shadow: none;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
+  align-items: center;
+  column-gap: 12px;
+  row-gap: 1px;
 }
 
-.navbar-admin-projects-title-row .navbar-page-heading {
+.navbar-admin-projects-title-row {
+  grid-column: 1;
+  grid-row: 1;
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 0.5rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.navbar-admin-projects-heading {
+  margin: 0;
   font-size: clamp(1.125rem, 2vw, 1.35rem);
   font-weight: 800;
+  letter-spacing: -0.02em;
   color: #292d34;
+  line-height: 1.2;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.navbar-admin-projects-block .projects-admin-count-badge {
+  flex-shrink: 0;
+  margin: 0;
+}
+
+.navbar-admin-projects-sub {
+  grid-column: 1;
+  grid-row: 2;
+  margin: 0;
+  padding: 0;
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  color: #87909e;
+  max-width: min(52ch, 100%);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  align-self: start;
+}
+
+.navbar.navbar--admin-projects .header-right {
+  grid-column: 2;
+  grid-row: 1 / -1;
+  width: auto;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  align-self: center;
 }
 
 .navbar-admin-projects-action {
@@ -355,33 +414,49 @@
   flex-shrink: 0;
 }
 
+@media (max-width: 900px) {
+  .navbar-admin-projects-sub {
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+}
+
 @media (max-width: 640px) {
-  .navbar.navbar--admin-recommendations,
-  .navbar.navbar--admin-projects {
+  .navbar.navbar--admin-recommendations {
     padding: 8px 12px 8px 16px;
-    flex-wrap: wrap;
-    align-items: flex-start;
   }
 
-  .navbar.navbar--admin-recommendations .navbar-page-heading,
-  .navbar.navbar--admin-projects .navbar-page-heading {
+  .navbar.navbar--admin-recommendations .navbar-page-heading {
     font-size: 17px;
   }
 
-  .navbar.navbar--admin-recommendations .navbar-page-sub,
-  .navbar.navbar--admin-projects .navbar-page-sub {
+  .navbar.navbar--admin-recommendations .navbar-page-sub {
     font-size: 11px;
   }
 
-  .navbar.navbar--admin-projects .header-right {
-    width: 100%;
-    justify-content: flex-end;
-    margin-left: auto;
+  .navbar.navbar--admin-projects {
+    padding: 6px 12px 6px 14px;
+    column-gap: 8px;
+  }
+
+  .navbar-admin-projects-heading {
+    font-size: 1.05rem;
+  }
+
+  .navbar-admin-projects-sub {
+    font-size: 0.75rem;
+    -webkit-line-clamp: 2;
   }
 
   .navbar.navbar--admin-projects .projects-admin-create-btn {
-    padding: 0.5rem 0.85rem;
-    font-size: 0.8125rem;
+    padding: 0.45rem 0.75rem;
+    font-size: 0.75rem;
+  }
+
+  .navbar.navbar--admin-projects .projects-admin-create-btn span {
+    display: none;
   }
 }
 
