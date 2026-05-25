@@ -6,23 +6,17 @@ import {
   Plus,
   Search,
   Filter,
-  MoreVertical,
-  Users,
-  CheckCircle2,
   Check,
   Briefcase,
   ShieldAlert,
   Building2,
   AlertTriangle,
   X,
-  Calendar,
-  Flag,
   Trash2,
   Pencil,
   Archive,
   ChevronDown,
   ArrowUpDown,
-  ArrowRight,
 } from 'lucide-react';
 import { projectService } from '../services/project.service';
 import { usePermission } from '../hooks/usePermission';
@@ -36,7 +30,6 @@ import { ProjectStatus } from '../types/project';
 import {
   STATUS_FILTER_OPTIONS,
   formatProjectStatus,
-  getProjectStatusColor,
   normalizeProjectStatus,
   isArchivedProject,
   projectMatchesStatusFilter,
@@ -45,7 +38,7 @@ import { dispatchProjectsUpdated } from '../lib/workspaceEvents';
 import type { User } from '../types/auth.types';
 import CreateProjectModal from '../components/CreateProjectModal';
 import EditProjectModal from '../components/EditProjectModal';
-import ProjectProgress from '../components/ProjectProgress';
+import AdminProjectsTable from '../components/AdminProjectsTable';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { teamService } from '../services/team.service';
 import { useAuth } from '../hooks/useAuth';
@@ -58,27 +51,6 @@ function safeLower(value: unknown): string {
   return String(value ?? '')
     .toLowerCase()
     .trim();
-}
-
-function formatProjectShortDate(iso: string | undefined | null): string {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '—';
-  return new Intl.DateTimeFormat('fr-FR', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  }).format(d);
-}
-
-function formatMemberCount(count: number): string {
-  const n = count || 0;
-  return n <= 1 ? `${n} membre` : `${n} membres`;
-}
-
-function formatTaskCount(count: number): string {
-  const n = count || 0;
-  return n <= 1 ? `${n} tâche` : `${n} tâches`;
 }
 
 function getProjectDateValue(project: {
@@ -606,276 +578,22 @@ const Projects: React.FC = () => {
           />
       </div>
 
-      {loading ? (
-        <div
-          className="projects-skeleton-grid"
-          aria-busy="true"
-          aria-label="Chargement des projets en cours"
-        >
-          {Array.from({ length: 6 }).map((_, sk) => (
-            <div key={sk} className="project-skeleton-card" />
-          ))}
-        </div>
-      ) : (
-        <div className="projects-grid">
-            {filteredProjects.map((project) => (
-              <motion.div
-                key={project.id_projet}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                whileHover={{ y: -4 }}
-                className="project-super-card project-card-cu project-card-cu--admin"
-                onClick={() => navigate(`/projects/${project.id_projet}`)}
-              >
-                <div className="project-card-header">
-                  <div className="project-card-head-main">
-                    <div className="project-card-title-row">
-                      <span
-                        className="project-status-badge"
-                        style={{
-                          backgroundColor: `${getProjectStatusColor(project.statut_p)}18`,
-                          color: getProjectStatusColor(project.statut_p),
-                          borderColor: `${getProjectStatusColor(project.statut_p)}40`,
-                        }}
-                      >
-                        {formatProjectStatus(project.statut_p ?? project.status)}
-                      </span>
-                    </div>
-                    <h3 className="project-title">{project.nom_p}</h3>
-                    <p className={`project-desc ${!project.description_p ? 'empty-desc' : ''}`}>
-                      {project.description_p || 'Aucune description fournie.'}
-                    </p>
-                  </div>
-                  {isTenantAdmin && (
-                    <div className="project-card-menu-wrap">
-                      <button
-                        type="button"
-                        className={`card-action-btn${cardMenuAnchor?.projectId === project.id_projet ? ' is-active' : ''}`}
-                        aria-label="Actions du projet"
-                        aria-expanded={cardMenuAnchor?.projectId === project.id_projet}
-                        aria-haspopup="menu"
-                        disabled={archivingProjectId === project.id_projet}
-                        onClick={(e) => toggleCardMenu(e, project.id_projet)}
-                      >
-                        <MoreVertical size={16} />
-                      </button>
-                    </div>
-                  )}
-                </div>
-                
-                <hr className="project-card-divider" aria-hidden />
-
-                <div
-                  className="project-card-chips"
-                  onClick={(e) => e.stopPropagation()}
-                  onKeyDown={(e) => e.stopPropagation()}
-                  role="presentation"
-                >
-                  <div className="project-card-chips-row">
-                    <div className="project-info-chip" title="Date de création">
-                      <Calendar size={14} aria-hidden className="project-info-chip-icon" />
-                      <span className="project-info-chip-value">
-                        {formatProjectShortDate(project.createdAt || project.date_debut)}
-                      </span>
-                    </div>
-                    <div className="project-info-chip" title="Échéance">
-                      <Flag size={14} aria-hidden className="project-info-chip-icon" />
-                      <span className="project-info-chip-value">
-                        {formatProjectShortDate(project.date_fin)}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="project-card-chips-row project-card-chips-row--stats">
-                    <div className="project-info-chip" title="Membres">
-                      <Users size={14} aria-hidden className="project-info-chip-icon" />
-                      <span className="project-info-chip-value">
-                        {formatMemberCount(project.membresCount || 0)}
-                      </span>
-                    </div>
-                    <div className="project-info-chip project-info-chip--tasks" title="Tâches">
-                      <CheckCircle2 size={14} aria-hidden className="project-info-chip-icon" />
-                      <span className="project-info-chip-value">
-                        {formatTaskCount(project.tachesCount || 0)}
-                      </span>
-                    </div>
-                  </div>
-                  {isSuperAdmin && (
-                    <button
-                      type="button"
-                      className="project-info-chip project-info-chip--wide project-info-chip--link"
-                      title="Entreprise"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (project.entreprise) {
-                          navigate(`/enterprises/${project.entreprise.id_entreprise}`);
-                        }
-                      }}
-                    >
-                      <Building2 size={14} aria-hidden className="project-info-chip-icon" />
-                      <span className="project-info-chip-value">
-                        {project.entreprise?.nom || 'Plateforme'}
-                      </span>
-                    </button>
-                  )}
-                </div>
-
-                <hr className="project-card-divider" aria-hidden />
-
-                <div className="project-card-progress">
-                  <ProjectProgress
-                    projectId={project.id_projet}
-                    statusColor={getProjectStatusColor(project.statut_p)}
-                  />
-                </div>
-
-                <hr className="project-card-divider" aria-hidden />
-
-                <div className="project-card-footer-cu">
-                  <div className="project-card-chef" onClick={(e) => e.stopPropagation()}>
-                    <div className="project-card-chef-row">
-                    <div className="responsable-avatar project-card-chef-avatar">
-                      {(() => {
-                        const label =
-                          project.responsable && project.responsable !== 'Non assigné'
-                            ? String(project.responsable)
-                            : '?';
-                        const ch = label.charAt(0);
-                        return ch ? ch.toUpperCase() : '?';
-                      })()}
-                    </div>
-                    <div className="responsable-info" style={{ flex: 1 }}>
-                      <span className="responsable-label">Chef de projet</span>
-                      {canManageProject(user, project) ? (
-                        <div style={{ position: 'relative' }}>
-                          <div
-                            className="project-chef-picker"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setDropdownOpenId(dropdownOpenId === project.id_projet ? null : project.id_projet);
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter' || e.key === ' ') {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                setDropdownOpenId(dropdownOpenId === project.id_projet ? null : project.id_projet);
-                              }
-                            }}
-                            role="button"
-                            tabIndex={0}
-                          >
-                            <div className="project-chef-picker-text">
-                              <span className="project-card-meta-value project-chef-picker-name">
-                                {project.responsable && project.responsable !== 'Non assigné'
-                                  ? project.responsable
-                                  : 'Choisir un chef de projet'}
-                              </span>
-                              {project.responsable_role && project.responsable !== 'Non assigné' && (
-                                <span className="project-chef-picker-role">
-                                  {project.responsable_role}
-                                </span>
-                              )}
-                            </div>
-                            <span className="project-chef-picker-chevron" aria-hidden>
-                              ▼
-                            </span>
-                          </div>
-
-                          {dropdownOpenId === project.id_projet && (
-                            <div 
-                              onClick={(e) => e.stopPropagation()}
-                              style={{
-                                position: 'absolute', bottom: '110%', left: 0, minWidth: '260px',
-                                background: 'var(--bg-surface)', border: '1px solid var(--border)',
-                                borderRadius: 'var(--radius-lg)', padding: '0.75rem',
-                                boxShadow: '0 20px 40px -10px rgba(0,0,0,0.2)', zIndex: 100,
-                                maxHeight: '300px', overflowY: 'auto'
-                              }}
-                            >
-                              <div className="search-box" style={{ marginBottom: '0.75rem', padding: '0.25rem 0.5rem', height: '32px' }}>
-                                <Search size={14} />
-                                <input 
-                                  type="text" 
-                                  placeholder="Chercher un membre..." 
-                                  value={memberSearch}
-                                  onChange={(e) => setMemberSearch(e.target.value)}
-                                  style={{ fontSize: '0.8rem' }}
-                                  autoFocus
-                                />
-                              </div>
-
-                              <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 800, padding: '0.25rem 0.5rem', letterSpacing: '0.05em' }}>
-                                Responsables Éligibles
-                              </div>
-                              
-                              <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                                {eligibleMembers.length === 0 ? (
-                                  <div style={{ padding: '1rem', textAlign: 'center', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                                    Aucun responsable éligible trouvé
-                                  </div>
-                                ) : (
-                                  eligibleMembers.map(m => {
-                                    const roleName = typeof m.role === 'string' ? m.role : m.role?.nom;
-                                    return (
-                                      <div 
-                                        key={m.id_utilisateur}
-                                        onClick={() => {
-                                          handleAssignResponsable(project, Number(m.id_utilisateur));
-                                          setDropdownOpenId(null);
-                                          setMemberSearch('');
-                                        }}
-                                        style={{
-                                          display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.625rem',
-                                          cursor: 'pointer', borderRadius: 'var(--radius-md)', transition: 'all 0.2s',
-                                          backgroundColor: project.chef_id === m.id_utilisateur ? 'var(--primary-light)' : 'transparent'
-                                        }}
-                                        onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-main)'}
-                                        onMouseOut={(e) => e.currentTarget.style.backgroundColor = project.chef_id === m.id_utilisateur ? 'var(--primary-light)' : 'transparent'}
-                                      >
-                                        <div className="responsable-avatar" style={{
-                                          width: '32px', height: '32px', fontSize: '0.85rem',
-                                          background: project.chef_id === m.id_utilisateur ? 'var(--primary)' : 'var(--bg-main)',
-                                          color: project.chef_id === m.id_utilisateur ? 'white' : 'var(--text-main)'
-                                        }}>
-                                          {String(m.prenom?.[0] || m.email?.[0] || '?').toUpperCase()}
-                                        </div>
-                                        <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
-                                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-main)' }}>{m.prenom} {m.nom}</span>
-                                            {project.chef_id === m.id_utilisateur && <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--primary)' }}></div>}
-                                          </div>
-                                          <span style={{ fontSize: '0.7rem', color: 'var(--primary)', fontWeight: 600, textTransform: 'uppercase' }}>
-                                            {roleName}
-                                          </span>
-                                        </div>
-                                      </div>
-                                    );
-                                  })
-                                )}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="responsable-name">{project.responsable || 'Non assigné'}</span>
-                      )}
-                    </div>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    className="project-details-btn"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigate(`/projects/${project.id_projet}`);
-                    }}
-                  >
-                    Détails
-                    <ArrowRight size={14} aria-hidden />
-                  </button>
-                </div>
-              </motion.div>
-            ))}
-        </div>
+      {(loading || filteredProjects.length > 0) && (
+        <AdminProjectsTable
+          projects={filteredProjects}
+          loading={loading}
+          user={user}
+          eligibleMembers={eligibleMembers}
+          memberSearch={memberSearch}
+          onMemberSearchChange={setMemberSearch}
+          dropdownOpenId={dropdownOpenId}
+          onDropdownOpenIdChange={setDropdownOpenId}
+          onAssignResponsable={handleAssignResponsable}
+          cardMenuAnchor={cardMenuAnchor}
+          onToggleCardMenu={toggleCardMenu}
+          archivingProjectId={archivingProjectId}
+          onNavigateDetails={(id) => navigate(`/projects/${id}`)}
+        />
       )}
 
       {!loading && filteredProjects.length === 0 && (

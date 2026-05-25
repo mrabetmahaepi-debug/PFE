@@ -1348,6 +1348,419 @@ button.project-info-chip--link:hover .project-info-chip-value {
   border-radius: 16px;
 }
 
+/* ── Admin projects table (ClickUp / Tableur style) ── */
+.projects-page--admin .projects-table-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid rgba(123, 104, 238, 0.14);
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 6px 22px rgba(123, 104, 238, 0.07);
+}
+
+.projects-table {
+  width: 100%;
+  min-width: 1100px;
+  border-collapse: collapse;
+  font-size: 13px;
+  table-layout: fixed;
+}
+
+.projects-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: #fafafd;
+}
+
+.projects-table th {
+  padding: 10px 12px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 11px;
+  color: #8b82f6;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid #eceafd;
+  border-right: 1px solid #f0f1f3;
+  background: #fafafd;
+  white-space: nowrap;
+}
+
+.projects-table th:last-child {
+  border-right: none;
+}
+
+.projects-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #f0f1f3;
+  border-right: 1px solid #f7f8f9;
+  color: #292d34;
+  vertical-align: middle;
+  background: #fff;
+}
+
+.projects-table td:last-child {
+  border-right: none;
+}
+
+.projects-table tbody tr:hover td {
+  background: #faf9ff;
+}
+
+.projects-table-col-num {
+  width: 48px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  color: #87909e;
+}
+
+.projects-table-col-name {
+  width: 14%;
+  min-width: 140px;
+}
+
+.projects-table-col-desc {
+  width: 18%;
+  min-width: 160px;
+}
+
+.projects-table-col-chef {
+  width: 14%;
+  min-width: 150px;
+}
+
+.projects-table-col-count {
+  width: 72px;
+  text-align: center;
+}
+
+.projects-table-col-count--num {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #475569;
+}
+
+.projects-table-col-date {
+  width: 108px;
+  white-space: nowrap;
+  font-size: 12px;
+  color: #646f79;
+}
+
+.projects-table-col-progress {
+  width: 120px;
+}
+
+.projects-table-col-status {
+  width: 108px;
+}
+
+.projects-table-col-actions {
+  width: 148px;
+}
+
+.projects-table-name-btn {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 700;
+  color: #292d34;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.projects-table-name-btn:hover {
+  color: #7b68ee;
+}
+
+.projects-table-desc {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: #646f79;
+  line-height: 1.4;
+}
+
+.projects-table-desc.is-empty {
+  color: #94a3b8;
+  font-style: italic;
+}
+
+.projects-table-chef-cell {
+  position: relative;
+  min-width: 0;
+}
+
+.projects-table-chef-picker-wrap {
+  position: relative;
+}
+
+.projects-table-chef-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  max-width: 100%;
+  padding: 0.2rem 0.35rem 0.2rem 0.2rem;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.projects-table-chef-picker:hover {
+  background: #f8f7ff;
+  border-color: rgba(123, 104, 238, 0.16);
+}
+
+.projects-table-chef-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #7b68ee 0%, #6ea8fe 100%);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.projects-table-chef-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 600;
+  color: #292d34;
+}
+
+.projects-table-chef-static {
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+}
+
+.projects-table-chef-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 50;
+  min-width: 260px;
+  padding: 0.65rem;
+  border-radius: 12px;
+  border: 1px solid rgba(123, 104, 238, 0.18);
+  background: #fff;
+  box-shadow: 0 16px 40px rgba(123, 104, 238, 0.14);
+}
+
+.projects-table-chef-menu-search {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.5rem;
+  margin-bottom: 0.5rem;
+  border: 1px solid #e8eaed;
+  border-radius: 8px;
+  background: #fafafd;
+}
+
+.projects-table-chef-menu-search input {
+  flex: 1;
+  border: none;
+  background: none;
+  outline: none;
+  font-size: 12px;
+}
+
+.projects-table-chef-menu-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.projects-table-chef-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.45rem 0.5rem;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 600;
+  color: #292d34;
+  cursor: pointer;
+}
+
+.projects-table-chef-menu-item:hover,
+.projects-table-chef-menu-item.is-active {
+  background: #f3f0ff;
+}
+
+.projects-table-chef-menu-empty {
+  margin: 0;
+  padding: 0.75rem;
+  text-align: center;
+  font-size: 12px;
+  color: #87909e;
+}
+
+.projects-table-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.projects-table-progress-pct {
+  font-size: 12px;
+  font-weight: 700;
+  color: #292d34;
+  font-variant-numeric: tabular-nums;
+}
+
+.projects-table-progress-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: #eceafd;
+  overflow: hidden;
+}
+
+.projects-table-progress-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #7b68ee 0%, #9b8afb 100%);
+  transition: width 0.25s ease;
+}
+
+.projects-table-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.28rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.projects-table-status--planning {
+  background: #f1f5f9;
+  color: #64748b;
+  border-color: #e2e8f0;
+}
+
+.projects-table-status--en-cours {
+  background: #ede9fe;
+  color: #5b4cc4;
+  border-color: rgba(123, 104, 238, 0.22);
+}
+
+.projects-table-status--terminee {
+  background: #d1fae5;
+  color: #047857;
+  border-color: rgba(16, 185, 129, 0.25);
+}
+
+.projects-table-status--en-retard {
+  background: #fef2f2;
+  color: #b91c1c;
+  border-color: rgba(239, 68, 68, 0.22);
+}
+
+.projects-table-status--attente {
+  background: #fff7ed;
+  color: #b45309;
+  border-color: rgba(245, 158, 11, 0.25);
+}
+
+.projects-table-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.35rem;
+}
+
+.projects-table-details-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.38rem 0.65rem;
+  border: 1px solid rgba(123, 104, 238, 0.22);
+  border-radius: 8px;
+  background: rgba(123, 104, 238, 0.08);
+  color: #7b68ee;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.projects-table-details-btn:hover {
+  background: rgba(123, 104, 238, 0.14);
+  border-color: rgba(123, 104, 238, 0.35);
+}
+
+.projects-table-menu-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #87909e;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.projects-table-menu-btn:hover,
+.projects-table-menu-btn.is-active {
+  background: #f3f0ff;
+  color: #7b68ee;
+}
+
+.projects-table-row--skeleton td {
+  padding: 12px;
+}
+
+.projects-table-skeleton-bar {
+  display: block;
+  height: 14px;
+  border-radius: 6px;
+  background: linear-gradient(
+    90deg,
+    #f0f1f3 0%,
+    #fafafd 50%,
+    #f0f1f3 100%
+  );
+  background-size: 200% 100%;
+  animation: projects-shimmer 1.2s ease-in-out infinite;
+}
+
 @media (max-width: 720px) {
   .projects-page--admin {
     padding: 1.15rem 0.85rem 1.75rem;
@@ -1367,18 +1780,7 @@ button.project-info-chip--link:hover .project-info-chip-value {
     padding: 0.75rem;
   }
 
-  .projects-page--admin .projects-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .project-card-footer-cu {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.75rem;
-  }
-
-  .project-details-btn {
-    width: 100%;
-    justify-content: center;
+  .projects-page--admin .projects-table-wrap {
+    border-radius: 10px;
   }
 }
