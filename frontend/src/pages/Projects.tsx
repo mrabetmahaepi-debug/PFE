@@ -361,14 +361,9 @@ const Projects: React.FC = () => {
   }, [projects, searchQuery, filter, enterpriseFilter, isLowProgress, sortOption]);
 
   useEffect(() => {
-    const badge = !loading
-      ? `${filteredProjects.length} projet${filteredProjects.length !== 1 ? 's' : ''}`
-      : null;
-
     setAdminPageHeader({
       title: 'Projets',
       subtitle: 'Gérez les projets de votre entreprise et suivez leur avancement.',
-      badge,
       action: canCreateProject ? (
         <button
           type="button"
@@ -382,7 +377,11 @@ const Projects: React.FC = () => {
     });
 
     return () => setAdminPageHeader(null);
-  }, [setAdminPageHeader, loading, filteredProjects.length, canCreateProject]);
+  }, [setAdminPageHeader, canCreateProject]);
+
+  const projectsCountLabel = !loading
+    ? `${filteredProjects.length} projet${filteredProjects.length !== 1 ? 's' : ''}`
+    : null;
 
   const cardMenuProject = useMemo(
     () => filteredProjects.find((p) => p.id_projet === cardMenuAnchor?.projectId),
@@ -523,6 +522,12 @@ const Projects: React.FC = () => {
           </button>
         </div>
       )}
+
+      {projectsCountLabel ? (
+        <div className="projects-admin-count-row">
+          <span className="projects-admin-count-badge">{projectsCountLabel}</span>
+        </div>
+      ) : null}
 
       <div className="projects-toolbar projects-toolbar--admin">
         <div className="search-box">

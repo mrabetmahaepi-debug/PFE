@@ -297,17 +297,12 @@ const Navbar: React.FC = () => {
         </div>
       )}
       {showAdminProjectsHeader && adminPageHeader && (
-        <>
-          <div className="navbar-admin-projects-title-row">
-            <h1 className="navbar-admin-projects-heading">{adminPageHeader.title}</h1>
-            {adminPageHeader.badge ? (
-              <span className="projects-admin-count-badge">{adminPageHeader.badge}</span>
-            ) : null}
-          </div>
+        <div className="navbar-admin-projects-copy">
+          <h1 className="navbar-admin-projects-heading">{adminPageHeader.title}</h1>
           {adminPageHeader.subtitle ? (
             <p className="navbar-admin-projects-sub">{adminPageHeader.subtitle}</p>
           ) : null}
-        </>
+        </div>
       )}
       {showMemberAssignedTitle && (
         <div className="navbar-page-title">
