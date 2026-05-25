@@ -84,11 +84,9 @@
   font-weight: 800;
   letter-spacing: -0.035em;
   line-height: 1.1;
-  background: var(--equipe-gradient-text);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  color: transparent;
+  color: #292d34;
+  background: none;
+  -webkit-text-fill-color: currentColor;
 }
 
 .team-page--admin-equipe .team-page-header__subtitle {
@@ -134,28 +132,24 @@
   background: linear-gradient(135deg, var(--virtide-mint) 0%, var(--virtide-cyan) 70%, rgba(237, 233, 254, 0.65) 100%);
 }
 
-/* Admin Équipe — palette alignée sur Projects (.projects-page) */
+/* Admin Équipe — palette ClickUp (blanc, gris, violet — sans teal) */
 .team-page--admin-equipe {
-  --equipe-gradient-text: linear-gradient(90deg, #14b8a6 0%, #22d3ee 30%, #0ea5e9 55%, #8b5cf6 100%);
-  --equipe-gradient-btn: linear-gradient(90deg, #14b8a6 0%, #0ea5e9 55%, #8b5cf6 100%);
-  --equipe-btn-shadow:
-    0 10px 28px rgba(14, 165, 233, 0.35),
-    0 4px 14px rgba(139, 92, 246, 0.22);
-  --equipe-btn-shadow-hover:
-    0 14px 32px rgba(14, 165, 233, 0.4),
-    0 6px 18px rgba(139, 92, 246, 0.28);
-  --equipe-surface: rgba(255, 255, 255, 0.72);
-  --equipe-border: rgba(99, 102, 241, 0.16);
-  --equipe-shadow: 0 1px 3px rgba(99, 102, 241, 0.06);
-  --equipe-card-gradient: linear-gradient(135deg, #ffffff 0%, #f8faff 55%, #f5f3ff 100%);
-  --equipe-card-border: #dde7f3;
-  --equipe-card-shadow: 0 10px 30px rgba(64, 90, 150, 0.08);
-  --equipe-focus-border: rgba(14, 165, 233, 0.45);
-  --equipe-focus-ring: 0 0 0 3px rgba(14, 165, 233, 0.12);
-  --equipe-text-muted: #64748b;
-  --equipe-text-main: #334155;
+  --equipe-btn-shadow: 0 4px 14px rgba(123, 104, 238, 0.22);
+  --equipe-btn-shadow-hover: 0 6px 18px rgba(123, 104, 238, 0.28);
+  --equipe-surface: #ffffff;
+  --equipe-border: rgba(123, 104, 238, 0.14);
+  --equipe-shadow: 0 1px 3px rgba(123, 104, 238, 0.06);
+  --equipe-card-gradient: #ffffff;
+  --equipe-card-border: #ececf3;
+  --equipe-card-shadow: 0 6px 22px rgba(123, 104, 238, 0.07);
+  --equipe-focus-border: rgba(123, 104, 238, 0.4);
+  --equipe-focus-ring: 0 0 0 3px rgba(123, 104, 238, 0.12);
+  --equipe-text-muted: #87909e;
+  --equipe-text-main: #292d34;
+  --equipe-header-bg: #f6f7fb;
+  --equipe-row-hover: #faf9ff;
   --equipe-control-height: 42px;
-  --equipe-control-radius: 14px;
+  --equipe-control-radius: 10px;
   /* Grille colonnes partagée (Administrateurs + Membres) */
   --team-w-user: 200px;
   --team-w-id: 4.75rem;
@@ -252,7 +246,7 @@
   outline: none;
 }
 
-/* Boutons premium — dégradé teal → bleu → violet (comme la maquette) */
+/* Boutons toolbar — violet ClickUp */
 .team-page--admin-equipe .team-equipe-premium-btn {
   display: inline-flex;
   align-items: center;
@@ -263,19 +257,19 @@
   min-height: var(--equipe-control-height);
   padding: 0 0.95rem;
   border-radius: var(--equipe-control-radius);
-  background: var(--equipe-gradient-btn) !important;
+  background: linear-gradient(135deg, #7b68ee 0%, #6b5ce7 100%) !important;
   color: #fff !important;
   border: none !important;
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 700;
   line-height: 1;
   white-space: nowrap;
   box-shadow: var(--equipe-btn-shadow) !important;
   cursor: pointer;
   transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease,
-    background 0.2s ease;
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    filter 0.15s ease;
 }
 
 .team-page--admin-equipe button.team-equipe-premium-btn {
@@ -284,9 +278,9 @@
 
 .team-page--admin-equipe .team-equipe-premium-btn:hover,
 .team-page--admin-equipe .team-equipe-premium-btn:focus-within {
-  transform: translateY(-2px);
+  transform: translateY(-1px);
   box-shadow: var(--equipe-btn-shadow-hover) !important;
-  background: var(--equipe-gradient-btn) !important;
+  filter: brightness(1.03);
   border: none !important;
 }
 
@@ -442,38 +436,72 @@
   color: #fff;
 }
 
-/* Premium toolbar variant (Équipe admin) */
+/* Filtre statuts — bouton neutre */
 .team-page--admin-equipe .team-status-select--premium {
   height: var(--equipe-control-height);
   min-height: var(--equipe-control-height);
-  padding: 0 0.95rem;
+  padding: 0 0.85rem;
   border-radius: var(--equipe-control-radius);
-  background: var(--equipe-gradient-btn) !important;
-  color: #fff !important;
-  border: none !important;
-  box-shadow: var(--equipe-btn-shadow) !important;
+  background: #fff !important;
+  color: #475569 !important;
+  border: 1px solid var(--equipe-border) !important;
+  box-shadow: var(--equipe-shadow) !important;
   transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease,
-    background 0.2s ease;
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    background 0.15s ease;
 }
 
 .team-page--admin-equipe .team-status-select--premium:hover,
-.team-page--admin-equipe .team-status-select--premium:focus-within {
-  transform: translateY(-2px);
-  box-shadow: var(--equipe-btn-shadow-hover) !important;
+.team-page--admin-equipe .team-status-select--premium:focus-within,
+.team-page--admin-equipe .team-status-select--premium.is-open {
+  border-color: rgba(123, 104, 238, 0.28) !important;
+  box-shadow: var(--equipe-focus-ring) !important;
 }
 
 .team-page--admin-equipe .team-status-select--premium .team-status-select-trigger {
   font-size: 0.75rem;
   font-weight: 600;
-  color: #fff !important;
+  color: #475569 !important;
   min-width: 6.75rem;
+}
+
+.team-page--admin-equipe .team-status-select--premium.is-filter-active .team-status-select-trigger span {
+  color: #7b68ee !important;
+  font-weight: 700;
 }
 
 .team-page--admin-equipe .team-status-select--premium .team-status-select-icon,
 .team-page--admin-equipe .team-status-select--premium .team-status-select-chevron {
-  color: #fff !important;
+  color: #87909e !important;
+}
+
+.team-page--admin-equipe .team-status-select-menu,
+.team-page--admin-equipe .team-themed-dropdown-menu.team-status-select-menu--portal {
+  background: #fff;
+  border: 1px solid rgba(123, 104, 238, 0.16);
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(123, 104, 238, 0.12);
+}
+
+.team-page--admin-equipe .team-status-select-option:hover {
+  background: #f6f7fb;
+  color: #292d34;
+}
+
+.team-page--admin-equipe .team-status-select-option.is-selected,
+.team-page--admin-equipe .team-status-select-option.is-selected:hover {
+  background: rgba(123, 104, 238, 0.1);
+  color: #5b4cc4;
+}
+
+.team-page--admin-equipe .team-search-field .search-input:hover {
+  border-color: rgba(123, 104, 238, 0.2);
+}
+
+.team-page--admin-equipe .team-search-field .search-input:focus {
+  border-color: var(--equipe-focus-border);
+  box-shadow: var(--equipe-focus-ring);
 }
 
 .team-page--admin-equipe .team-status-select--premium.is-filter-active .team-status-select-trigger span {
@@ -632,33 +660,26 @@
 }
 
 .team-page--admin-equipe .team-table-section {
-  --team-table-tint: var(--equipe-card-gradient);
-  --team-row-hover: rgba(14, 165, 233, 0.06);
-  --team-header-bg: linear-gradient(
-    90deg,
-    rgba(20, 184, 166, 0.06),
-    rgba(14, 165, 233, 0.07),
-    rgba(139, 92, 246, 0.07)
-  );
+  --team-table-tint: #ffffff;
+  --team-row-hover: var(--equipe-row-hover);
+  --team-header-bg: var(--equipe-header-bg);
   --team-border: var(--equipe-card-border);
   padding: 0;
   overflow: hidden;
-  border-radius: 22px !important;
+  border-radius: 14px !important;
   background: var(--team-table-tint) !important;
   border: 1px solid var(--team-border) !important;
   box-shadow: var(--equipe-card-shadow) !important;
 }
 
 .team-page--admin-equipe .team-table-section:hover {
-  border-color: #c7d7eb !important;
-  box-shadow:
-    0 14px 36px rgba(64, 90, 150, 0.12),
-    0 6px 16px rgba(14, 165, 233, 0.08) !important;
+  border-color: #e4e4ef !important;
+  box-shadow: 0 8px 24px rgba(123, 104, 238, 0.1) !important;
 }
 
 .team-page--admin-equipe .team-table-section--admin .team-table-section-head,
 .team-page--admin-equipe .team-table-section--members .team-table-section-head {
-  background: var(--team-header-bg);
+  background: #fafafd;
   border-bottom: 1px solid var(--team-border);
 }
 
@@ -691,10 +712,10 @@
   border-radius: 999px;
   font-size: 0.8125rem;
   font-weight: 600;
-  color: var(--equipe-text-muted);
-  background: var(--equipe-surface);
-  border: 1px solid var(--equipe-border);
-  box-shadow: var(--equipe-shadow);
+  color: #6b5ce7;
+  background: #f3f0ff;
+  border: 1px solid rgba(123, 104, 238, 0.18);
+  box-shadow: none;
 }
 
 /* ── Table ── */
@@ -702,8 +723,8 @@
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
-  scrollbar-color: rgba(14, 165, 183, 0.35) transparent;
-  background: var(--team-table-tint, linear-gradient(135deg, #ffffff 0%, #f8faff 55%, #f5f3ff 100%));
+  scrollbar-color: rgba(123, 104, 238, 0.28) transparent;
+  background: #ffffff;
 }
 
 .team-page--admin-equipe .team-table-wrapper::-webkit-scrollbar {
@@ -711,7 +732,7 @@
 }
 
 .team-page--admin-equipe .team-table-wrapper::-webkit-scrollbar-thumb {
-  background: rgba(14, 165, 183, 0.35);
+  background: rgba(123, 104, 238, 0.28);
   border-radius: 99px;
 }
 
@@ -732,19 +753,9 @@
   min-width: 920px;
 }
 
-/* Unified header row — one gradient across the row (not per cell) */
+/* En-tête tableau — gris clair, libellés gris/violet */
 .team-page--admin-equipe .team-table thead tr {
-  background: var(
-    --team-header-bg,
-    linear-gradient(
-      90deg,
-      rgba(20, 184, 166, 0.06),
-      rgba(14, 165, 233, 0.06),
-      rgba(139, 92, 246, 0.06)
-    )
-  );
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background: var(--team-header-bg, #f6f7fb);
 }
 
 .team-page--admin-equipe .team-table thead th {
@@ -752,14 +763,13 @@
   top: 0;
   z-index: 2;
   padding: 0.5rem 1rem;
-  background: inherit;
-  background-color: transparent;
-  color: var(--equipe-text-muted);
-  font-size: 0.75rem;
+  background: var(--team-header-bg, #f6f7fb);
+  color: #7c6fae;
+  font-size: 0.6875rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  border-bottom: 1px solid var(--team-border, #dde7f3);
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--team-border, #ececf3);
   white-space: nowrap;
   vertical-align: middle;
   box-shadow: none;
@@ -787,7 +797,7 @@
 
 .team-page--admin-equipe .team-table tbody tr:hover,
 .team-page--admin-equipe .team-table tbody tr:hover td {
-  background: var(--team-row-hover, rgba(14, 165, 233, 0.06));
+  background: var(--team-row-hover, #faf9ff);
 }
 
 /* Column alignment */
@@ -869,8 +879,8 @@
   height: 34px;
   padding: 2px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #14b8a6, #0ea5e9, #8b5cf6);
-  box-shadow: 0 2px 8px rgba(14, 165, 233, 0.18);
+  background: #eceafd;
+  box-shadow: none;
 }
 
 .team-page--admin-equipe .team-user-avatar-wrap .team-user-avatar {
@@ -903,11 +913,11 @@
   display: inline-block;
   font-size: 0.75rem;
   font-weight: 600;
-  color: #0e7490;
+  color: #6b5ce7;
   font-family: ui-monospace, 'Cascadia Code', monospace;
   padding: 0.15rem 0.4rem;
   border-radius: 6px;
-  background: rgba(14, 165, 233, 0.08);
+  background: #f3f2ff;
   line-height: 1.2;
   vertical-align: middle;
 }
@@ -921,40 +931,45 @@
   font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.02em;
-  color: #fff;
-  border: none;
-  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.06);
   white-space: nowrap;
   line-height: 1.2;
   vertical-align: middle;
+  box-shadow: none;
 }
 
 .team-page--admin-equipe .team-role-badge--admin {
-  background: linear-gradient(90deg, #14b8a6, #0ea5e9);
-  box-shadow: 0 2px 10px rgba(14, 165, 233, 0.25);
+  background: #f3f0ff;
+  color: #6b5ce7;
+  border: 1px solid rgba(123, 104, 238, 0.22);
+  box-shadow: none;
 }
 
 .team-page--admin-equipe .team-role-badge--chef {
-  background: linear-gradient(90deg, #0ea5e9, #8b5cf6);
-  box-shadow: 0 2px 10px rgba(139, 92, 246, 0.22);
+  background: #eff6ff;
+  color: #3b82c6;
+  border: 1px solid rgba(59, 130, 198, 0.2);
+  box-shadow: none;
 }
 
 .team-page--admin-equipe .team-role-badge--designer {
-  background: linear-gradient(135deg, #c4b5fd, #a78bfa);
-  color: #4c1d95;
-  box-shadow: 0 2px 8px rgba(167, 139, 250, 0.28);
+  background: #f5f3ff;
+  color: #7c3aed;
+  border: 1px solid rgba(124, 58, 237, 0.18);
+  box-shadow: none;
 }
 
 .team-page--admin-equipe .team-role-badge--analyste {
-  background: linear-gradient(135deg, #2dd4bf, #14b8a6);
-  box-shadow: 0 2px 8px rgba(20, 184, 166, 0.25);
+  background: #f6f7fb;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+  box-shadow: none;
 }
 
 .team-page--admin-equipe .team-role-badge--dev,
 .team-page--admin-equipe .team-role-badge--default {
-  background: linear-gradient(135deg, rgba(224, 242, 254, 0.95), rgba(237, 233, 254, 0.95));
-  color: #475569;
-  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: #f6f7fb;
+  color: #7c6fae;
+  border: 1px solid #e8e8ef;
   box-shadow: none;
 }
 
@@ -983,16 +998,16 @@
   line-height: 1.2;
   padding: 0.12rem 0.4rem;
   border-radius: 999px;
-  background: rgba(224, 242, 254, 0.95);
-  color: #0e7490;
-  border: 1px solid rgba(14, 165, 233, 0.16);
+  background: #f6f7fb;
+  color: #475569;
+  border: 1px solid #e8e8ef;
   vertical-align: middle;
 }
 
 .team-page--admin-equipe .team-project-badge--chef {
-  background: linear-gradient(90deg, rgba(14, 165, 233, 0.15), rgba(139, 92, 246, 0.18));
-  color: #5b21b6;
-  border-color: rgba(139, 92, 246, 0.25);
+  background: #eff6ff;
+  color: #3b82c6;
+  border-color: rgba(59, 130, 198, 0.2);
 }
 
 .team-page--admin-equipe .team-project-badge--designer {
@@ -1002,9 +1017,9 @@
 }
 
 .team-page--admin-equipe .team-project-badge--analyste {
-  background: rgba(204, 251, 241, 0.95);
-  color: #0f766e;
-  border-color: rgba(20, 184, 166, 0.3);
+  background: #f6f7fb;
+  color: #64748b;
+  border-color: #e2e8f0;
 }
 
 .team-page--admin-equipe .team-project-none {
@@ -1055,17 +1070,17 @@
 }
 
 .team-page--admin-equipe .team-statut-active {
-  background: linear-gradient(135deg, #34d399, #10b981);
-  color: #fff;
-  border: none;
-  box-shadow: 0 1px 6px rgba(16, 185, 129, 0.25);
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+  box-shadow: none;
   padding: 0.2rem 0.5rem;
   font-weight: 600;
 }
 
 .team-page--admin-equipe .team-statut-active .team-statut-dot {
-  background: rgba(255, 255, 255, 0.95);
-  box-shadow: 0 0 6px rgba(255, 255, 255, 0.8);
+  background: #10b981;
+  box-shadow: none;
 }
 
 .team-page--admin-equipe .team-statut-inactive {
@@ -1111,23 +1126,21 @@
   width: 30px;
   height: 30px;
   border-radius: 8px;
-  color: #0e7490;
-  background: linear-gradient(135deg, rgba(240, 249, 255, 0.95), rgba(237, 233, 254, 0.9));
-  border: 1px solid rgba(14, 165, 233, 0.1);
+  color: #64748b;
+  background: #fff;
+  border: 1px solid #e8e8ef;
   transition:
-    background 0.2s ease,
-    color 0.2s ease,
-    border-color 0.2s ease,
-    transform 0.2s ease,
-    box-shadow 0.2s ease;
+    background 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .team-page--admin-equipe .team-action-btn:hover {
-  background: linear-gradient(135deg, rgba(240, 249, 255, 1), rgba(245, 243, 255, 0.95));
-  color: #0d9488;
-  border-color: rgba(14, 165, 233, 0.18);
-  transform: scale(1.06);
-  box-shadow: 0 3px 10px rgba(14, 165, 233, 0.1);
+  background: #f6f7fb;
+  color: #7b68ee;
+  border-color: rgba(123, 104, 238, 0.22);
+  transform: none;
+  box-shadow: none;
 }
 
 .team-page--admin-equipe .team-action-btn--danger {
@@ -1136,18 +1149,18 @@
 }
 
 .team-page--admin-equipe .team-action-btn--danger:hover {
-  background: linear-gradient(135deg, #fef2f2, #fee2e2);
+  background: #fef2f2;
   color: #dc2626;
   border-color: rgba(239, 68, 68, 0.35);
-  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15);
-  transform: scale(1.06);
+  box-shadow: none;
+  transform: none;
 }
 
 /* ── Empty & loading ── */
 .team-page--admin-equipe .team-table-empty {
   padding: 2.5rem 1.5rem;
   text-align: center;
-  background: var(--equipe-card-gradient);
+  background: #ffffff;
 }
 
 .team-page--admin-equipe .team-table-empty h3 {
@@ -1271,9 +1284,15 @@
   .team-page--admin-equipe .team-action-btn {
     width: 32px;
     height: 32px;
-    background: var(--virtide-mint);
-    border: 1px solid var(--border-soft);
+    background: #fff;
+    border: 1px solid #e8e8ef;
   }
+}
+
+.team-page--admin-equipe .icon-wrapper-circle {
+  background: #f3f0ff;
+  color: #7b68ee;
+  box-shadow: none;
 }
 
 /* ═══════════════════════════════════════════════════════════════
