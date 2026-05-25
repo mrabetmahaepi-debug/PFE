@@ -342,9 +342,6 @@ const Navbar: React.FC = () => {
         </div>
       )}
       <div className="header-right">
-        {showAdminProjectsHeader && adminPageHeader?.action ? (
-          <div className="navbar-admin-projects-action">{adminPageHeader.action}</div>
-        ) : null}
         <div className="navbar-notif-wrap" ref={notifRef}>
           <button
             type="button"

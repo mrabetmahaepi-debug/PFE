@@ -363,21 +363,11 @@ const Projects: React.FC = () => {
   useEffect(() => {
     setAdminPageHeader({
       title: 'Projets',
-      subtitle: 'Gérez les projets de votre entreprise et suivez leur avancement.',
-      action: canCreateProject ? (
-        <button
-          type="button"
-          className="projects-admin-create-btn"
-          onClick={() => setIsModalOpen(true)}
-        >
-          <Plus size={16} aria-hidden />
-          <span>Créer un projet</span>
-        </button>
-      ) : null,
+      subtitle: 'Gérez les projets de votre entreprise.',
     });
 
     return () => setAdminPageHeader(null);
-  }, [setAdminPageHeader, canCreateProject]);
+  }, [setAdminPageHeader]);
 
   const projectsCountLabel = !loading
     ? `${filteredProjects.length} projet${filteredProjects.length !== 1 ? 's' : ''}`
@@ -523,11 +513,23 @@ const Projects: React.FC = () => {
         </div>
       )}
 
-      {projectsCountLabel ? (
-        <div className="projects-admin-count-row">
-          <span className="projects-admin-count-badge">{projectsCountLabel}</span>
+      {(projectsCountLabel || canCreateProject) && (
+        <div className="projects-admin-actions-row">
+          {projectsCountLabel ? (
+            <span className="projects-admin-count-badge">{projectsCountLabel}</span>
+          ) : null}
+          {canCreateProject ? (
+            <button
+              type="button"
+              className="projects-admin-create-btn"
+              onClick={() => setIsModalOpen(true)}
+            >
+              <Plus size={16} aria-hidden />
+              <span>Créer un projet</span>
+            </button>
+          ) : null}
         </div>
-      ) : null}
+      )}
 
       <div className="projects-toolbar projects-toolbar--admin">
         <div className="search-box">

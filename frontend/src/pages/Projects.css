@@ -1131,15 +1131,23 @@ button.project-info-chip--link:hover .project-info-chip-value {
   gap: 0.65rem;
 }
 
-.projects-admin-count-row {
+.projects-admin-actions-row {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
   padding: 0 0.15rem;
   margin-top: 0.35rem;
 }
 
-.projects-admin-count-row .projects-admin-count-badge {
+.projects-admin-actions-row .projects-admin-count-badge {
   margin: 0;
+  flex-shrink: 0;
+}
+
+.projects-admin-actions-row .projects-admin-create-btn {
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
 .projects-admin-count-badge {
