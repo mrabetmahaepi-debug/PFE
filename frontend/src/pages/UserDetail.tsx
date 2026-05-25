@@ -7,14 +7,14 @@ import {
   Shield,
   Calendar,
   Activity,
+  Briefcase,
 } from 'lucide-react';
 import { teamService } from '../services/team.service';
 import type { User } from '../types/auth.types';
+import { displayGlobalAccountRole } from '../lib/accountRoleDisplay';
 import BackButton from '../components/BackButton';
+import UserAvatar from '../components/UserAvatar';
 import './UserDetail.css';
-
-const API_ORIGIN =
-  import.meta.env.VITE_API_URL?.replace(/\/api\/?$/, '') || 'http://localhost:5000';
 
 type UserDetailRecord = User & {
   createdAt?: string | null;
@@ -28,37 +28,34 @@ function normalizeRoleKey(nom: string): string {
     .replace(/[\s_-]/g, '');
 }
 
-function rawGlobalRoleNom(member: User): string {
-  const raw = typeof member.role === 'object' ? member.role?.nom : member.role;
-  return String(raw ?? '').trim();
-}
-
-function displayGlobalAccountRole(member: User): string {
-  const raw = rawGlobalRoleNom(member);
-  if (!raw) return 'Membre';
-  const key = normalizeRoleKey(raw);
-  if (key === 'SUPERADMIN') return 'Super Admin';
-  if (key === 'ADMIN' || key === 'ADMINISTRATEUR' || key === 'ADMINENTREPRISE') return 'Admin';
-  if (key === 'MEMBRE' || key === 'MEMBER') return 'Membre';
-  return raw;
-}
-
 function memberStatutUpper(member: User): string {
   return (member.statut || '').trim().toUpperCase();
 }
 
-function getInitials(prenom?: string, nom?: string): string {
-  const a = (prenom?.[0] ?? '').toUpperCase();
-  const b = (nom?.[0] ?? '').toUpperCase();
-  return `${a}${b}` || '?';
+function roleBadgeClass(roleLabel: string): string {
+  const key = normalizeRoleKey(roleLabel);
+  if (key === 'SUPERADMIN' || key === 'ADMIN' || key === 'ADMINISTRATEUR' || key === 'ADMINENTREPRISE') {
+    return 'user-detail-role-badge user-detail-role-badge--admin';
+  }
+  if (key.includes('CHEF') || key.includes('PROJET') || key === 'PM' || key.includes('LEAD')) {
+    return 'user-detail-role-badge user-detail-role-badge--chef';
+  }
+  if (key.includes('DESIGN')) return 'user-detail-role-badge user-detail-role-badge--designer';
+  if (key.includes('ANALYST')) return 'user-detail-role-badge user-detail-role-badge--analyste';
+  if (key.includes('DEV') || key.includes('DEVELOP')) {
+    return 'user-detail-role-badge user-detail-role-badge--dev';
+  }
+  return 'user-detail-role-badge user-detail-role-badge--default';
 }
 
-function avatarUrl(member: UserDetailRecord): string | null {
-  const photo = member.photoUrl;
-  if (photo) {
-    return photo.startsWith('http') ? photo : `${API_ORIGIN}${photo}`;
+function projectBadgeClass(roleProjet?: string): string {
+  const key = normalizeRoleKey(roleProjet || '');
+  if (key.includes('CHEF') || key.includes('PROJET') || key === 'PM') {
+    return 'user-detail-project-badge user-detail-project-badge--chef';
   }
-  return null;
+  if (key.includes('DESIGN')) return 'user-detail-project-badge user-detail-project-badge--designer';
+  if (key.includes('ANALYST')) return 'user-detail-project-badge user-detail-project-badge--analyste';
+  return 'user-detail-project-badge';
 }
 
 function formatJoinedDate(value: string | undefined | null): string {
@@ -72,7 +69,6 @@ function formatJoinedDate(value: string | undefined | null): string {
   }).format(d);
 }
 
-/** Mirrors backend `computePresenceOnline` — connection state, not account statut. */
 function isMemberOnline(member: UserDetailRecord): boolean {
   return member.isOnline === true;
 }
@@ -209,7 +205,7 @@ const UserDetail: React.FC = () => {
         <BackButton fallback="/team" />
         <div className="user-detail-error" role="alert">
           <p>Utilisateur introuvable.</p>
-          <button type="button" className="primary-btn" onClick={() => navigate('/team')}>
+          <button type="button" className="user-detail-error-btn" onClick={() => navigate('/team')}>
             Retour à l&apos;équipe
           </button>
         </div>
@@ -219,9 +215,10 @@ const UserDetail: React.FC = () => {
 
   const fullName = `${member.prenom ?? ''} ${member.nom ?? ''}`.trim() || 'Utilisateur';
   const roleLabel = displayGlobalAccountRole(member);
-  const photo = avatarUrl(member);
   const enterpriseName = member.entreprise?.nom || 'Indépendant';
   const canOpenEnterprise = Boolean(member.id_entreprise);
+  const projects = member.projects?.filter((p) => p?.name) ?? [];
+  const showProjects = projects.length > 0;
 
   return (
     <motion.div
@@ -232,22 +229,28 @@ const UserDetail: React.FC = () => {
     >
       <BackButton fallback="/team" />
 
-      <header className="user-detail-hero">
-        <div className="user-detail-avatar" aria-hidden>
-          {photo ? (
-            <img src={photo} alt="" />
-          ) : (
-            getInitials(member.prenom, member.nom)
-          )}
-        </div>
-        <div className="user-detail-hero-main">
-          <h1 className="user-detail-name">{fullName}</h1>
-          <p className="user-detail-role-line">{member.poste || roleLabel}</p>
-          {renderStatusBadge(member)}
+      <header className="user-detail-card user-detail-header-card">
+        <div className="user-detail-header-inner">
+          <UserAvatar
+            user={member}
+            className="user-detail-avatar"
+            imgClassName="user-detail-avatar"
+            title={fullName}
+          />
+          <div className="user-detail-hero-main">
+            <h1 className="user-detail-name">{fullName}</h1>
+            <div className="user-detail-header-meta">
+              <span className={roleBadgeClass(roleLabel)}>{roleLabel}</span>
+              {member.poste ? (
+                <span className="user-detail-poste">{member.poste}</span>
+              ) : null}
+              {renderStatusBadge(member)}
+            </div>
+          </div>
         </div>
       </header>
 
-      <div className="user-detail-cards-row">
+      <div className="user-detail-cards-grid">
         <section
           className="user-detail-card user-detail-profile-card"
           aria-labelledby="user-detail-info-title"
@@ -256,24 +259,20 @@ const UserDetail: React.FC = () => {
             Informations du profil
           </h2>
           <div className="user-detail-fields user-detail-fields--profile">
+            <InfoField icon={<Mail size={16} />} label="Email" value={member.email} />
             <InfoField
-              icon={<Mail size={17} />}
-              label="Adresse e-mail"
-              value={member.email}
-            />
-            <InfoField
-              icon={<Shield size={17} />}
-              label="Association plateforme"
-              value={roleLabel}
-            />
-            <InfoField
-              icon={<Activity size={17} />}
+              icon={<Activity size={16} />}
               label="Statut"
               value={statusFieldLabel(member)}
             />
             <InfoField
-              icon={<Calendar size={17} />}
-              label="Inscrit sur la plateforme"
+              icon={<Shield size={16} />}
+              label="Association plateforme"
+              value={roleLabel}
+            />
+            <InfoField
+              icon={<Calendar size={16} />}
+              label="Date d'inscription"
               value={formatJoinedDate(member.createdAt)}
             />
           </div>
@@ -294,21 +293,47 @@ const UserDetail: React.FC = () => {
                 onClick={() => navigate(`/enterprises/${member.id_entreprise}`)}
                 aria-label={`Voir l'entreprise ${enterpriseName}`}
               >
-                <Building2 size={20} aria-hidden />
-                <span>
-                  Entreprise : <strong>{enterpriseName}</strong>
+                <Building2 size={18} aria-hidden />
+                <span className="user-detail-enterprise-text">
+                  <span className="user-detail-enterprise-label">Entreprise</span>
+                  <strong>{enterpriseName}</strong>
                 </span>
               </button>
             ) : (
               <div className="user-detail-enterprise-pill" role="text">
-                <Building2 size={20} aria-hidden />
-                <span>
-                  Entreprise : <strong>{enterpriseName}</strong>
+                <Building2 size={18} aria-hidden />
+                <span className="user-detail-enterprise-text">
+                  <span className="user-detail-enterprise-label">Entreprise</span>
+                  <strong>{enterpriseName}</strong>
                 </span>
               </div>
             )}
           </div>
         </section>
+
+        {showProjects ? (
+          <section
+            className="user-detail-card user-detail-projects-card"
+            aria-labelledby="user-detail-projects-title"
+          >
+            <h2 id="user-detail-projects-title" className="user-detail-card-title">
+              <Briefcase size={18} aria-hidden />
+              Projets associés
+            </h2>
+            <ul className="user-detail-projects-list">
+              {projects.map((project) => (
+                <li key={project.id} className="user-detail-project-item">
+                  <span className="user-detail-project-name">{project.name}</span>
+                  {project.roleProjet ? (
+                    <span className={projectBadgeClass(project.roleProjet)}>
+                      {project.roleProjet}
+                    </span>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
       </div>
     </motion.div>
   );
