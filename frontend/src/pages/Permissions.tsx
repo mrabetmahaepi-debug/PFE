@@ -7,7 +7,6 @@ import {
 } from '../services/permission.service';
 import { useAuth } from '../hooks/useAuth';
 import { usePermission } from '../hooks/usePermission';
-import BackButton from '../components/BackButton';
 import { dispatchProjectPermissionsChanged } from '../lib/workspaceEvents';
 import './Permissions.css';
 
@@ -230,7 +229,7 @@ const Permissions: React.FC = () => {
   if (loading) {
     return (
       <motion.div
-        className="permissions-loading"
+        className="permissions-loading permissions-page--admin"
         role="status"
         aria-live="polite"
         initial={{ opacity: 0 }}
@@ -244,21 +243,11 @@ const Permissions: React.FC = () => {
 
   return (
     <motion.div
-      className="permissions-page"
+      className="permissions-page permissions-page--admin"
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25 }}
     >
-      <BackButton />
-      <header className="page-header permissions-page-header">
-        <h1>Rôles et permissions</h1>
-        <p className="permissions-page-subtitle">
-          Configurez les profils de permissions pour les utilisateurs. L&apos;administrateur
-          dispose automatiquement de tous les accès — il n&apos;apparaît pas dans ce
-          tableau.
-        </p>
-      </header>
-
       <div className="permissions-admin-note">
         <ShieldCheck size={16} aria-hidden />
         <span>

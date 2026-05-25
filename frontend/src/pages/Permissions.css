@@ -1,94 +1,65 @@
-/* ═══════════════════════════════════════════════════════════════
-   Permissions page — GestionPro teal / cyan / blue / purple
-   ═══════════════════════════════════════════════════════════════ */
+/* Admin Rôles et permissions — style ClickUp (aligné Projets / Équipe) */
+.page-wrapper:has(.permissions-page--admin),
+.page-wrapper:has(.permissions-loading.permissions-page--admin) {
+  padding: 0;
+  background: transparent;
+}
 
-/* Single page shell background (avoids stacking with .permissions-page) */
-.page-wrapper:has(.permissions-page),
-.page-wrapper:has(.permissions-loading) {
-  background: linear-gradient(135deg, #f8fffc 0%, #eff6ff 70%, #fafaff 100%);
+.permissions-page--admin {
+  --perm-content-width: min(1240px, calc(100% - 0.5rem));
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  box-sizing: border-box;
+  padding: 0.5rem 1.25rem 2rem clamp(0.65rem, 1.1vw, 0.875rem);
+  background: linear-gradient(180deg, #fafafd 0%, #f5f3ff 38%, #ffffff 100%);
+  gap: 0.65rem;
+  color: #292d34;
+}
+
+.permissions-page--admin > .permissions-admin-note,
+.permissions-page--admin > .permissions-error-banner,
+.permissions-page--admin > .empty-state,
+.permissions-page--admin > .project-perms-section {
+  width: var(--perm-content-width);
+  max-width: 100%;
+  margin: 0;
+  box-sizing: border-box;
 }
 
 .permissions-page {
-  --perm-accent: linear-gradient(90deg, #14b8a6, #0ea5e9, #8b5cf6);
-  --perm-icon: linear-gradient(135deg, #14b8a6 0%, #0ea5e9 52%, #8b5cf6 100%);
-  --perm-table-surface: linear-gradient(135deg, #f8fffc 0%, #eff6ff 55%, #f5f3ff 100%);
-  --perm-row-bg: rgba(239, 246, 255, 0.55);
-  --perm-row-hover: rgba(14, 165, 233, 0.08);
-  --perm-table-header: linear-gradient(
-    90deg,
-    rgba(20, 184, 166, 0.08),
-    rgba(14, 165, 233, 0.08),
-    rgba(139, 92, 246, 0.08)
-  );
-  --perm-glass: linear-gradient(
-    135deg,
-    rgba(248, 255, 252, 0.85),
-    rgba(239, 246, 255, 0.75),
-    rgba(245, 243, 255, 0.7)
-  );
-  --perm-header-strip: var(--perm-table-header);
-  --perm-border: rgba(14, 165, 233, 0.14);
-  --perm-teal: #0f766e;
-  --perm-teal-active: #14b8a6;
-
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 0.65rem;
   min-height: 100%;
-  padding-bottom: 2rem;
   background: transparent;
-  color: #1e293b;
+  color: #292d34;
 }
 
-/* ── Page header ─────────────────────────────────────────────── */
-.permissions-page .permissions-page-header {
-  margin: 0;
-}
-
-.permissions-page .permissions-page-header h1,
-.permissions-page .page-header h1 {
-  margin: 0 0 0.35rem;
-  font-size: clamp(26px, 2vw, 34px);
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  line-height: 1.1;
-  background: var(--perm-accent);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  color: transparent;
-}
-
-.permissions-page-subtitle {
-  margin: 0;
-  max-width: 52rem;
-  font-size: 0.92rem;
-  line-height: 1.5;
-  color: #64748b;
-  font-weight: 500;
-}
-
+/* Card Admin — accès implicite */
 .permissions-admin-note {
   display: flex;
   align-items: center;
   gap: 0.55rem;
   padding: 0.65rem 0.9rem;
   border-radius: 12px;
-  border: 1px solid rgba(14, 165, 233, 0.16);
-  background: rgba(255, 255, 255, 0.72);
-  color: #475569;
+  border: 1px solid rgba(123, 104, 238, 0.12);
+  background: #ffffff;
+  box-shadow: 0 4px 14px rgba(123, 104, 238, 0.06);
+  color: #646f79;
   font-size: 0.84rem;
   line-height: 1.4;
 }
 
 .permissions-admin-note svg {
   flex-shrink: 0;
-  color: #0ea5e9;
+  color: #8b9cf0;
 }
 
 .permissions-admin-note strong {
-  color: #0f766e;
-  font-weight: 700;
+  color: #6b5ce7;
+  font-weight: 600;
 }
 
 .permissions-error-banner {
@@ -96,59 +67,33 @@
   gap: 0.5rem;
   align-items: center;
   padding: 0.75rem 1rem;
-  color: #b91c1c;
+  border-radius: 12px;
+  background: #ffffff;
+  border: 1px solid rgba(248, 113, 113, 0.25);
+  box-shadow: 0 4px 14px rgba(123, 104, 238, 0.06);
+  color: #b45309;
 }
 
-/* ── Glass cards / sections ──────────────────────────────────── */
-.permissions-page .premium-card,
-.permissions-page .project-perms-section.premium-card {
-  background: var(--perm-glass);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-  border: 1px solid var(--perm-border);
-  border-radius: 24px;
-  box-shadow: 0 12px 35px rgba(15, 23, 42, 0.08);
-  padding: 1.5rem;
+/* Card principale — Profils de permissions */
+.permissions-page .project-perms-section.premium-card,
+.permissions-page .empty-state.premium-card {
+  background: #ffffff;
+  border: 1px solid rgba(123, 104, 238, 0.12);
+  border-radius: 14px;
+  box-shadow: 0 6px 22px rgba(123, 104, 238, 0.07);
+  padding: 0;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   transition:
     border-color 0.2s ease,
     box-shadow 0.2s ease;
 }
 
-.permissions-page .matrix-wrapper.premium-card {
-  padding: 0;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-  box-shadow: 0 8px 28px rgba(15, 23, 42, 0.06);
-}
-
-.permissions-page .premium-card:hover,
-.permissions-page .matrix-wrapper.premium-card:hover,
-.permissions-page .project-perms-section.premium-card:hover {
+.permissions-page .project-perms-section.premium-card:hover,
+.permissions-page .empty-state.premium-card:hover {
   transform: none;
-  border-color: rgba(14, 165, 233, 0.22);
-  box-shadow: 0 14px 40px rgba(14, 165, 233, 0.1);
-}
-
-.permissions-page .matrix-wrapper,
-.permissions-page .matrix-wrapper.premium-card,
-.permissions-page .project-matrix-wrapper {
-  overflow: auto;
-  border-radius: 20px;
-  background: var(--perm-table-surface) !important;
-  border: 1px solid rgba(14, 165, 233, 0.12);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
-}
-
-/* ── Error & empty states ────────────────────────────────────── */
-.permissions-page .error-banner {
-  border: 1px solid rgba(248, 113, 113, 0.35);
-  background: linear-gradient(
-    135deg,
-    rgba(254, 242, 242, 0.9),
-    rgba(255, 255, 255, 0.65)
-  );
-  border-radius: 16px;
-  color: #b91c1c !important;
+  border-color: rgba(168, 153, 245, 0.3);
+  box-shadow: 0 8px 26px rgba(123, 104, 238, 0.1);
 }
 
 .permissions-page .empty-state {
@@ -157,58 +102,220 @@
   align-items: center;
   gap: 0.65rem;
   padding: 2.5rem 1.5rem;
-  color: #64748b;
+  color: #87909e;
   text-align: center;
-}
-
-.permissions-page .empty-state svg {
-  padding: 12px;
-  border-radius: 14px;
-  background: var(--perm-icon);
-  color: #fff;
-  box-shadow: 0 6px 18px rgba(14, 165, 233, 0.22);
 }
 
 .permissions-page .empty-state h3 {
   margin: 0.25rem 0 0;
-  color: #1e293b;
-  font-weight: 700;
+  color: #292d34;
+  font-weight: 600;
+  font-size: 14px;
 }
 
-/* ── Permission matrix table ─────────────────────────────────── */
+.permissions-page .empty-state p {
+  margin: 0;
+  font-size: 13px;
+}
+
+.permissions-page .project-perms-section-head {
+  margin: 0;
+  padding: 1rem 1.15rem;
+  border-bottom: 1px solid #ececf3;
+  background: #fafafd;
+  border-radius: 14px 14px 0 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.permissions-page .project-perms-head-text {
+  min-width: 0;
+  flex: 1;
+}
+
+.permissions-page .project-perms-title {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0;
+  color: #292d34;
+}
+
+.permissions-page .project-perms-lead {
+  margin: 0.25rem 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #87909e;
+  font-weight: 500;
+  max-width: 36rem;
+}
+
+.permissions-page .permissions-add-role-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.permissions-page .permissions-add-role-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  height: 34px;
+  padding: 0 0.75rem;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #a899f5 0%, #9b8af0 100%);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(123, 104, 238, 0.14);
+  transition:
+    filter 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.permissions-page .permissions-add-role-btn:hover:not(:disabled) {
+  filter: brightness(1.04);
+  box-shadow: 0 3px 10px rgba(123, 104, 238, 0.2);
+}
+
+.permissions-page .permissions-add-role-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  filter: none;
+}
+
+.permissions-page .permissions-add-role-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 20;
+  min-width: 11rem;
+  padding: 0.35rem;
+  border-radius: 10px;
+  border: 1px solid rgba(123, 104, 238, 0.14);
+  background: #fff;
+  box-shadow: 0 10px 28px rgba(123, 104, 238, 0.12);
+}
+
+.permissions-page .permissions-add-role-item {
+  display: block;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  padding: 0.5rem 0.65rem;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #4b5563;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.permissions-page .permissions-add-role-item:hover {
+  background: #f3f0ff;
+  color: #6b5ce7;
+}
+
+.permissions-page .project-perms-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin: 0;
+  padding: 0.75rem 1.15rem 0;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.permissions-page .project-perms-autosave-hint {
+  font-size: 12px;
+  color: #87909e;
+  font-weight: 500;
+}
+
+.permissions-page .project-perms-reset,
+.permissions-page .project-perms-retry {
+  height: 34px;
+  padding: 0 0.75rem;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid rgba(168, 153, 245, 0.45);
+  background: #f3f0ff;
+  color: #6b5ce7;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.permissions-page .project-perms-reset:hover:not(:disabled),
+.permissions-page .project-perms-retry:hover:not(:disabled) {
+  background: #ebe6ff;
+  border-color: rgba(168, 153, 245, 0.6);
+  color: #5a4fd4;
+}
+
+.permissions-page .project-perms-reset:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Tableau permissions */
+.permissions-page .matrix-wrapper,
+.permissions-page .project-matrix-wrapper {
+  margin: 0.75rem 1.15rem 1.15rem;
+  overflow: auto;
+  border-radius: 10px;
+  border: 1px solid #ececf3;
+  background: #ffffff;
+  box-shadow: none;
+}
+
 .permissions-page .permissions-matrix {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
-  font-size: 0.875rem;
+  font-size: 13px;
   min-width: 720px;
-  background: var(--perm-table-surface);
+  background: #ffffff;
 }
 
 .permissions-page .permissions-matrix tbody {
-  background: var(--perm-table-surface);
+  background: #ffffff;
 }
 
 .permissions-page .permissions-matrix th,
 .permissions-page .permissions-matrix td {
   padding: 0.55rem 0.85rem;
   text-align: left;
-  border-bottom: 1px solid rgba(14, 165, 233, 0.1);
+  border-bottom: 1px solid #ececf3;
   vertical-align: middle;
 }
 
 .permissions-page .permissions-matrix tbody td {
-  background: var(--perm-row-bg);
+  background: #ffffff;
 }
 
 .permissions-page .permissions-matrix thead th {
   position: sticky;
   top: 0;
   z-index: 2;
-  font-weight: 700;
-  color: #1e293b;
-  background: var(--perm-table-header);
-  border-bottom: 1px solid rgba(14, 165, 233, 0.14);
+  font-weight: 600;
+  font-size: 12px;
+  color: #646f79;
+  background: #f6f7fb;
+  border-bottom: 1px solid #e2e8f0;
 }
 
 .permissions-page .cat-col {
@@ -229,69 +336,32 @@
 
 .permissions-page .role-col-name {
   white-space: nowrap;
-  font-weight: 700;
-  color: #0f766e;
+  font-weight: 600;
+  color: #6b5ce7;
 }
 
-.permissions-page .role-col-lock {
-  color: #94a3b8;
-}
-
-.permissions-page .role-col.locked .role-col-name {
-  color: #94a3b8;
-}
-
-/* Data rows */
-.permissions-page .perm-row,
-.permissions-page .perm-row td {
-  background: var(--perm-row-bg);
-  transition: background 0.2s ease;
-}
-
-.permissions-page .perm-row:hover,
 .permissions-page .perm-row:hover td {
-  background: var(--perm-row-hover);
-}
-
-.permissions-page .perm-name-cell {
-  max-width: 360px;
+  background: #faf9ff;
 }
 
 .permissions-page .perm-name {
-  font-weight: 600;
-  color: #1e293b;
+  font-weight: 500;
+  color: #292d34;
   text-transform: capitalize;
-}
-
-.permissions-page .perm-desc {
-  margin-top: 0.15rem;
-  font-size: 0.78rem;
-  color: #64748b;
-  line-height: 1.35;
 }
 
 .permissions-page .cell {
   text-align: center;
 }
 
-.permissions-page .cell.na {
-  color: #94a3b8;
-}
-
-.permissions-page .cell-na {
-  display: inline-block;
-  color: #94a3b8;
-  font-weight: 600;
-}
-
-/* ── Toggle pills ────────────────────────────────────────────── */
+/* Badges Activé / Désactivé */
 .permissions-page .toggle-pill {
-  border: 1px solid rgba(14, 165, 233, 0.2);
-  background: rgba(239, 246, 255, 0.65);
-  color: #64748b;
-  padding: 0.4rem 0.75rem;
+  border: 1px solid #e2e8f0;
+  background: #f6f7fb;
+  color: #87909e;
+  padding: 0.35rem 0.7rem;
   border-radius: 999px;
-  font-size: 0.75rem;
+  font-size: 11px;
   font-weight: 600;
   cursor: pointer;
   min-width: 86px;
@@ -300,17 +370,16 @@
   justify-content: center;
   gap: 0.35rem;
   transition:
-    background 0.2s ease,
-    border-color 0.2s ease,
-    color 0.2s ease,
-    box-shadow 0.2s ease;
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .permissions-page .toggle-pill.on {
-  background: var(--perm-teal-active);
-  border-color: #0d9488;
-  color: #fff;
-  box-shadow: 0 4px 14px rgba(20, 184, 166, 0.25);
+  background: #f3f0ff;
+  border-color: rgba(123, 104, 238, 0.22);
+  color: #6b5ce7;
+  box-shadow: none;
 }
 
 .permissions-page .toggle-pill.locked,
@@ -320,252 +389,62 @@
 }
 
 .permissions-page .toggle-pill:not(:disabled):not(.on):hover {
-  border-color: rgba(14, 165, 233, 0.35);
-  color: var(--perm-teal);
-  box-shadow: 0 0 0 4px rgba(20, 184, 166, 0.12);
+  border-color: rgba(168, 153, 245, 0.35);
+  color: #646f79;
+  background: #faf9ff;
 }
 
 .permissions-page .toggle-pill.on:not(:disabled):hover {
-  background: #0d9488;
-  box-shadow:
-    0 0 0 4px rgba(20, 184, 166, 0.12),
-    0 4px 14px rgba(20, 184, 166, 0.28);
-}
-
-/* ── Project permissions section ─────────────────────────────── */
-.permissions-page .project-perms-section {
-  padding: 1.1rem 1.25rem 1.25rem;
-}
-
-.permissions-page .project-perms-section-head {
-  margin: -1.1rem -1.25rem 0.85rem;
-  padding: 0.85rem 1.25rem;
-  border-bottom: 1px solid rgba(14, 165, 233, 0.1);
-  background: rgba(255, 255, 255, 0.55);
-  border-radius: 24px 24px 0 0;
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
-
-.permissions-page .project-perms-head-text {
-  min-width: 0;
-  flex: 1;
-}
-
-.permissions-page .project-perms-lead {
-  margin: 0.25rem 0 0;
-  font-size: 0.84rem;
-  line-height: 1.45;
-  color: #64748b;
-  font-weight: 500;
-  max-width: 36rem;
-}
-
-.permissions-page .project-perms-title {
-  display: block;
-  font-size: 1.05rem;
-  font-weight: 700;
-  margin: 0;
-  color: #1e293b;
-}
-
-.permissions-page .project-perms-title span {
-  background: none;
-  -webkit-text-fill-color: inherit;
-  color: inherit;
-}
-
-.permissions-page .permissions-add-role-wrap {
-  position: relative;
-  flex-shrink: 0;
-}
-
-.permissions-page .permissions-add-role-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  border: 1px dashed rgba(14, 165, 233, 0.35);
-  background: rgba(255, 255, 255, 0.85);
-  color: #0f766e;
-  border-radius: 10px;
-  padding: 0.45rem 0.85rem;
-  font-size: 0.82rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition:
-    background 0.18s ease,
-    border-color 0.18s ease,
-    color 0.18s ease;
-}
-
-.permissions-page .permissions-add-role-btn:hover:not(:disabled) {
-  background: #fff;
-  border-color: rgba(14, 165, 233, 0.55);
-  color: #0d9488;
-}
-
-.permissions-page .permissions-add-role-btn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-.permissions-page .permissions-add-role-menu {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
-  z-index: 20;
-  min-width: 11rem;
-  padding: 0.35rem;
-  border-radius: 12px;
-  border: 1px solid rgba(14, 165, 233, 0.14);
-  background: #fff;
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
-}
-
-.permissions-page .permissions-add-role-item {
-  display: block;
-  width: 100%;
-  border: 0;
-  background: transparent;
-  text-align: left;
-  padding: 0.5rem 0.65rem;
-  border-radius: 8px;
-  font-size: 0.84rem;
-  font-weight: 600;
-  color: #334155;
-  cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
-}
-
-.permissions-page .permissions-add-role-item:hover {
-  background: rgba(14, 165, 233, 0.08);
-  color: #0f766e;
-}
-
-.permissions-page .project-perms-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.65rem;
-  margin-bottom: 0.75rem;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.permissions-page .project-perms-autosave-hint {
-  font-size: 0.82rem;
-  color: #64748b;
-  font-weight: 500;
-}
-
-.permissions-page .project-perms-save,
-.permissions-page .project-perms-reset,
-.permissions-page .project-perms-retry {
-  border-radius: 14px;
-  padding: 0.55rem 1.1rem;
-  font-size: 0.875rem;
-  font-weight: 700;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  transition:
-    transform 0.18s ease,
-    box-shadow 0.2s ease,
-    background 0.2s ease,
-    border-color 0.2s ease;
-}
-
-.permissions-page .project-perms-save {
-  background: var(--perm-accent);
-  color: #fff;
-  border: none;
-  box-shadow: 0 10px 25px rgba(14, 165, 233, 0.25);
-}
-
-.permissions-page .project-perms-save:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 12px 28px rgba(139, 92, 246, 0.28);
-}
-
-.permissions-page .project-perms-reset,
-.permissions-page .project-perms-retry {
-  background: rgba(255, 255, 255, 0.55);
-  color: var(--perm-teal);
-  border: 1px solid rgba(14, 165, 233, 0.2);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-}
-
-.permissions-page .project-perms-reset:hover:not(:disabled),
-.permissions-page .project-perms-retry:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.75);
-  border-color: rgba(14, 165, 233, 0.35);
-  box-shadow: 0 0 0 4px rgba(20, 184, 166, 0.1);
-}
-
-.permissions-page .project-perms-save:disabled,
-.permissions-page .project-perms-reset:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.permissions-page .project-matrix-wrapper {
-  margin-top: 0.25rem;
-}
-
-.permissions-page .project-perms-matrix {
-  min-width: 520px;
-}
-
-.permissions-page .perm-slug {
-  font-family: ui-monospace, monospace;
-  font-size: 0.72rem;
-  color: #94a3b8;
+  background: #ebe6ff;
+  border-color: rgba(168, 153, 245, 0.4);
+  color: #5a4fd4;
 }
 
 .permissions-page .project-perms-fallback {
-  color: #64748b;
+  padding: 1.15rem;
+  color: #87909e;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
   align-items: flex-start;
 }
 
-/* ── Loading state (permissions route) ───────────────────────── */
-.permissions-loading {
+/* Chargement */
+.permissions-loading.permissions-page--admin {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 1rem;
   min-height: 50vh;
-  padding: 2rem;
-  color: #0ea5e9;
-  background: transparent;
+  width: 100%;
+  color: #6b5ce7;
 }
 
 .permissions-loading p {
   margin: 0;
-  color: #64748b;
+  color: #87909e;
   font-weight: 500;
+  font-size: 13px;
 }
 
 @media (max-width: 768px) {
-  .permissions-page .premium-card,
-  .permissions-page .matrix-wrapper.premium-card,
-  .permissions-page .project-perms-section.premium-card {
-    padding: 1rem;
-    border-radius: 20px;
+  .permissions-page--admin {
+    padding: 0.5rem 0.85rem 1.5rem clamp(0.5rem, 2vw, 0.65rem);
   }
 
   .permissions-page .project-perms-section-head {
-    margin-left: -1rem;
-    margin-right: -1rem;
-    margin-top: -1rem;
-    padding: 1rem;
+    padding: 0.85rem 1rem;
+  }
+
+  .permissions-page .project-perms-toolbar {
+    padding: 0.65rem 1rem 0;
+  }
+
+  .permissions-page .matrix-wrapper,
+  .permissions-page .project-matrix-wrapper {
+    margin-left: 1rem;
+    margin-right: 1rem;
+    margin-bottom: 1rem;
   }
 }

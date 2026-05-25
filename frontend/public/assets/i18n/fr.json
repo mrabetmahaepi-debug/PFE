@@ -198,6 +198,8 @@
     "adminSubtitle": "Vue globale de votre administration aujourd'hui.",
     "recommendationsTitle": "Recommandations",
     "recommendationsSubtitle": "Suggestions intelligentes générées par l'IA pour optimiser vos projets et votre équipe.",
+    "permissionsTitle": "Rôles et permissions",
+    "permissionsSubtitle": "Configurez les profils de permissions. L'administrateur dispose automatiquement de tous les accès.",
     "inboxSubtitle": "Toutes vos notifications",
     "back": "Retour",
     "notifActivity": "Activité de la plateforme",

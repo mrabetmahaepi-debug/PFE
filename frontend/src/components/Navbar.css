@@ -305,7 +305,8 @@
   }
 }
 
-.navbar.navbar--admin-recommendations {
+.navbar.navbar--admin-recommendations,
+.navbar.navbar--admin-permissions {
   height: auto;
   min-height: 56px;
   margin: 0;
@@ -319,7 +320,8 @@
   gap: 16px;
 }
 
-.navbar.navbar--admin-recommendations .header-right {
+.navbar.navbar--admin-recommendations .header-right,
+.navbar.navbar--admin-permissions .header-right {
   width: auto;
   flex-shrink: 0;
   display: flex;
@@ -327,7 +329,8 @@
   gap: 12px;
 }
 
-.navbar.navbar--admin-recommendations .navbar-page-sub {
+.navbar.navbar--admin-recommendations .navbar-page-sub,
+.navbar.navbar--admin-permissions .navbar-page-sub {
   white-space: normal;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -420,15 +423,18 @@
 }
 
 @media (max-width: 640px) {
-  .navbar.navbar--admin-recommendations {
+  .navbar.navbar--admin-recommendations,
+  .navbar.navbar--admin-permissions {
     padding: 8px 12px 8px 16px;
   }
 
-  .navbar.navbar--admin-recommendations .navbar-page-heading {
+  .navbar.navbar--admin-recommendations .navbar-page-heading,
+  .navbar.navbar--admin-permissions .navbar-page-heading {
     font-size: 17px;
   }
 
-  .navbar.navbar--admin-recommendations .navbar-page-sub {
+  .navbar.navbar--admin-recommendations .navbar-page-sub,
+  .navbar.navbar--admin-permissions .navbar-page-sub {
     font-size: 11px;
   }
 

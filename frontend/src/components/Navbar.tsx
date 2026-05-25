@@ -78,6 +78,8 @@ const Navbar: React.FC = () => {
   const showAdminDashboardGreeting = isAdminDashboardHome && !showAdminInboxTitle;
   const showAdminRecommendationsTitle =
     enterpriseAdmin && location.pathname === '/recommendations';
+  const showAdminPermissionsTitle =
+    enterpriseAdmin && location.pathname === '/permissions';
   const { header: adminPageHeader } = useAdminPageHeader();
   const isAdminProjectDetailRoute = /^\/projects\/\d+\/?$/.test(location.pathname);
   const showAdminProjectsHeader =
@@ -257,6 +259,7 @@ const Navbar: React.FC = () => {
         showAdminInboxTitle && 'navbar--admin-inbox',
         showAdminDashboardGreeting && 'navbar--admin-greeting',
         showAdminRecommendationsTitle && 'navbar--admin-recommendations',
+        showAdminPermissionsTitle && 'navbar--admin-permissions',
         showAdminContextHeader && 'navbar--admin-projects',
         showMemberSettingsTitle && 'navbar--member-settings',
         showMemberTaskDetailBack && 'navbar--member-task-detail'
@@ -301,6 +304,12 @@ const Navbar: React.FC = () => {
         <div className="navbar-page-title navbar-page-title--stacked">
           <h1 className="navbar-page-heading">{t('navbar.recommendationsTitle')}</h1>
           <p className="navbar-page-sub">{t('navbar.recommendationsSubtitle')}</p>
+        </div>
+      )}
+      {showAdminPermissionsTitle && (
+        <div className="navbar-page-title navbar-page-title--stacked">
+          <h1 className="navbar-page-heading">{t('navbar.permissionsTitle')}</h1>
+          <p className="navbar-page-sub">{t('navbar.permissionsSubtitle')}</p>
         </div>
       )}
       {showAdminContextHeader && adminPageHeader && (

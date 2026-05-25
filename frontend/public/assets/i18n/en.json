@@ -198,6 +198,8 @@
     "adminSubtitle": "Global view of your administration today.",
     "recommendationsTitle": "Recommendations",
     "recommendationsSubtitle": "AI-powered suggestions to optimize your projects and team.",
+    "permissionsTitle": "Roles and permissions",
+    "permissionsSubtitle": "Configure permission profiles. Administrators automatically have full access.",
     "inboxSubtitle": "All your notifications",
     "back": "Back",
     "notifActivity": "Platform activity",
