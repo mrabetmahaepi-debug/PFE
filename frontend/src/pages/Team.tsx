@@ -140,20 +140,101 @@ function teamProjectLabel(p: TeamProjectRow): string {
 
 function TeamMemberProjectsCell({ projects }: { projects: TeamProjectRow[] }) {
   const [moreOpen, setMoreOpen] = useState(false);
-  const moreWrapRef = useRef<HTMLSpanElement>(null);
+  const [moreHover, setMoreHover] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const hoverCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [popoverCoords, setPopoverCoords] = useState({ top: 0, left: 0, minWidth: 168 });
+
   const visible = projects.slice(0, TEAM_PROJECTS_VISIBLE);
-  const hidden = projects.slice(TEAM_PROJECTS_VISIBLE);
-  const overflowCount = hidden.length;
+  const hiddenProjects = projects.slice(TEAM_PROJECTS_VISIBLE);
+  const overflowCount = hiddenProjects.length;
+  const showPopover = moreOpen || moreHover;
+
+  const updatePopoverCoords = useCallback(() => {
+    const trigger = triggerRef.current;
+    if (!trigger) return;
+    const rect = trigger.getBoundingClientRect();
+    setPopoverCoords({
+      top: rect.bottom + 6,
+      left: rect.left,
+      minWidth: Math.max(rect.width, 168),
+    });
+  }, []);
+
+  const clearHoverCloseTimer = useCallback(() => {
+    if (hoverCloseTimerRef.current) {
+      clearTimeout(hoverCloseTimerRef.current);
+      hoverCloseTimerRef.current = null;
+    }
+  }, []);
+
+  const beginHover = useCallback(() => {
+    clearHoverCloseTimer();
+    setMoreHover(true);
+  }, [clearHoverCloseTimer]);
+
+  const scheduleHoverEnd = useCallback(() => {
+    clearHoverCloseTimer();
+    hoverCloseTimerRef.current = setTimeout(() => {
+      if (!moreOpen) setMoreHover(false);
+    }, 140);
+  }, [clearHoverCloseTimer, moreOpen]);
+
+  useLayoutEffect(() => {
+    if (!showPopover || overflowCount === 0) return;
+    updatePopoverCoords();
+    window.addEventListener('scroll', updatePopoverCoords, true);
+    window.addEventListener('resize', updatePopoverCoords);
+    return () => {
+      window.removeEventListener('scroll', updatePopoverCoords, true);
+      window.removeEventListener('resize', updatePopoverCoords);
+    };
+  }, [showPopover, overflowCount, updatePopoverCoords]);
 
   useEffect(() => {
     if (!moreOpen) return;
     const closeOnOutside = (event: MouseEvent) => {
-      if (moreWrapRef.current?.contains(event.target as Node)) return;
+      const target = event.target as Node;
+      if (triggerRef.current?.contains(target) || popoverRef.current?.contains(target)) return;
       setMoreOpen(false);
     };
     document.addEventListener('click', closeOnOutside);
     return () => document.removeEventListener('click', closeOnOutside);
   }, [moreOpen]);
+
+  useEffect(() => () => clearHoverCloseTimer(), [clearHoverCloseTimer]);
+
+  const popoverPortal =
+    showPopover && overflowCount > 0
+      ? createPortal(
+          <div
+            ref={popoverRef}
+            className="team-project-more-popover team-project-more-popover--portal"
+            role="tooltip"
+            style={{
+              position: 'fixed',
+              top: popoverCoords.top,
+              left: popoverCoords.left,
+              minWidth: popoverCoords.minWidth,
+            }}
+            onMouseEnter={beginHover}
+            onMouseLeave={scheduleHoverEnd}
+          >
+            <ul className="team-project-more-popover-list">
+              {hiddenProjects.map((p) => {
+                const label = teamProjectLabel(p);
+                return (
+                  <li key={p.id} className="team-project-more-popover-item" title={label}>
+                    {label}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>,
+          document.body,
+        )
+      : null;
 
   return (
     <div className="team-project-badges">
@@ -167,13 +248,15 @@ function TeamMemberProjectsCell({ projects }: { projects: TeamProjectRow[] }) {
       })}
       {overflowCount > 0 ? (
         <span
-          ref={moreWrapRef}
-          className={`team-project-more-wrap${moreOpen ? ' team-project-more-wrap--open' : ''}`}
+          className={`team-project-more-wrap${showPopover ? ' team-project-more-wrap--open' : ''}`}
+          onMouseEnter={beginHover}
+          onMouseLeave={scheduleHoverEnd}
         >
           <button
+            ref={triggerRef}
             type="button"
             className="team-project-badge team-project-badge--more"
-            aria-expanded={moreOpen}
+            aria-expanded={showPopover}
             aria-haspopup="true"
             onClick={(e) => {
               e.stopPropagation();
@@ -182,18 +265,7 @@ function TeamMemberProjectsCell({ projects }: { projects: TeamProjectRow[] }) {
           >
             +{overflowCount} autre{overflowCount > 1 ? 's' : ''}
           </button>
-          <div className="team-project-more-popover" role="tooltip">
-            <ul className="team-project-more-popover-list">
-              {hidden.map((p) => {
-                const label = teamProjectLabel(p);
-                return (
-                  <li key={p.id} className="team-project-more-popover-item" title={label}>
-                    {label}
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
+          {popoverPortal}
         </span>
       ) : null}
     </div>

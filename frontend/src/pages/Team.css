@@ -1125,12 +1125,10 @@
   border-color: rgba(123, 104, 238, 0.22);
 }
 
-.team-page--admin-equipe .team-project-more-popover {
-  display: none;
-  position: absolute;
-  left: 0;
-  top: calc(100% + 6px);
-  z-index: 40;
+.team-project-more-popover--portal,
+.team-page--admin-equipe .team-project-more-popover--portal {
+  display: block;
+  z-index: 10050;
   min-width: 10rem;
   max-width: min(20rem, 72vw);
   padding: 0.5rem 0.55rem;
@@ -1140,9 +1138,10 @@
   box-shadow:
     0 4px 16px rgba(15, 23, 42, 0.08),
     0 2px 8px rgba(123, 104, 238, 0.1);
-  pointer-events: none;
+  pointer-events: auto;
 }
 
+.team-project-more-popover--portal .team-project-more-popover-list,
 .team-page--admin-equipe .team-project-more-popover-list {
   margin: 0;
   padding: 0;
@@ -1153,6 +1152,7 @@
   width: 100%;
 }
 
+.team-project-more-popover--portal .team-project-more-popover-item,
 .team-page--admin-equipe .team-project-more-popover-item {
   font-size: 0.75rem;
   font-weight: 500;
@@ -1164,14 +1164,8 @@
   max-width: 100%;
 }
 
-.team-page--admin-equipe .team-project-more-wrap:hover .team-project-more-popover,
-.team-page--admin-equipe .team-project-more-wrap:focus-within .team-project-more-popover,
-.team-page--admin-equipe .team-project-more-wrap--open .team-project-more-popover {
-  display: block;
-  pointer-events: auto;
-}
-
-.team-page--admin-equipe .team-project-more-wrap--open .team-project-badge--more {
+.team-page--admin-equipe .team-project-more-wrap--open .team-project-badge--more,
+.team-page--admin-equipe .team-project-more-wrap:hover .team-project-badge--more {
   background: #f3f0ff;
   color: #7b68ee;
   border-color: rgba(123, 104, 238, 0.22);
