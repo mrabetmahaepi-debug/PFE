@@ -18,6 +18,7 @@ import type { User } from '../types/auth.types';
 import BackButton from '../components/BackButton';
 import UserAvatar from '../components/UserAvatar';
 import { displayGlobalAccountRole } from '../lib/accountRoleDisplay';
+import { useAdminPageHeader } from '../context/AdminPageHeaderContext';
 import './Dashboard.css';
 import './Team.css';
 
@@ -586,6 +587,7 @@ function TeamEnterpriseSelect({
 
 const Team: React.FC = () => {
   const { can, isSuperAdmin } = usePermission();
+  const { setHeader: setAdminPageHeader } = useAdminPageHeader();
   const navigate = useNavigate();
 
   const [members, setMembers] = useState<User[]>([]);
@@ -609,6 +611,14 @@ const Team: React.FC = () => {
       fetchEnterprises();
     }
   }, []);
+
+  useEffect(() => {
+    if (isSuperAdmin) {
+      return;
+    }
+    setAdminPageHeader({ title: 'Équipe' });
+    return () => setAdminPageHeader(null);
+  }, [isSuperAdmin, setAdminPageHeader]);
 
   useEffect(() => {
     const closeMenus = () => {
@@ -686,16 +696,18 @@ const Team: React.FC = () => {
 
   return (
     <div
-      className={`dashboard-page team-page${isSuperAdmin ? ' team-page--super-admin' : ' team-page--admin-equipe'}`}
+      className={`dashboard-page team-page${
+        isSuperAdmin ? ' team-page--super-admin' : ' team-page--admin-equipe team-page--navbar-title'
+      }`}
     >
       <BackButton fallback="/dashboard" />
-      <header className="page-header team-page-header">
-        <div className="team-page-header__main">
-          <h1 className="team-page-title">
-            {isSuperAdmin ? 'Gestion des Administrateurs' : 'Équipe'}
-          </h1>
-        </div>
-      </header>
+      {isSuperAdmin ? (
+        <header className="page-header team-page-header">
+          <div className="team-page-header__main">
+            <h1 className="team-page-title">Gestion des Administrateurs</h1>
+          </div>
+        </header>
+      ) : null}
 
       <div
         className={

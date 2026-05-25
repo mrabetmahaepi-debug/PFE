@@ -83,6 +83,11 @@ const Navbar: React.FC = () => {
     enterpriseAdmin &&
     location.pathname === '/projects' &&
     adminPageHeader != null;
+  const showAdminTeamHeader =
+    enterpriseAdmin &&
+    (location.pathname === '/team' || location.pathname.startsWith('/team/')) &&
+    adminPageHeader != null;
+  const showAdminContextHeader = showAdminProjectsHeader || showAdminTeamHeader;
   const showMemberSettingsTitle =
     globalMember && location.pathname === '/settings';
   const showMemberTaskDetailBack =
@@ -251,6 +256,7 @@ const Navbar: React.FC = () => {
         showAdminInboxTitle && 'navbar--admin-inbox',
         showAdminDashboardGreeting && 'navbar--admin-greeting',
         showAdminRecommendationsTitle && 'navbar--admin-recommendations',
+        showAdminContextHeader && 'navbar--admin-projects',
         showMemberSettingsTitle && 'navbar--member-settings',
         showMemberTaskDetailBack && 'navbar--member-task-detail'
       )}
@@ -296,8 +302,13 @@ const Navbar: React.FC = () => {
           <p className="navbar-page-sub">{t('navbar.recommendationsSubtitle')}</p>
         </div>
       )}
-      {showAdminProjectsHeader && adminPageHeader && (
-        <div className="navbar-admin-projects-copy">
+      {showAdminContextHeader && adminPageHeader && (
+        <div
+          className={cn(
+            'navbar-admin-projects-copy',
+            !adminPageHeader.subtitle && 'navbar-admin-page-copy--title-only'
+          )}
+        >
           <h1 className="navbar-admin-projects-heading">{adminPageHeader.title}</h1>
           {adminPageHeader.subtitle ? (
             <p className="navbar-admin-projects-sub">{adminPageHeader.subtitle}</p>

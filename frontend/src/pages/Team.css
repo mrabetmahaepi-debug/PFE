@@ -55,46 +55,14 @@
   color: transparent;
 }
 
-/* Admin Équipe — Retour au-dessus, titre en dessous (comme Projets) */
+/* Admin Équipe — titre dans la navbar ; contenu compact en dessous */
 .team-page--admin-equipe > .back-button {
   display: inline-flex;
-  margin-bottom: 0;
+  margin: 0 0 0.5rem;
 }
 
-.team-page--admin-equipe .team-page-header {
-  display: block;
-  margin-top: 0.4rem;
-  margin-bottom: 1.75rem;
-}
-
-.team-page--admin-equipe .team-page-header__main {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-}
-
-/* Title — Admin Équipe */
-.team-page--admin-equipe .page-header.team-page-header h1.team-page-title,
-.team-page--admin-equipe .team-page-header h1.team-page-title,
-.team-page--admin-equipe .team-page-header h1 {
-  display: block;
-  margin-top: 0;
-  margin-bottom: 0.15rem;
-  font-size: clamp(26px, 2vw, 34px);
-  font-weight: 800;
-  letter-spacing: -0.035em;
-  line-height: 1.1;
-  color: #292d34;
-  background: none;
-  -webkit-text-fill-color: currentColor;
-}
-
-.team-page--admin-equipe .team-page-header__subtitle {
-  margin-top: 0.5rem;
-  line-height: 1.5;
-  max-width: 36rem;
-  color: var(--virtide-text-muted);
-  font-size: 0.875rem;
+.team-page--admin-equipe.team-page--navbar-title {
+  padding-top: 0.35rem;
 }
 
 /* Super Admin — compact header (title only) */
@@ -165,7 +133,7 @@
   flex-direction: column;
   align-items: flex-start;
   box-sizing: border-box;
-  padding: 0.5rem var(--team-admin-side-gap) 2rem;
+  padding: 0.35rem var(--team-admin-side-gap) 2rem;
   gap: 0;
   background: transparent;
   /* Grille colonnes partagée (Administrateurs + Membres) */
@@ -180,7 +148,6 @@
 }
 
 .team-page--admin-equipe > .back-button,
-.team-page--admin-equipe > .team-page-header,
 .team-page--admin-equipe > .team-filters-bar,
 .team-page--admin-equipe > .team-sections,
 .team-page--admin-equipe > .card-v3 {
@@ -193,7 +160,7 @@
 
 /* Admin Équipe — no outer filter card */
 .team-page--admin-equipe .team-filters-bar {
-  margin-bottom: 1.75rem;
+  margin-bottom: 1.25rem;
   padding: 0;
   background: transparent;
   border: none;

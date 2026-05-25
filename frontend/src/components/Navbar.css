@@ -363,6 +363,11 @@
   padding-top: 4px;
 }
 
+.navbar-admin-page-copy--title-only {
+  padding-top: 0;
+  justify-content: center;
+}
+
 .navbar-admin-projects-heading {
   margin: 0;
   font-size: clamp(1.125rem, 2vw, 1.35rem);
